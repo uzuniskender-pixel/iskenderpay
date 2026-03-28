@@ -26,17 +26,47 @@ const _fbAuth = getAuth(_fbApp);
 const _fbDb   = getFirestore(_fbApp);
 let   _fbUid  = null;
 
-// Firebase'e kaydet
+// Firebase'e veri kaydet
 window._fbSave = async function(encData) {
   if (!_fbUid) return;
-  await setDoc(doc(_fbDb, 'users', _fbUid), { data: encData, updatedAt: Date.now() });
+  await setDoc(doc(_fbDb, 'users', _fbUid), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
-// Firebase'den yükle
+// Firebase'den veri yükle
 window._fbLoad = async function() {
   if (!_fbUid) return null;
   const snap = await getDoc(doc(_fbDb, 'users', _fbUid));
   return snap.exists() ? snap.data().data : null;
+};
+
+// Firebase'e salt kaydet
+window._fbSaveSalt = async function(saltKey, saltVal) {
+  if (!_fbUid) return;
+  const update = {};
+  update['salts.' + saltKey] = saltVal;
+  await setDoc(doc(_fbDb, 'users', _fbUid), update, { merge: true });
+};
+
+// Firebase'den salt yükle
+window._fbLoadSalt = async function(saltKey) {
+  if (!_fbUid) return null;
+  const snap = await getDoc(doc(_fbDb, 'users', _fbUid));
+  if (!snap.exists()) return null;
+  const salts = snap.data().salts || {};
+  return salts[saltKey] || null;
+};
+
+// Firebase'e PIN hash kaydet
+window._fbSavePinHash = async function(hash) {
+  if (!_fbUid) return;
+  await setDoc(doc(_fbDb, 'users', _fbUid), { pinHash: hash }, { merge: true });
+};
+
+// Firebase'den PIN hash yükle
+window._fbLoadPinHash = async function() {
+  if (!_fbUid) return null;
+  const snap = await getDoc(doc(_fbDb, 'users', _fbUid));
+  return snap.exists() ? (snap.data().pinHash || null) : null;
 };
 
 let _redirectChecked = false;
@@ -615,8 +645,37 @@ async function hashPin(pin, salt) {
   return btoa(String.fromCharCode(...new Uint8Array(bits)));
 }
 
+async function getSaltAsync(key) {
+  const uid = (window._fbUid || '');
+  const scopedKey = uid ? key + '-' + uid.slice(0,8) : key;
+
+  // Önce Firebase'den dene
+  if (window._fbLoadSalt) {
+    try {
+      const fbSalt = await window._fbLoadSalt(scopedKey);
+      if (fbSalt) {
+        localStorage.setItem(scopedKey, fbSalt);
+        return Uint8Array.from(atob(fbSalt), c => c.charCodeAt(0));
+      }
+    } catch(e) {}
+  }
+
+  // Firebase'de yoksa localStorage'a bak
+  let s = localStorage.getItem(scopedKey) || localStorage.getItem(key);
+  if (!s) {
+    const arr = crypto.getRandomValues(new Uint8Array(16));
+    s = btoa(String.fromCharCode(...arr));
+    localStorage.setItem(scopedKey, s);
+    // Firebase'e de kaydet
+    if (window._fbSaveSalt) {
+      try { await window._fbSaveSalt(scopedKey, s); } catch(e) {}
+    }
+  }
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+
 function getSalt(key) {
-  // Kullanıcıya özgü anahtar oluştur (Firebase UID varsa kullan)
+  // Senkron fallback — async versiyonu kullanın
   const uid = (window._fbUid || '');
   const scopedKey = uid ? key + '-' + uid.slice(0,8) : key;
   let s = localStorage.getItem(scopedKey) || localStorage.getItem(key);
@@ -714,12 +773,15 @@ async function doLogin() {
   const val = document.getElementById('PI').value;
   if (!val) return;
 
-  const uid = (window._fbUid || '');
-  const pinKey = uid ? 'v5-pin-hash-' + uid.slice(0,8) : 'v5-pin-hash';
+  // Salt'ları Firebase'den al (cihazlar arası senkron)
+  const pinSalt  = await getSaltAsync('v5-pin-salt');
+  const dataSalt = await getSaltAsync('v5-data-salt');
 
-  const pinSalt   = getSalt('v5-pin-salt');
-  const dataSalt  = getSalt('v5-data-salt');
-  const storedHash = localStorage.getItem(pinKey);
+  // PIN hash'i Firebase'den al
+  let storedHash = null;
+  if (window._fbLoadPinHash) {
+    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
+  }
 
   if (!storedHash) {
     // İlk kullanım — şifreyi kaydet
@@ -727,7 +789,10 @@ async function doLogin() {
       showPinErr('En az 4 karakter girmelisiniz!'); return;
     }
     const hash = await hashPin(val, pinSalt);
-    localStorage.setItem(pinKey, hash);
+    // Firebase'e kaydet
+    if (window._fbSavePinHash) {
+      try { await window._fbSavePinHash(hash); } catch(e) {}
+    }
     _plainPin   = val;
     _cryptoKey  = await deriveKey(val, dataSalt);
     await loadSecure();
@@ -780,19 +845,24 @@ async function chPass() {
   const nw   = document.getElementById('NP').value;
   const nw2  = document.getElementById('NP2').value;
   const msg  = document.getElementById('PM');
-  const pinSalt = getSalt('v5-pin-salt');
 
-  const uid = (window._fbUid || '');
-  const pinKey = uid ? 'v5-pin-hash-' + uid.slice(0,8) : 'v5-pin-hash';
-  const storedHash = localStorage.getItem(pinKey);
-  const curHash    = await hashPin(cur, pinSalt);
+  const pinSalt  = await getSaltAsync('v5-pin-salt');
+  const dataSalt = await getSaltAsync('v5-data-salt');
+
+  let storedHash = null;
+  if (window._fbLoadPinHash) {
+    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
+  }
+
+  const curHash = await hashPin(cur, pinSalt);
   if (curHash !== storedHash) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut şifre yanlış'; return; }
   if (!nw || nw.length < 4)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 4 karakter'; return; }
   if (nw !== nw2)             { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreler eşleşmiyor'; return; }
 
   const newHash = await hashPin(nw, pinSalt);
-  localStorage.setItem(pinKey, newHash);
-  const dataSalt = getSalt('v5-data-salt');
+  if (window._fbSavePinHash) {
+    try { await window._fbSavePinHash(newHash); } catch(e) {}
+  }
   _plainPin  = nw;
   _cryptoKey = await deriveKey(nw, dataSalt);
   await saveSecure();
