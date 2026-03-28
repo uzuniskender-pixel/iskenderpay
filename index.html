@@ -1474,18 +1474,27 @@ function delByKey(keyEnc){
   const all=getAllItems(),mx=buildMx(all);
   const dispName=mx[key]?._name||key;
   if(!confirm(dispName+' silinecek. Emin misin?'))return;
-  // key hem tam eşleşme hem floor eşleşmesiyle kontrol et
   const keyFloor=String(Math.floor(Number(key)));
-  const toDelete=pays.filter(p=>
-    String(p.id)===key||
-    String(p.rp)===key||
-    String(Math.floor(Number(p.id)))===keyFloor||
-    String(Math.floor(Number(p.rp)))===keyFloor
-  );
-  toDelete.forEach(p=>hist.unshift({...p,delAt:new Date().toISOString()}));
-  const deleteIds=new Set(toDelete.map(p=>String(p.id)));
-  pays=pays.filter(p=>!deleteIds.has(String(p.id)));
-  creds=creds.filter(c=>String(c.id)!==key);
+  // Ana kayıt ve tüm bağlı kayıtları sil
+  // Ama manuel eklenen (rec:false, rp var) kayıtlar sadece kendileri silinmeli
+  const mainPay=pays.find(p=>String(p.id)===key&&!p.rp);
+  if(mainPay){
+    // Ana kayıt — tüm bağlıları da sil
+    const toDelete=pays.filter(p=>
+      String(p.id)===key||
+      String(p.rp)===key||
+      String(Math.floor(Number(p.id)))===keyFloor||
+      String(Math.floor(Number(p.rp)))===keyFloor
+    );
+    toDelete.forEach(p=>hist.unshift({...p,delAt:new Date().toISOString()}));
+    const deleteIds=new Set(toDelete.map(p=>String(p.id)));
+    pays=pays.filter(p=>!deleteIds.has(String(p.id)));
+    creds=creds.filter(c=>String(c.id)!==key);
+  } else {
+    // Manuel eklenmiş ay kaydı — sadece kendini sil
+    const p=pays.find(p=>String(p.id)===key);
+    if(p){hist.unshift({...p,delAt:new Date().toISOString()});pays=pays.filter(x=>String(x.id)!==key);}
+  }
   saveSecure();
   closeDV();
   render();
