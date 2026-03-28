@@ -1551,8 +1551,9 @@ function doBackup(){
 }
 async function confirmBackup(){
   const entered=document.getElementById('BPP').value;
-  const pinSalt=getSalt('v5-pin-salt');
-  const storedHash=localStorage.getItem('v5-pin-hash');
+  const pinSalt=await getSaltAsync('v5-pin-salt');
+  let storedHash=null;
+  if(window._fbLoadPinHash){try{storedHash=await window._fbLoadPinHash();}catch(e){}}
   const enteredHash=await hashPin(entered,pinSalt);
   if(enteredHash!==storedHash){
     document.getElementById('BPERR').textContent='Hatalı şifre!';
