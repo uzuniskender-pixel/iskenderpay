@@ -724,8 +724,51 @@ let persons=[], notes=[], paidItems=[];
 let partialCtx=null, curTab=0;
 let sortMode='date'; // 'date' veya 'name'
 
-// ── SECURE STORAGE ──────────────────────────────────────────────────────────
+// ── YAPISAL İYİLEŞTİRMELER (UYS v3 pattern) ──────────────────────────────
+let _suppressSave = false;   // true iken saveSecure çalışmaz (batch işlemler)
+let _saveTimer = null;       // debounce timer
+const SAVE_DEBOUNCE_MS = 400;// art arda save'leri birleştir
+
+// Lookup Maps — sık erişilen veriye O(1) erişim
+let _lookupDirty = true;
+let _mapPaysById = new Map();
+let _mapPaysByGroup = new Map();
+let _mapCredsById = new Map();
+
+function invalidateLookups() { _lookupDirty = true; }
+
+function rebuildLookups() {
+  if (!_lookupDirty) return;
+  _mapPaysById.clear();
+  _mapPaysByGroup.clear();
+  _mapCredsById.clear();
+  pays.forEach(p => {
+    _mapPaysById.set(String(p.id), p);
+    const gid = p.groupId || String(Math.floor(Number(p.id)));
+    if (!_mapPaysByGroup.has(gid)) _mapPaysByGroup.set(gid, []);
+    _mapPaysByGroup.get(gid).push(p);
+  });
+  creds.forEach(c => _mapCredsById.set(String(c.id), c));
+  _lookupDirty = false;
+}
+
+// Hızlı lookup fonksiyonları
+function findPayById(id) { rebuildLookups(); return _mapPaysById.get(String(id)) || null; }
+function findPaysByGroup(gid) { rebuildLookups(); return _mapPaysByGroup.get(gid) || []; }
+function findCredById(id) { rebuildLookups(); return _mapCredsById.get(String(id)) || null; }
+
+// ── SECURE STORAGE (debounced + suppressable) ──────────────────────────────
 async function saveSecure() {
+  if (_suppressSave) return;
+  if (!_cryptoKey) return;
+  invalidateLookups();
+  // Debounce: önceki timer'ı iptal et, yeni timer kur
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, SAVE_DEBOUNCE_MS);
+}
+
+async function _doSave() {
+  _saveTimer = null;
   if (!_cryptoKey) return;
   const data = { pays, creds, hist, persons, notes, paidItems };
   const enc = await encryptData(data, _cryptoKey);
@@ -736,6 +779,14 @@ async function saveSecure() {
   // localStorage yedek olarak da tut (plan'a özel key)
   localStorage.setItem('v5-data-' + window._planId, enc);
   localStorage.setItem('v5-rates-' + window._planId, JSON.stringify(rates));
+}
+
+// Anında kaydet (debounce beklemeden — kritik işlemler için)
+async function saveSecureNow() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _suppressSave = false;
+  invalidateLookups();
+  await _doSave();
 }
 
 async function loadSecure() {
@@ -786,7 +837,7 @@ async function migrateFromV4() {
   const encNotes = localStorage.getItem('v4-notes');
   if (encNotes) { const dec = xDec(encNotes, pin); if(dec) try{ notes=JSON.parse(dec); }catch(e){} }
   if (r) try { Object.assign(rates, JSON.parse(r)); } catch(e) {}
-  await saveSecure();
+  await saveSecureNow();
   // Eski anahtarları temizle
   ['v4-pays','v4-creds','v4-hist','v4-persons','v4-notes','v4-pin','v4-rates',
    'v4-ahead','v4-pin-salt'].forEach(k => localStorage.removeItem(k));
@@ -797,6 +848,8 @@ async function migrateFromV4() {
 async function migrateToV7() {
   const migKey = 'v7-migrated-' + (_fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
+
+  _suppressSave = true; // batch işlem — ara kayıtları engelle
 
   // 1. Tüm recurring kayıtlarını bağımsız yap + groupId ata
   // groupId: eski rp (parent ID) veya kendi ID'si — aynı akıştaki ödemeler aynı satırda kalır
@@ -822,7 +875,8 @@ async function migrateToV7() {
       .map(p => ({...p, paidId: 'pi_' + Date.now() + '_' + Math.random()}));
   }
 
-  await saveSecure();
+  _suppressSave = false;
+  await saveSecureNow();
   localStorage.setItem(migKey, '1');
   console.log('v7 migrasyon tamamlandı — groupId atandı, paidItems oluşturuldu');
 }
@@ -982,7 +1036,7 @@ async function chPass() {
   }
   _plainPin  = nw;
   _cryptoKey = await deriveKey(nw, dataSalt);
-  await saveSecure();
+  await saveSecureNow();
 
   msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
   ['CP','NP','NP2'].forEach(id => document.getElementById(id).value='');
@@ -1202,6 +1256,7 @@ function buildMx(all){
 }
 
 function render(){
+  invalidateLookups(); // veri değişmiş olabilir, lookup'ları yenile
   const all=getAllItems();
   const now=new Date();
   const curMK=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
@@ -1432,7 +1487,7 @@ function addToMonth(keyEnc,month){
   const name=mx[key]?._name||key.replace(/^(g_|pay_)/,'');
   // Aynı gruptaki referans kaydı bul
   const groupId=key.startsWith('g_')?key.replace('g_',''):null;
-  const refItem=groupId?pays.find(p=>p.groupId===groupId):pays.find(p=>p.name===name);
+  const refItem=groupId?findPaysByGroup(groupId)[0]:pays.find(p=>p.name===name);
   pays.push({
     id:Date.now()+Math.random(),
     groupId:groupId||String(Date.now()),
@@ -1454,8 +1509,8 @@ function markOk(keyEnc,month){
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=creds.find(x=>x.id===p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
-    else{const orig=pays.find(x=>String(x.id)===String(p.id));if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
+    else{const orig=findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
     // paidItems'a bağımsız kopya ekle
     paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
   });
@@ -1466,8 +1521,8 @@ function undoCell(keyEnc,month){
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=creds.find(x=>x.id===p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
-    else{const orig=pays.find(x=>String(x.id)===String(p.id));if(orig){orig.status='pending';orig.paid=0;}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
     // paidItems'dan kaldır
     const pidx=paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) paidItems.splice(pidx,1);
@@ -1490,8 +1545,8 @@ function doPartial(){
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=creds.find(x=>x.id===p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
-    else{const orig=pays.find(x=>String(x.id)===String(p.id));if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
+    else{const orig=findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
     // paidItems'a kısmi ödeme kaydı ekle
     const existing=paidItems.find(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(existing){ existing.paid=(existing.paid||0)+amt; existing.status=existing.paid>=toTRY(p.amount,p.currency||'TRY')?'paid':'partial'; }
@@ -1506,8 +1561,8 @@ function saveCellAmt(keyEnc,month){
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=creds.find(x=>x.id===p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
-    else{const orig=pays.find(x=>String(x.id)===String(p.id));if(orig)orig.amount=v;}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
+    else{const orig=findPayById(p.id);if(orig)orig.amount=v;}
   });
   save().then(()=>{render();openCell(keyEnc,month);});
 }
@@ -1516,12 +1571,12 @@ function editByKey(keyEnc){
   closeDV();
   if(key.startsWith('cred_')){
     const credId=key.replace('cred_','');
-    const c=creds.find(x=>String(x.id)===credId);
+    const c=findCredById(credId);
     if(c) setTimeout(()=>editCred(c.id),50);
     else alert('Düzenlenecek kayıt bulunamadı.');
   } else if(key.startsWith('g_')){
     const gid=key.replace('g_','');
-    const p=pays.find(x=>x.groupId===gid);
+    const p=findPaysByGroup(gid)[0];
     if(p) setTimeout(()=>editPay(p.id),50);
     else alert('Düzenlenecek kayıt bulunamadı.');
   } else {
@@ -1538,7 +1593,7 @@ function delByKey(keyEnc){
   if(!confirm(dispName+' — tüm aylar silinecek. Emin misin?'))return;
   if(key.startsWith('cred_')){
     const credId=key.replace('cred_','');
-    const c=creds.find(x=>String(x.id)===credId);
+    const c=findCredById(credId);
     if(c){c.pays.forEach(p=>hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));}
     creds=creds.filter(x=>String(x.id)!==credId);
   } else if(key.startsWith('g_')){
@@ -1569,7 +1624,7 @@ function openPay(){
   document.getElementById('PM2').classList.add('open');
 }
 function editPay(id){
-  const p=pays.find(x=>String(x.id)===String(id));if(!p)return;
+  const p=findPayById(id);if(!p)return;
   document.getElementById('EID').value=id;
   document.getElementById('PMT').innerHTML='Ödeme <span>Düzenle</span>';
   document.getElementById('PN').value=p.name;
@@ -1591,7 +1646,7 @@ function savePay(){
   const eid=document.getElementById('EID').value;
   if(eid){
     // Düzenleme — sadece bu kaydı güncelle
-    const p=pays.find(x=>String(x.id)===String(eid));
+    const p=findPayById(eid);
     if(p) Object.assign(p,{name,amount,currency,date,category});
   } else {
     // Yeni ekleme + kopyalama — tüm kopyalar aynı groupId'yi paylaşır
@@ -1620,7 +1675,7 @@ function openCred(){
   document.getElementById('CM').classList.add('open');
 }
 function editCred(id){
-  const c=creds.find(x=>String(x.id)===String(id));if(!c)return;
+  const c=findCredById(id);if(!c)return;
   document.getElementById('CEID').value=id;
   document.getElementById('CN').value=c.name;
   document.getElementById('CT').value=c.total;
@@ -1642,7 +1697,7 @@ function saveCred(){
   const startMo=startMo0-1;
   const pArr=Array.from({length:inst},(_,i)=>{const totalMo=startMo+i;const yr=startYr+Math.floor(totalMo/12),mo=totalMo%12;const lastDay=new Date(yr,mo+1,0).getDate();const day=Math.min(startDay,lastDay);return{idx:i+1,date:toLocalISO(yr,mo,day),amount:monthly,status:'pending',paid:0};});
   const eid=document.getElementById('CEID').value;
-  if(eid){const c=creds.find(x=>String(x.id)===String(eid));if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;}}
+  if(eid){const c=findCredById(eid);if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;}}
   else{creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr});}
   save().then(()=>{closeMov('CM');render();});
 }
@@ -1690,7 +1745,7 @@ function editHistItem(idx){
 function delMonthEntry(idEnc){
   const id=decodeURIComponent(idEnc);
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
-  const p=pays.find(x=>String(x.id)===id);
+  const p=findPayById(id);
   if(p){hist.unshift({...p,delAt:new Date().toISOString()});pays=pays.filter(x=>String(x.id)!==id);}
   saveSecure();closeDV();render();
 }
@@ -1786,6 +1841,7 @@ function doRestore(){
   if(!confirm('Mevcut veriler silinecek. Emin misin?'))return;
   const d=JSON.parse(st.dataset.d);
   pays=d.pays||[];creds=d.creds||[];hist=d.hist||[];persons=d.persons||[];notes=d.notes||[];paidItems=d.paidItems||[];
+  invalidateLookups();
   save().then(()=>{migrateCredDates();closeMov('RM');render();});
   alert('Veriler yüklendi!');
 }
@@ -1852,8 +1908,8 @@ function resetPartial(keyEnc,month){
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=creds.find(x=>x.id===p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=0;i.status='pending';}}}
-    else{const orig=pays.find(x=>String(x.id)===String(p.id));if(orig){orig.paid=0;orig.status='pending';}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=0;i.status='pending';}}}
+    else{const orig=findPayById(p.id);if(orig){orig.paid=0;orig.status='pending';}}
   });
   save().then(()=>{closeDV();render();});
 }
