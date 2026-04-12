@@ -1305,6 +1305,21 @@ function render(){
     });
   }
   if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+
+  // Aynı isimli birden fazla satır varsa otomatik numaralandır
+  const nameCountMap={};
+  rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
+  const nameIdxMap={};
+  rowKeys.forEach(k=>{
+    const n=mx[k]._name||'';
+    if(nameCountMap[n]>1){
+      nameIdxMap[n]=(nameIdxMap[n]||0)+1;
+      mx[k]._displayName=n+' '+nameIdxMap[n];
+    } else {
+      mx[k]._displayName=n;
+    }
+  });
+
   const allMonths=Array.from(monthSet).sort();
   const months=allMonths.filter(m=>rowKeys.some(k=>{const c=mx[k]?.[m];return c&&c.status!=='paid';}));
   const mLbls=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'short',year:'2-digit'});});
@@ -1319,7 +1334,7 @@ function render(){
   months.forEach((m,i)=>html+=`<th${m===curMK?' style="color:var(--acc);font-weight:700"':''}>${mLbls[i]}</th>`);
   html+='<th>Toplam</th></tr></thead><tbody>';
   rowKeys.forEach(k=>{
-    const dispName=mx[k]._name||k;
+    const dispName=mx[k]._displayName||mx[k]._name||k;
     // Ödeme gününü bul (ilk mevcut aydan al)
     const _firstMk=Object.keys(mx[k]).filter(x=>x!=='_name'&&x!=='_rootId').sort()[0];
     const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
@@ -1361,7 +1376,7 @@ function render(){
 // ── DETAY ─────────────────────────────────────────────────────────────────────
 function openRow(keyEnc){
   const key=decodeURIComponent(keyEnc), all=getAllItems(), mx=buildMx(all);
-  const dispName=mx[key]?._name||key;
+  const dispName=mx[key]?._displayName||mx[key]?._name||key;
   const months=Object.keys(mx[key]||{}).filter(k=>k!=='_name'&&k!=='_rootId').sort();
   let h=`<div class="dtitle">${dispName}</div><div class="dsub">Tüm aylar — tıkla işaretlemek için</div>`;
   months.forEach(m=>{
@@ -1589,7 +1604,7 @@ function editByKey(keyEnc){
 function delByKey(keyEnc){
   const key=decodeURIComponent(keyEnc);
   const all=getAllItems(),mx=buildMx(all);
-  const dispName=mx[key]?._name||key;
+  const dispName=mx[key]?._displayName||mx[key]?._name||key;
   if(!confirm(dispName+' — tüm aylar silinecek. Emin misin?'))return;
   if(key.startsWith('cred_')){
     const credId=key.replace('cred_','');
