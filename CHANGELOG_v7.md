@@ -86,3 +86,22 @@
 - `_displayName` key'i matris ay key filtrelerinden geçiyordu
 - `x!=='_name'&&x!=='_rootId'` → `!x.startsWith('_')` olarak güncellendi (tüm 6 yerde)
 - Bu fix olmadan ay sütunları ve gün numaraları hatalı hesaplanıyordu
+## 12. v7b Migrasyon — groupId Otomatik Düzeltme
+- İlk deploy'da `rp` silinmiş ama `groupId` atanmamıştı (özellik sonra eklendi)
+- Migrasyon flag'i zaten set olduğu için ikinci deploy'da atlandı → her entry ayrı satır oldu
+- **v7b migrasyonu eklendi:** ay çakışması algoritması ile otomatik gruplama
+  - Aynı isimli ödemelerde ay çakışması yoksa → tek satır (aynı groupId)
+  - Ay çakışması varsa → ayrı satır (farklı groupId)
+- Her plan için ayrı flag: `v7b-migrated-{uid}-plan1`, `v7b-migrated-{uid}-plan2`
+- Konsol fix scripti de sağlandı (`fix_groupids.js`)
+
+## 13. Plan 2 Veri Yükleme Sorunu
+- Plan 2 verisi Firebase'de mevcuttu (36KB, 89 ödeme, 2 kredi) ama yüklenemiyordu
+- Sorun: Plan geçişinde veri yükleme akışında senkronizasyon problemi
+- Konsol scripti ile zorla yükleme + groupId fix uygulandı
+- v7b migrasyonu Plan 2 için de otomatik çalışacak şekilde entegre edildi
+
+## Dosya Versiyonları
+- `index.html` — v7.0 + v7b migrasyon, 2155 satır
+- `CHANGELOG_v7.md` — bu dosya
+- `fix_groupids.js` — konsol fix scripti (tek seferlik)
