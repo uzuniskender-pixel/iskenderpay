@@ -2,7 +2,14 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0e17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ödeme">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Ödeme Takvimi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -364,6 +371,26 @@ select.fi{appearance:none}
 .add-btn:active{transform:scale(.97)}
 
 
+
+/* REHBER */
+.rhb-open-btn{display:flex;align-items:center;gap:7px;padding:10px 20px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid var(--bdr);color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:14px;transition:all .2s}
+.rhb-open-btn:hover{background:rgba(255,255,255,.11);color:var(--txt)}
+.rhb-screen{position:fixed;inset:0;background:var(--bg);z-index:3000;flex-direction:column;overflow:hidden}
+.rhb-screen.open{display:flex}
+.rhb-header{background:var(--surf);border-bottom:1px solid var(--bdr);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.rhb-back{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;padding:0 4px;line-height:1}
+.rhb-title{flex:1;font-size:17px;font-weight:700}
+.rhb-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--acc2),var(--acc));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#0f0e17;flex-shrink:0}
+.rhb-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .12s}
+.rhb-card:active{background:var(--surf2)}
+.rhb-field{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surf2);border-radius:9px;margin-bottom:7px}
+.rhb-field-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:2px}
+.rhb-field-val{font-size:14px;font-weight:500}
+.rhb-field-val.mono{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
+.rhb-copy-btn{background:rgba(96,165,250,.15);color:var(--blue);border:1px solid rgba(96,165,250,.2);border-radius:7px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;transition:all .15s}
+.rhb-call-btn{background:rgba(74,222,128,.15);color:var(--ok);border:1px solid rgba(74,222,128,.2);border-radius:7px;padding:7px 10px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;flex-shrink:0}
+.rhb-phone-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.rhb-phone-row .fi{padding:9px 10px;font-size:13px}
 .empty{text-align:center;padding:32px 16px;color:var(--muted)}
 .empty .ico{font-size:36px;margin-bottom:9px}
 .empty p{font-size:13px;line-height:1.6}
@@ -386,6 +413,7 @@ select.fi{appearance:none}
     <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
     Google ile Giriş Yap
   </button>
+  <button class="rhb-open-btn" onclick="openRehber()">📒 Rehber</button>
 </div>
 
 <!-- PLAN SEÇİM -->
@@ -413,6 +441,7 @@ select.fi{appearance:none}
     </div>
   </div>
   <button class="pls-signout" onclick="doGoogleSignOut()">Çıkış Yap</button>
+  <button class="rhb-open-btn" onclick="openRehber()">📒 Rehber</button>
 </div>
 
 <!-- PIN -->
@@ -2121,12 +2150,272 @@ function initApp(){
   fetchRates();
 }
 
+
+// ── REHBER (şifresiz, localStorage) ─────────────────────────────────────────
+const RHB_KEY = 'ip-rehber';
+let _rhb = [];
+let _rhbPhones = [];
+
+function rhbLoad() {
+  try { _rhb = JSON.parse(localStorage.getItem(RHB_KEY)||'[]'); } catch(e) { _rhb = []; }
+}
+function rhbSave() {
+  localStorage.setItem(RHB_KEY, JSON.stringify(_rhb));
+}
+
+function openRehber() {
+  rhbLoad();
+  const el = document.getElementById('RHB');
+  el.style.display = 'flex';
+  el.classList.add('open');
+  document.getElementById('RHB_SRCH').value = '';
+  renderRhb();
+}
+
+function closeRehber() {
+  const el = document.getElementById('RHB');
+  el.style.display = 'none';
+  el.classList.remove('open');
+  document.getElementById('RDET').classList.remove('open');
+}
+
+function renderRhb() {
+  const q = (document.getElementById('RHB_SRCH')?.value||'').toLocaleLowerCase('tr');
+  let list = [..._rhb];
+  if (q) list = list.filter(p =>
+    (p.firstName+' '+p.lastName).toLocaleLowerCase('tr').includes(q) ||
+    (p.phones||[]).some(ph => ph.num.includes(q))
+  );
+  list.sort((a,b) => ((a.lastName||'')+(a.firstName||'')).localeCompare((b.lastName||'')+(b.firstName||''),'tr'));
+
+  const el = document.getElementById('RHB_LIST');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="ico">📒</div><p>Kişi bulunamadı.<br>+ Ekle ile başlayın.</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const initials = ((p.firstName?.[0]||'')+(p.lastName?.[0]||'')).toUpperCase() || '?';
+    const firstPhone = p.phones?.[0]?.num || '';
+    return `<div class="rhb-card" onclick="openRhbDetail('${p.id}')">
+      <div class="rhb-avatar">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600">${esc(p.firstName)} ${esc(p.lastName)}</div>
+        ${firstPhone ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'IBM Plex Mono',monospace">${esc(firstPhone)}</div>` : ''}
+      </div>
+      <div style="color:var(--muted);font-size:18px;font-weight:300">›</div>
+    </div>`;
+  }).join('');
+}
+
+function openRhbDetail(id) {
+  const p = _rhb.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const initials = ((p.firstName?.[0]||'')+(p.lastName?.[0]||'')).toUpperCase() || '?';
+  let h = `
+    <div style="text-align:center;margin-bottom:18px">
+      <div class="rhb-avatar" style="width:64px;height:64px;font-size:24px;margin:0 auto 10px">${initials}</div>
+      <div style="font-size:20px;font-weight:700">${esc(p.firstName)} ${esc(p.lastName)}</div>
+    </div>`;
+
+  // Telefon numaraları
+  if (p.phones?.length) {
+    p.phones.filter(ph => ph.num).forEach(ph => {
+      h += `<div class="rhb-field">
+        <div style="min-width:0;flex:1">
+          ${ph.lbl ? `<div class="rhb-field-lbl">${esc(ph.lbl)}</div>` : '<div class="rhb-field-lbl">Telefon</div>'}
+          <div class="rhb-field-val mono">${esc(ph.num)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+          <a href="tel:${encodeURIComponent(ph.num)}" class="rhb-call-btn">📞</a>
+          <button class="rhb-copy-btn" onclick="rhbCopy('${ph.num.replace(/'/g,"\'")}'​,this)">📋</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // E-posta
+  if (p.email) {
+    h += `<div class="rhb-field">
+      <div style="min-width:0;flex:1">
+        <div class="rhb-field-lbl">E-posta</div>
+        <div class="rhb-field-val" style="word-break:break-all">${esc(p.email)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+        <a href="mailto:${encodeURIComponent(p.email)}" class="rhb-call-btn">✉️</a>
+        <button class="rhb-copy-btn" onclick="rhbCopy('${p.email.replace(/'/g,"\'")}'​,this)">📋</button>
+      </div>
+    </div>`;
+  }
+
+  // Not
+  if (p.note) {
+    h += `<div style="background:var(--surf2);border-radius:9px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--bdr)">
+      <div class="rhb-field-lbl" style="margin-bottom:5px">Not</div>
+      <div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${esc(p.note)}</div>
+    </div>`;
+  }
+
+  h += `<div class="dacts">
+    <button class="dact da-edit" onclick="openRhbEdit('${p.id}')">Düzenle</button>
+    <button class="dact da-del" onclick="rhbDel('${p.id}')">Sil</button>
+    <button class="dact da-close" onclick="document.getElementById('RDET').classList.remove('open')">Kapat</button>
+  </div>`;
+
+  document.getElementById('RDET_C').innerHTML = h;
+  document.getElementById('RDET').classList.add('open');
+}
+
+function rhbCopy(text, btn) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => rhbCopyFeedback(btn)).catch(() => rhbCopyFallback(text, btn));
+  } else {
+    rhbCopyFallback(text, btn);
+  }
+}
+function rhbCopyFallback(text, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  rhbCopyFeedback(btn);
+}
+function rhbCopyFeedback(btn) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓'; btn.style.color = 'var(--ok)';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1600);
+}
+
+function openRhbAdd() {
+  document.getElementById('RMOD_ID').value = '';
+  document.getElementById('RMOD_T').innerHTML = 'Kişi <span>Ekle</span>';
+  ['RMOD_FN','RMOD_LN','RMOD_EMAIL','RMOD_NOTE'].forEach(id => document.getElementById(id).value = '');
+  _rhbPhones = [{lbl:'', num:''}];
+  renderRhbPhones();
+  document.getElementById('RMOD').classList.add('open');
+}
+
+function openRhbEdit(id) {
+  const p = _rhb.find(x => String(x.id) === String(id));
+  if (!p) return;
+  document.getElementById('RDET').classList.remove('open');
+  document.getElementById('RMOD_ID').value = id;
+  document.getElementById('RMOD_T').innerHTML = 'Kişi <span>Düzenle</span>';
+  document.getElementById('RMOD_FN').value = p.firstName || '';
+  document.getElementById('RMOD_LN').value = p.lastName || '';
+  document.getElementById('RMOD_EMAIL').value = p.email || '';
+  document.getElementById('RMOD_NOTE').value = p.note || '';
+  _rhbPhones = (p.phones?.length ? p.phones.map(x=>({...x})) : [{lbl:'',num:''}]);
+  renderRhbPhones();
+  setTimeout(() => document.getElementById('RMOD').classList.add('open'), 100);
+}
+
+function renderRhbPhones() {
+  document.getElementById('RMOD_PHONES').innerHTML = _rhbPhones.map((ph, i) => `
+    <div class="rhb-phone-row">
+      <input class="fi" type="text" placeholder="Etiket (Cep, İş...)" value="${esc(ph.lbl)}"
+        oninput="_rhbPhones[${i}].lbl=this.value" style="flex:0.7">
+      <input class="fi mono-inp" type="tel" placeholder="05XX XXX XX XX" value="${esc(ph.num)}"
+        oninput="_rhbPhones[${i}].num=this.value" style="flex:1">
+      ${_rhbPhones.length > 1
+        ? `<button onclick="_rhbPhones.splice(${i},1);renderRhbPhones()"
+             style="background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>`
+        : ''}
+    </div>`).join('');
+}
+
+function rhbAddPhone() {
+  _rhbPhones.push({lbl:'', num:''});
+  renderRhbPhones();
+}
+
+function rhbSavePerson() {
+  const firstName = document.getElementById('RMOD_FN').value.trim();
+  const lastName  = document.getElementById('RMOD_LN').value.trim();
+  if (!firstName && !lastName) { alert('En az isim veya soyisim girin'); return; }
+  const phones = _rhbPhones.filter(ph => ph.num.trim());
+  const email  = document.getElementById('RMOD_EMAIL').value.trim();
+  const note   = document.getElementById('RMOD_NOTE').value.trim();
+  const eid    = document.getElementById('RMOD_ID').value;
+  if (eid) {
+    const p = _rhb.find(x => String(x.id) === String(eid));
+    if (p) Object.assign(p, {firstName, lastName, phones, email, note});
+  } else {
+    _rhb.push({id: Date.now(), firstName, lastName, phones, email, note});
+  }
+  rhbSave();
+  closeMov('RMOD');
+  renderRhb();
+}
+
+function rhbDel(id) {
+  const p = _rhb.find(x => String(x.id) === String(id));
+  if (!confirm((p?.firstName||'')+' '+(p?.lastName||'')+' silinecek. Emin misin?')) return;
+  _rhb = _rhb.filter(x => String(x.id) !== String(id));
+  rhbSave();
+  document.getElementById('RDET').classList.remove('open');
+  renderRhb();
+}
+
+// ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW kayıtlı:', reg.scope))
+      .catch(err => console.log('SW hatası:', err));
+  });
+}
+
 // PIN input enter key
 document.addEventListener('DOMContentLoaded',()=>{
   const pi=document.getElementById('PI');
   if(pi) pi.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 });
 </script>
+
+<!-- ── REHBER OVERLAY ─────────────────────────────────────────────────────── -->
+<div id="RHB" class="rhb-screen" style="display:none">
+  <div class="rhb-header">
+    <button class="rhb-back" onclick="closeRehber()">←</button>
+    <div class="rhb-title">📒 Rehber</div>
+    <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
+  </div>
+  <div style="padding:12px 16px;flex-shrink:0">
+    <input id="RHB_SRCH" type="text" placeholder="🔍 İsim veya numara ara..." oninput="renderRhb()"
+      style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none">
+  </div>
+  <div id="RHB_LIST" style="overflow-y:auto;padding:0 16px 80px;flex:1"></div>
+</div>
+
+<!-- REHBER KİŞİ DETAY -->
+<div class="dov" id="RDET">
+  <div class="dpanel"><div class="dhdl"></div><div id="RDET_C"></div></div>
+</div>
+
+<!-- REHBER EKLE/DÜZENLE MODAL -->
+<div class="mov" id="RMOD">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2 id="RMOD_T">Kişi <span>Ekle</span></h2>
+    <input type="hidden" id="RMOD_ID">
+    <div class="frow">
+      <div class="fg"><label class="fl">İsim</label><input class="fi" id="RMOD_FN" type="text" placeholder="Ad"></div>
+      <div class="fg"><label class="fl">Soyisim</label><input class="fi" id="RMOD_LN" type="text" placeholder="Soyad"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Telefon Numaraları</label>
+      <div id="RMOD_PHONES"></div>
+      <button onclick="rhbAddPhone()" style="background:none;border:1px dashed var(--bdr);color:var(--muted);border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;width:100%;margin-top:4px">+ Telefon Ekle</button>
+    </div>
+    <div class="fg"><label class="fl">E-posta</label><input class="fi" id="RMOD_EMAIL" type="email" placeholder="ornek@mail.com"></div>
+    <div class="fg"><label class="fl">Not</label><textarea class="fi" id="RMOD_NOTE" rows="3" placeholder="Açıklama..." style="resize:vertical"></textarea></div>
+    <div class="brow">
+      <button class="btn bc" onclick="closeMov('RMOD')">İptal</button>
+      <button class="btn bs" onclick="rhbSavePerson()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <!-- NOT MODAL -->
 <div class="mov" id="NM">
   <div class="modal">
