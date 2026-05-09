@@ -220,8 +220,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 }
 
 /* MOBILE NAV */
-.mnav{display:flex;border-bottom:1px solid var(--bdr);background:var(--bg);position:sticky;top:0;z-index:10}
-.mtab{flex:1;padding:11px 4px;font-size:11px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;text-align:center;transition:all .15s}
+.mnav{display:flex;border-bottom:1px solid var(--bdr);background:var(--bg);position:sticky;top:0;z-index:10;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mtab{flex:1;flex-shrink:0;min-width:52px;padding:11px 4px;font-size:11px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;text-align:center;transition:all .15s}
 .mtab.on{color:var(--acc);border-bottom-color:var(--acc)}
 
 /* KUR */
@@ -413,7 +413,6 @@ select.fi{appearance:none}
     <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
     Google ile Giriş Yap
   </button>
-  <button class="rhb-open-btn" onclick="openRehber()">📒 Rehber</button>
 </div>
 
 <!-- PLAN SEÇİM -->
@@ -441,7 +440,6 @@ select.fi{appearance:none}
     </div>
   </div>
   <button class="pls-signout" onclick="doGoogleSignOut()">Çıkış Yap</button>
-  <button class="rhb-open-btn" onclick="openRehber()">📒 Rehber</button>
 </div>
 
 <!-- PIN -->
@@ -468,6 +466,7 @@ select.fi{appearance:none}
       <button class="stab" id="s3" onclick="go(3)">📝 Notlar</button>
       <button class="stab" id="s4" onclick="go(4)">🗃 Geçmiş</button>
       <button class="stab" id="s5" onclick="go(5)">⚙️ Ayarlar</button>
+      <button class="stab" id="s6" onclick="go(6)">📒 Rehber</button>
       <button class="stab" onclick="switchPlan()" style="margin-top:auto;color:var(--acc2)" id="PLANBTN">🔄 Plan Değiştir</button>
       <button class="stab" onclick="doGoogleSignOut()" style="color:var(--danger)">🚪 Çıkış</button>
     </nav>
@@ -480,6 +479,7 @@ select.fi{appearance:none}
       <button class="mtab" id="m3" onclick="go(3)">📝 Notlar</button>
       <button class="mtab" id="m4" onclick="go(4)">🗃 Geçmiş</button>
       <button class="mtab" id="m5" onclick="go(5)">⚙️ Ayarlar</button>
+      <button class="mtab" id="m6" onclick="go(6)">📒 Rehber</button>
     </div>
     <div class="kurbar" id="KB"><span style="font-size:11px;color:var(--muted)">Kurlar yükleniyor...</span></div>
 
@@ -603,6 +603,21 @@ select.fi{appearance:none}
         </div>
       </div>
     </div>
+  </div>
+
+    <!-- REHBER -->
+    <div id="T6" style="display:none">
+      <div class="ph">
+        <div><h1>📒 <span>Rehber</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">İletişim bilgileri · Şifreli</div></div>
+        <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
+      </div>
+      <div style="padding:0 16px 10px">
+        <input id="RHB_SRCH" type="text" placeholder="🔍 İsim veya numara ara..." oninput="renderRhb()"
+          style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none">
+      </div>
+      <div id="RHB_LIST" style="padding:0 16px 70px"></div>
+    </div>
+
   </div>
 </div>
 
@@ -749,7 +764,7 @@ function getSalt(key) {
 
 // ── STATE ───────────────────────────────────────────────────────────────────
 let pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
-let persons=[], notes=[], paidItems=[];
+let persons=[], notes=[], paidItems=[], rehber=[];
 let partialCtx=null, curTab=0;
 let sortMode='date'; // 'date' veya 'name'
 
@@ -799,7 +814,7 @@ async function saveSecure() {
 async function _doSave() {
   _saveTimer = null;
   if (!_cryptoKey) return;
-  const data = { pays, creds, hist, persons, notes, paidItems };
+  const data = { pays, creds, hist, persons, notes, paidItems, rehber };
   const enc = await encryptData(data, _cryptoKey);
   // Firebase'e kaydet (birincil)
   if (window._fbSave) {
@@ -838,6 +853,7 @@ async function loadSecure() {
     persons = data.persons || [];
     notes   = data.notes   || [];
     paidItems = data.paidItems || [];
+    rehber    = data.rehber    || [];
     // Firebase'e de kaydet (localStorage'dan geliyorsa senkronize et)
     if (window._fbSave) {
       try { await window._fbSave(enc); } catch(e) {}
@@ -1170,7 +1186,7 @@ function sLbl(s,over){return s==='paid'?'Ödendi':s==='partial'?'Kısmi':over?'G
 // ── TAB ──────────────────────────────────────────────────────────────────────
 function go(n){
   curTab=n;
-  [0,1,2,3,4,5].forEach(i=>{
+  [0,1,2,3,4,5,6].forEach(i=>{
     const t=document.getElementById('T'+i); if(t) t.style.display=i===n?'':'none';
     const m=document.getElementById('m'+i); if(m) m.classList.toggle('on',i===n);
     const s=document.getElementById('s'+i); if(s) s.classList.toggle('on',i===n);
@@ -1181,6 +1197,7 @@ function go(n){
   if(n===3) renderNotes();
   if(n===4) renderHist();
   if(n===5) renderAI();
+  if(n===6) renderRhb();
 }
 
 // ── VERİ MİGRASYONU (tarih düzeltme) ────────────────────────────────────────
@@ -1925,7 +1942,7 @@ function doRestore(){
   if(!st.dataset.d){st.textContent='Önce dosya seç';return;}
   if(!confirm('Mevcut veriler silinecek. Emin misin?'))return;
   const d=JSON.parse(st.dataset.d);
-  pays=d.pays||[];creds=d.creds||[];hist=d.hist||[];persons=d.persons||[];notes=d.notes||[];paidItems=d.paidItems||[];
+  pays=d.pays||[];creds=d.creds||[];hist=d.hist||[];persons=d.persons||[];notes=d.notes||[];paidItems=d.paidItems||[];rehber=d.rehber||[];
   invalidateLookups();
   save().then(()=>{migrateCredDates();closeMov('RM');render();});
   alert('Veriler yüklendi!');
@@ -2152,36 +2169,20 @@ function initApp(){
 
 
 // ── REHBER (şifresiz, localStorage) ─────────────────────────────────────────
-const RHB_KEY = 'ip-rehber';
-let _rhb = [];
 let _rhbPhones = [];
 
-function rhbLoad() {
-  try { _rhb = JSON.parse(localStorage.getItem(RHB_KEY)||'[]'); } catch(e) { _rhb = []; }
-}
 function rhbSave() {
-  localStorage.setItem(RHB_KEY, JSON.stringify(_rhb));
+  saveSecure(); // şifreli Firebase'e kaydet
 }
 
 function openRehber() {
-  rhbLoad();
-  const el = document.getElementById('RHB');
-  el.style.display = 'flex';
-  el.classList.add('open');
-  document.getElementById('RHB_SRCH').value = '';
-  renderRhb();
-}
-
-function closeRehber() {
-  const el = document.getElementById('RHB');
-  el.style.display = 'none';
-  el.classList.remove('open');
-  document.getElementById('RDET').classList.remove('open');
+  // Artık T6 tab'ı kullanılıyor — go(6) ile açılır
+  go(6);
 }
 
 function renderRhb() {
   const q = (document.getElementById('RHB_SRCH')?.value||'').toLocaleLowerCase('tr');
-  let list = [..._rhb];
+  let list = [...rehber];
   if (q) list = list.filter(p =>
     (p.firstName+' '+p.lastName).toLocaleLowerCase('tr').includes(q) ||
     (p.phones||[]).some(ph => ph.num.includes(q))
@@ -2208,7 +2209,7 @@ function renderRhb() {
 }
 
 function openRhbDetail(id) {
-  const p = _rhb.find(x => String(x.id) === String(id));
+  const p = rehber.find(x => String(x.id) === String(id));
   if (!p) return;
   const initials = ((p.firstName?.[0]||'')+(p.lastName?.[0]||'')).toUpperCase() || '?';
   let h = `
@@ -2296,7 +2297,7 @@ function openRhbAdd() {
 }
 
 function openRhbEdit(id) {
-  const p = _rhb.find(x => String(x.id) === String(id));
+  const p = rehber.find(x => String(x.id) === String(id));
   if (!p) return;
   document.getElementById('RDET').classList.remove('open');
   document.getElementById('RMOD_ID').value = id;
@@ -2338,10 +2339,10 @@ function rhbSavePerson() {
   const note   = document.getElementById('RMOD_NOTE').value.trim();
   const eid    = document.getElementById('RMOD_ID').value;
   if (eid) {
-    const p = _rhb.find(x => String(x.id) === String(eid));
+    const p = rehber.find(x => String(x.id) === String(eid));
     if (p) Object.assign(p, {firstName, lastName, phones, email, note});
   } else {
-    _rhb.push({id: Date.now(), firstName, lastName, phones, email, note});
+    rehber.push({id: Date.now(), firstName, lastName, phones, email, note});
   }
   rhbSave();
   closeMov('RMOD');
@@ -2349,9 +2350,9 @@ function rhbSavePerson() {
 }
 
 function rhbDel(id) {
-  const p = _rhb.find(x => String(x.id) === String(id));
+  const p = rehber.find(x => String(x.id) === String(id));
   if (!confirm((p?.firstName||'')+' '+(p?.lastName||'')+' silinecek. Emin misin?')) return;
-  _rhb = _rhb.filter(x => String(x.id) !== String(id));
+  rehber = rehber.filter(x => String(x.id) !== String(id));
   rhbSave();
   document.getElementById('RDET').classList.remove('open');
   renderRhb();
@@ -2373,18 +2374,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
-<!-- ── REHBER OVERLAY ─────────────────────────────────────────────────────── -->
-<div id="RHB" class="rhb-screen" style="display:none">
-  <div class="rhb-header">
-    <button class="rhb-back" onclick="closeRehber()">←</button>
-    <div class="rhb-title">📒 Rehber</div>
-    <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
-  </div>
-  <div style="padding:12px 16px;flex-shrink:0">
-    <input id="RHB_SRCH" type="text" placeholder="🔍 İsim veya numara ara..." oninput="renderRhb()"
-      style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none">
-  </div>
-  <div id="RHB_LIST" style="overflow-y:auto;padding:0 16px 80px;flex:1"></div>
+
 </div>
 
 <!-- REHBER KİŞİ DETAY -->
