@@ -1130,11 +1130,10 @@ function enterApp() {
 }
 
 async function startRealtimeSync() {
-  if (!window._fbStartListen) { console.warn('_fbStartListen yok'); return; }
-  console.log('Realtime sync başlatılıyor...');
+  if (!window._fbStartListen) return;
   setSyncDot('connecting');
   window._fbStartListen(async encData => {
-    if (!_cryptoKey) { console.warn('_cryptoKey yok'); return; }
+    if (!_cryptoKey) return;
     try {
       const d = await decryptData(encData, _cryptoKey);
       pays      = d.pays      || [];
@@ -1153,21 +1152,18 @@ async function startRealtimeSync() {
       renderRhb && renderRhb();
       setSyncDot('synced');
       showSyncToast();
-      console.log('Realtime sync: veri güncellendi');
     } catch(e) {
       console.error('Realtime decrypt hatası:', e);
       setSyncDot('error');
     }
   });
   setSyncDot('active');
-  // Arka plandan döngüde yeniden bağlan
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      console.log('Uygulama ön plana geldi, sync yenileniyor...');
-      startRealtimeSync();
-    }
-  });
 }
+
+// visibilitychange: sadece BİR KEZ kayıt — startRealtimeSync DIŞINDA
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') startRealtimeSync();
+});
 
 
 function setSyncDot(state) {
@@ -2513,8 +2509,8 @@ function rhbAddPhone() {
 }
 
 function rhbSavePerson() {
-  const name    = document.getElementById('RMOD_NAME')?.value.trim() || '';
-  const company = document.getElementById('RMOD_COMPANY')?.value.trim() || '';
+  const name    = (document.getElementById('RMOD_NAME')?.value.trim() || '').toLocaleUpperCase('tr');
+  const company = (document.getElementById('RMOD_COMPANY')?.value.trim() || '').toLocaleUpperCase('tr');
   if (!name) { alert('İsim Soyisim girin'); return; }
   const phones = _rhbPhones.filter(ph => ph.num.trim()).map(ph => ({...ph, num: normPhone(ph.num)}));
   const email  = document.getElementById('RMOD_EMAIL').value.trim();
@@ -2604,8 +2600,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="mhdl"></div>
     <h2 id="RMOD_T">Kişi <span>Ekle</span></h2>
     <input type="hidden" id="RMOD_ID">
-    <div class="fg"><label class="fl">İsim Soyisim</label><input class="fi" id="RMOD_NAME" type="text" placeholder="Ad Soyad"></div>
-    <div class="fg"><label class="fl">Şirket</label><input class="fi" id="RMOD_COMPANY" type="text" placeholder="Şirket adı (opsiyonel)"></div>
+    <div class="fg"><label class="fl">İsim Soyisim</label><input class="fi" id="RMOD_NAME" type="text" placeholder="Ad Soyad" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase"></div>
+    <div class="fg"><label class="fl">Şirket</label><input class="fi" id="RMOD_COMPANY" type="text" placeholder="Şirket adı (opsiyonel)" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase"></div>
     <div class="fg">
       <label class="fl">Telefon Numaraları</label>
       <div id="RMOD_PHONES"></div>
