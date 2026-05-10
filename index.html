@@ -1244,6 +1244,7 @@ function renderKur(){
   if(h){h+=`<span class="ktime">${now}</span><button class="kbtn" onclick="fetchRates()">🔄</button>`;}
   else{h=`<span style="font-size:11px;color:var(--danger)">Kur alınamadı</span><button class="kbtn" onclick="go(5)" style="color:var(--acc);font-weight:600;font-size:11px;margin-left:6px">Manuel Gir →</button><button class="kbtn" onclick="fetchRates()">🔄</button>`;}
   h += `<span id="sync-dot" title="Canlı sync"></span>`;
+  h += `<span id="ver-tag" onclick="go(5)" title="Sürüm bilgisi" style="margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);cursor:pointer;flex-shrink:0;padding:2px 6px;border:1px solid var(--bdr);border-radius:4px">${APP_VERSION}</span>`;
   document.getElementById('KB').innerHTML=h;
 }
 function saveRates(){
@@ -1977,15 +1978,15 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.1';
-const APP_BUILD   = '2026-05-10';
+const APP_VERSION = 'v7.2';
+const APP_BUILD   = '20260510-1';
 
 function renderAI(){
   const el = document.getElementById('AI');
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <span style="color:var(--txt);font-size:13px;font-weight:700">${APP_VERSION}</span>
-      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:2px 8px;font-size:11px">${APP_BUILD}</span>
+      <span style="color:var(--txt);font-size:15px;font-weight:800;letter-spacing:.5px">${APP_VERSION}</span>
+      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:3px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace">${APP_BUILD}</span>
     </div>
     <div>🔐 AES-256-GCM şifreli</div>
     <div>📦 ${pays.length} ödeme · ${creds.length} kredi · ${paidItems.length} yapılan</div>
@@ -2537,46 +2538,47 @@ function rhbDel(id) {
 }
 
 // ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
+// ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  let _swReg = null;
-
-  navigator.serviceWorker.register('./sw.js').then(reg => {
-    _swReg = reg;
-
-    // Zaten bekleyen SW varsa (sayfa yenilendi ama banner kaçırıldı)
-    if (reg.waiting) { showUpdBanner(); }
-
-    // Yeni SW yüklenmeye başladığında
-    reg.addEventListener('updatefound', () => {
-      const sw = reg.installing;
-      sw.addEventListener('statechange', () => {
-        // 'installed' = indirildi, eski SW hâlâ kontrolde → banner göster
-        if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-          showUpdBanner();
-        }
-      });
-    });
-  }).catch(err => console.warn('SW kayıt hatası:', err));
-
-  // Yeni SW aktif olunca sayfayı otomatik yenile
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) { refreshing = true; window.location.reload(); }
-  });
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('SW kayıtlı'))
+    .catch(err => console.warn('SW hatası:', err));
 }
 
-function showUpdBanner() {
-  document.getElementById('upd-banner')?.classList.add('show');
+// ── VERSİYON POLLING ─────────────────────────────────────────────────────────
+let _knownBuild = APP_BUILD;
+
+async function checkVersion() {
+  try {
+    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.build && d.build !== _knownBuild) {
+      _knownBuild = d.build;
+      showUpdBanner(d.v);
+    }
+  } catch(e) {}
 }
+
+function showUpdBanner(newVer) {
+  const b = document.getElementById('upd-banner');
+  if (!b) return;
+  const txt = b.querySelector('.upd-txt');
+  if (txt) txt.textContent = '🔄 Yeni sürüm: ' + (newVer || '');
+  b.classList.add('show');
+}
+
 function updApply() {
-  navigator.serviceWorker.getRegistration().then(reg => {
-    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-  });
-  // Tüm cache'leri temizle, hard reload yap
   caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
     window.location.reload(true);
   });
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkVersion();
+});
+setTimeout(checkVersion, 3000);
+setInterval(checkVersion, 5 * 60 * 1000);
 
 // PIN input enter key
 document.addEventListener('DOMContentLoaded',()=>{
