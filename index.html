@@ -61,21 +61,19 @@ window._fbPoll = async function() {
   if (!_fbUid || !window._planId || !window._syncCb) return;
   try {
     const snap = await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).get();
-    if (!snap.exists) return;
+    if (!snap.exists) { setSyncDot('active'); return; }
     const d = snap.data();
     const ts = d.updatedAt || 0;
     if (ts > window._lastUpdated && window._lastUpdated > 0) {
-      // Veri değişmiş — callback'i çağır
       window._lastUpdated = ts;
       if (d.data) window._syncCb(d.data);
     } else if (window._lastUpdated === 0) {
-      // İlk poll — sadece timestamp'i kaydet, veriyi işleme
       window._lastUpdated = ts;
     }
     setSyncDot('active');
   } catch(e) {
-    console.warn('Sync poll hatası:', e);
-    setSyncDot('error');
+    console.warn('Sync poll hatası:', e.message || e);
+    // Hata sessiz geç — dot gri kalır, bir sonraki poll'da yeşile döner
   }
 };
 
@@ -440,7 +438,7 @@ select.fi{appearance:none}
 #sync-dot.connecting{background:#f59e0b;animation:pulse-dot 1s infinite}
 #sync-dot.active{background:var(--ok)}
 #sync-dot.synced{background:var(--ok);animation:flash-dot .6s}
-#sync-dot.error{background:var(--danger)}
+
 @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes flash-dot{0%{transform:scale(1.8)}100%{transform:scale(1)}}
 /* SYNC TOAST */
@@ -1191,7 +1189,6 @@ async function startRealtimeSync() {
       showSyncToast();
     } catch(e) {
       console.warn('Sync decrypt hatası:', e);
-      setSyncDot('error');
     }
   });
 }
@@ -1209,7 +1206,7 @@ function setSyncDot(state) {
   const d = document.getElementById('sync-dot');
   if (!d) return;
   d.className = state;
-  const labels = {connecting:'Bağlanıyor...',active:'Canlı sync aktif',synced:'Senkronize edildi',error:'Sync hatası'};
+  const labels = {connecting:'Bağlanıyor...',active:'Sync aktif',synced:'Senkronize edildi'};
   d.title = labels[state] || '';
 }
 
@@ -2013,8 +2010,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.5';
-const APP_BUILD   = '20260510-5';
+const APP_VERSION = 'v7.6';
+const APP_BUILD   = '20260510-6';
 
 function renderAI(){
   const el = document.getElementById('AI');
