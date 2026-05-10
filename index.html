@@ -1166,8 +1166,20 @@ function enterApp() {
   document.getElementById('PS').classList.remove('active');
   document.getElementById('PS').style.display = 'none';
   document.getElementById('APP').style.display = '';
+  rhbNormalizeCompanies();
   initApp();
   startRealtimeSync();
+}
+
+function rhbNormalizeCompanies() {
+  let changed = false;
+  rehber.forEach(p => {
+    const norm = (p.company||'').toLocaleUpperCase('tr').trim();
+    if (norm !== (p.company||'')) { p.company = norm; changed = true; }
+    const normName = (p.name||'').toLocaleUpperCase('tr').trim();
+    if (normName !== (p.name||'')) { p.name = normName; changed = true; }
+  });
+  if (changed) rhbSave();
 }
 
 async function startRealtimeSync() {
@@ -2017,8 +2029,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.8';
-const APP_BUILD   = '20260510-8';
+const APP_VERSION = 'v7.9';
+const APP_BUILD   = '20260510-9';
 
 function renderAI(){
   const el = document.getElementById('AI');
