@@ -2050,8 +2050,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.0';
-const APP_BUILD   = '20260510-10';
+const APP_VERSION = 'v8.1';
+const APP_BUILD   = '20260510-11';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2389,7 +2389,6 @@ async function manualCheckUpdate() {
 
 
 // ── AKTİVİTE LOGU ─────────────────────────────────────────────────────────────
-const LOG_MAX = 300;
 const LOG_ICONS = {
   plan_add:   {icon:'📅', bg:'rgba(96,165,250,.15)'},
   plan_del:   {icon:'🗑️', bg:'rgba(248,113,113,.15)'},
@@ -2413,13 +2412,14 @@ function addLog(type, title, detail, navTab) {
     at: new Date().toISOString()
   };
   actLog.unshift(entry);
-  if (actLog.length > LOG_MAX) actLog = actLog.slice(0, LOG_MAX);
   saveSecure();
 }
 
 function renderActLog() {
   const el = document.getElementById('ACT_LOG_LIST');
   if (!el) return;
+  const cntEl = document.getElementById('LOG_CNT');
+  if (cntEl) cntEl.textContent = actLog.length + ' hareket';
   if (!actLog.length) {
     el.innerHTML = '<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';
     return;
@@ -2456,11 +2456,49 @@ function logNav(tab) {
   if (tab >= 0) go(tab);
 }
 
-function clearActLog() {
-  if (!confirm('Log temizlenecek. Emin misin?')) return;
+function openLogDel() {
+  const bar = document.getElementById('LOG_DEL_BAR');
+  if (!bar) return;
+  bar.style.display = bar.style.display === 'none' ? '' : 'none';
+  // Varsayılan: bu ayın başı — bugün
+  const now = new Date();
+  const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');
+  const firstDay = y + '-' + m + '-01';
+  const today    = y + '-' + m + '-' + d;
+  document.getElementById('LOG_D1').value = firstDay;
+  document.getElementById('LOG_D2').value = today;
+}
+
+function closeLogDel() {
+  const bar = document.getElementById('LOG_DEL_BAR');
+  if (bar) bar.style.display = 'none';
+}
+
+function doLogDel() {
+  const d1 = document.getElementById('LOG_D1').value;
+  const d2 = document.getElementById('LOG_D2').value;
+  if (!d1 || !d2) { alert('Tarih aralığı seçin'); return; }
+  const from = new Date(d1).getTime();
+  const to   = new Date(d2 + 'T23:59:59').getTime();
+  const before = actLog.length;
+  actLog = actLog.filter(e => {
+    const t = new Date(e.at).getTime();
+    return t < from || t > to;
+  });
+  const deleted = before - actLog.length;
+  saveSecure();
+  renderActLog();
+  closeLogDel();
+  if (deleted > 0) alert(deleted + ' kayıt silindi.');
+  else alert('Bu aralıkta kayıt bulunamadı.');
+}
+
+function doLogDelAll() {
+  if (!confirm('Tüm log silinecek. Emin misin?')) return;
   actLog = [];
   saveSecure();
   renderActLog();
+  closeLogDel();
 }
 
 function rhbSave() {
@@ -2922,8 +2960,23 @@ document.addEventListener('DOMContentLoaded',()=>{
     <!-- LOG -->
     <div id="T7" style="display:none">
       <div class="ph">
-        <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">Sistem hareketleri</div></div>
-        <button onclick="clearActLog()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">Temizle</button>
+        <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="LOG_CNT"></div></div>
+        <button onclick="openLogDel()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">🗑️ Sil</button>
+      </div>
+      <div style="padding:0 16px 8px;display:none" id="LOG_DEL_BAR">
+        <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Tarih aralığı seçin</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="date" id="LOG_D1" class="fi" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px">
+            <span style="color:var(--muted);font-size:12px">—</span>
+            <input type="date" id="LOG_D2" class="fi" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px">
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button onclick="doLogDel()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Seçili Aralığı Sil</button>
+            <button onclick="doLogDelAll()" class="btn bc" style="flex:1;font-size:12px">Tümünü Sil</button>
+            <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+          </div>
+        </div>
       </div>
       <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
     </div>
