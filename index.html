@@ -411,6 +411,16 @@ select.fi{appearance:none}
 
 
 
+
+/* LOG */
+.log-item{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--bdr);cursor:pointer;transition:opacity .15s}
+.log-item:hover{opacity:.8}
+.log-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-top:2px}
+.log-body{flex:1;min-width:0}
+.log-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.log-detail{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-time{font-size:10px;color:var(--muted);flex-shrink:0;margin-top:4px;font-family:'IBM Plex Mono',monospace}
+
 /* REHBER */
 .rhb-open-btn{display:flex;align-items:center;gap:7px;padding:10px 20px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid var(--bdr);color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:14px;transition:all .2s}
 .rhb-open-btn:hover{background:rgba(255,255,255,.11);color:var(--txt)}
@@ -525,6 +535,7 @@ select.fi{appearance:none}
       <button class="stab" id="s4" onclick="go(4)">🗃 Geçmiş</button>
       <button class="stab" id="s5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="stab" id="s6" onclick="go(6)">📒 Rehber</button>
+      <button class="stab" id="s7" onclick="go(7)">📋 Log</button>
       <button class="stab" onclick="switchPlan()" style="margin-top:auto;color:var(--acc2)" id="PLANBTN">🔄 Plan Değiştir</button>
       <button class="stab" onclick="doGoogleSignOut()" style="color:var(--danger)">🚪 Çıkış</button>
     </nav>
@@ -538,6 +549,7 @@ select.fi{appearance:none}
       <button class="mtab" id="m4" onclick="go(4)">🗃 Geçmiş</button>
       <button class="mtab" id="m5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="mtab" id="m6" onclick="go(6)">📒 Rehber</button>
+      <button class="mtab" id="m7" onclick="go(7)">📋 Log</button>
     </div>
     <div class="kurbar" id="KB"><span style="font-size:11px;color:var(--muted)">Kurlar yükleniyor...</span></div>
 
@@ -843,7 +855,7 @@ function getSalt(key) {
 
 // ── STATE ───────────────────────────────────────────────────────────────────
 let pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
-let persons=[], notes=[], paidItems=[], rehber=[];
+let persons=[], notes=[], paidItems=[], rehber=[], actLog=[];
 let partialCtx=null, curTab=0;
 let sortMode='date'; // 'date' veya 'name'
 
@@ -893,7 +905,7 @@ async function saveSecure() {
 async function _doSave() {
   _saveTimer = null;
   if (!_cryptoKey) return;
-  const data = { pays, creds, hist, persons, notes, paidItems, rehber };
+  const data = { pays, creds, hist, persons, notes, paidItems, rehber, actLog };
   const enc = await encryptData(data, _cryptoKey);
   // Firebase'e kaydet (birincil)
   if (window._fbSave) {
@@ -933,6 +945,7 @@ async function loadSecure() {
     notes   = data.notes   || [];
     paidItems = data.paidItems || [];
     rehber    = data.rehber    || [];
+    actLog    = data.actLog    || [];
     // Firebase'e de kaydet (localStorage'dan geliyorsa senkronize et)
     if (window._fbSave) {
       try { await window._fbSave(enc); } catch(e) {}
@@ -1334,7 +1347,7 @@ function sLbl(s,over){return s==='paid'?'Ödendi':s==='partial'?'Kısmi':over?'G
 // ── TAB ──────────────────────────────────────────────────────────────────────
 function go(n){
   curTab=n;
-  [0,1,2,3,4,5,6].forEach(i=>{
+  [0,1,2,3,4,5,6,7].forEach(i=>{
     const t=document.getElementById('T'+i); if(t) t.style.display=i===n?'':'none';
     const m=document.getElementById('m'+i); if(m) m.classList.toggle('on',i===n);
     const s=document.getElementById('s'+i); if(s) s.classList.toggle('on',i===n);
@@ -1346,6 +1359,7 @@ function go(n){
   if(n===4) renderHist();
   if(n===5) renderAI();
   if(n===6) renderRhb();
+  if(n===7) renderActLog();
 }
 
 // ── VERİ MİGRASYONU (tarih düzeltme) ────────────────────────────────────────
@@ -1763,6 +1777,7 @@ function markOk(keyEnc,month){
     else{const orig=findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
     // paidItems'a bağımsız kopya ekle
     paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
+    addLog('paid','Ödeme yapıldı',p.name+' · ₺'+toTRY(p.amount,p.currency||'TRY').toLocaleString('tr-TR',{maximumFractionDigits:0}),1);
   });
   save().then(()=>{closeDV();render();});
 }
@@ -1911,6 +1926,12 @@ function savePay(){
       pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:dateStr,category,status:'pending',paid:0});
     }
   }
+  const _eid3 = document.getElementById('EID').value;
+  const _spn2 = document.getElementById('PN').value.trim();
+  const _spa2 = parseFloat(document.getElementById('PA').value)||0;
+  const _spc2 = document.getElementById('PC').value||'TRY';
+  if(_eid3){ addLog('plan_edit','Kayıt düzenlendi',_spn2+' · '+fmtAmt(_spa2,_spc2),0); }
+  else     { addLog('plan_add', 'Kayıt eklendi',   _spn2+' · '+fmtAmt(_spa2,_spc2),0); }
   saveSecure();
   closeMov('PM2');
   render();
@@ -1996,7 +2017,7 @@ function delMonthEntry(idEnc){
   const id=decodeURIComponent(idEnc);
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
   const p=findPayById(id);
-  if(p){hist.unshift({...p,delAt:new Date().toISOString()});pays=pays.filter(x=>String(x.id)!==id);}
+  if(p){addLog('plan_del','Kayıt silindi',p.name+' · '+fmtAmt(p.amount,p.currency||'TRY'),0);hist.unshift({...p,delAt:new Date().toISOString()});pays=pays.filter(x=>String(x.id)!==id);}
   saveSecure();closeDV();render();
 }
 function delCellItems(keyEnc,month){
@@ -2029,8 +2050,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.9';
-const APP_BUILD   = '20260510-9';
+const APP_VERSION = 'v8.0';
+const APP_BUILD   = '20260510-10';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2103,7 +2124,7 @@ function doRestore(){
   if(!st.dataset.d){st.textContent='Önce dosya seç';return;}
   if(!confirm('Mevcut veriler silinecek. Emin misin?'))return;
   const d=JSON.parse(st.dataset.d);
-  pays=d.pays||[];creds=d.creds||[];hist=d.hist||[];persons=d.persons||[];notes=d.notes||[];paidItems=d.paidItems||[];rehber=d.rehber||[];
+  pays=d.pays||[];creds=d.creds||[];hist=d.hist||[];persons=d.persons||[];notes=d.notes||[];paidItems=d.paidItems||[];rehber=d.rehber||[];actLog=d.actLog||[];
   invalidateLookups();
   save().then(()=>{migrateCredDates();closeMov('RM');render();});
   alert('Veriler yüklendi!');
@@ -2366,6 +2387,82 @@ async function manualCheckUpdate() {
   }
 }
 
+
+// ── AKTİVİTE LOGU ─────────────────────────────────────────────────────────────
+const LOG_MAX = 300;
+const LOG_ICONS = {
+  plan_add:   {icon:'📅', bg:'rgba(96,165,250,.15)'},
+  plan_del:   {icon:'🗑️', bg:'rgba(248,113,113,.15)'},
+  plan_edit:  {icon:'✏️', bg:'rgba(251,191,36,.15)'},
+  paid:       {icon:'✅', bg:'rgba(74,222,128,.15)'},
+  rhb_add:    {icon:'👤', bg:'rgba(167,139,250,.15)'},
+  rhb_edit:   {icon:'✏️', bg:'rgba(251,191,36,.15)'},
+  rhb_del:    {icon:'🗑️', bg:'rgba(248,113,113,.15)'},
+  rhb_import: {icon:'📥', bg:'rgba(96,165,250,.15)'},
+  hist_del:   {icon:'🗑️', bg:'rgba(248,113,113,.15)'},
+  restore:    {icon:'↩️', bg:'rgba(74,222,128,.15)'},
+  cred_add:   {icon:'💳', bg:'rgba(251,191,36,.15)'},
+  default:    {icon:'📋', bg:'rgba(255,255,255,.07)'},
+};
+
+function addLog(type, title, detail, navTab) {
+  const entry = {
+    id: Date.now() + Math.random(),
+    type, title, detail: detail || '',
+    navTab: navTab ?? -1,
+    at: new Date().toISOString()
+  };
+  actLog.unshift(entry);
+  if (actLog.length > LOG_MAX) actLog = actLog.slice(0, LOG_MAX);
+  saveSecure();
+}
+
+function renderActLog() {
+  const el = document.getElementById('ACT_LOG_LIST');
+  if (!el) return;
+  if (!actLog.length) {
+    el.innerHTML = '<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';
+    return;
+  }
+  el.innerHTML = actLog.map(e => {
+    const cfg  = LOG_ICONS[e.type] || LOG_ICONS.default;
+    const time = fmtLogTime(e.at);
+    return `<div class="log-item" onclick="logNav(${e.navTab})">
+      <div class="log-icon" style="background:${cfg.bg}">${cfg.icon}</div>
+      <div class="log-body">
+        <div class="log-title">${esc(e.title)}</div>
+        ${e.detail ? `<div class="log-detail">${esc(e.detail)}</div>` : ''}
+      </div>
+      <div class="log-time">${time}</div>
+    </div>`;
+  }).join('');
+}
+
+function fmtLogTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000)  return 'Az önce';
+  if (diff < 3600000) return Math.floor(diff/60000) + ' dk önce';
+  if (diff < 86400000) return Math.floor(diff/3600000) + ' sa önce';
+  const dd = d.getDate().toString().padStart(2,'0');
+  const mm = (d.getMonth()+1).toString().padStart(2,'0');
+  const hh = d.getHours().toString().padStart(2,'0');
+  const mn = d.getMinutes().toString().padStart(2,'0');
+  return dd+'.'+mm+' '+hh+':'+mn;
+}
+
+function logNav(tab) {
+  if (tab >= 0) go(tab);
+}
+
+function clearActLog() {
+  if (!confirm('Log temizlenecek. Emin misin?')) return;
+  actLog = [];
+  saveSecure();
+  renderActLog();
+}
+
 function rhbSave() {
   saveSecure(); // şifreli Firebase'e kaydet
 }
@@ -2546,6 +2643,7 @@ function rhbImport() {
       });
       rhbSave();
       renderRhb();
+      if(added>0) addLog('rhb_import','Rehber içe aktarıldı', added+' kişi eklendi'+(skipped>0?', '+skipped+' atlandı':''),6);
       alert(added + ' kişi eklendi' + (skipped > 0 ? ', ' + skipped + ' zaten mevcut' : '') + '.');
     } catch(err) { alert('Dosya okunamadı: ' + err.message); }
   };
@@ -2718,8 +2816,10 @@ function rhbSavePerson() {
   if (eid) {
     const p = rehber.find(x => String(x.id) === String(eid));
     if (p) Object.assign(p, {name, company, phones, email, note});
+    addLog('rhb_edit', 'Kişi düzenlendi', name + (company ? ' · ' + company : ''), 6);
   } else {
     rehber.push({id: Date.now(), name, company, phones, email, note});
+    addLog('rhb_add', 'Kişi eklendi', name + (company ? ' · ' + company : '') + (phones[0] ? ' · ' + phones[0].num : ''), 6);
   }
   rhbSave();
   closeMov('RMOD');
@@ -2818,6 +2918,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="brow">
       <button class="btn bc" onclick="closeMov('RMOD')">İptal</button>
       <button class="btn bs" onclick="rhbSavePerson()">Kaydet</button>
+
+    <!-- LOG -->
+    <div id="T7" style="display:none">
+      <div class="ph">
+        <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">Sistem hareketleri</div></div>
+        <button onclick="clearActLog()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">Temizle</button>
+      </div>
+      <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
+    </div>
     </div>
   </div>
 </div>
