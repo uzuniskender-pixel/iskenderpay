@@ -1939,8 +1939,21 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
+const APP_VERSION = 'v7.1';
+const APP_BUILD   = '2026-05-10';
+
 function renderAI(){
-  document.getElementById('AI').innerHTML=`v7.0 🔐 AES-256 — ${pays.length} ödeme · ${creds.length} kredi · ${paidItems.length} yapılan`;
+  const el = document.getElementById('AI');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="color:var(--txt);font-size:13px;font-weight:700">${APP_VERSION}</span>
+      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:2px 8px;font-size:11px">${APP_BUILD}</span>
+    </div>
+    <div>🔐 AES-256-GCM şifreli</div>
+    <div>📦 ${pays.length} ödeme · ${creds.length} kredi · ${paidItems.length} yapılan</div>
+    <div>📒 ${rehber.length} rehber kaydı</div>
+    <div>☁️ Firebase Realtime Sync aktif</div>
+  `;
   const r=JSON.parse(localStorage.getItem('v5-rates-'+window._planId)||localStorage.getItem('v5-rates')||'{}');
   if(r.EUR) document.getElementById('ME').value=r.EUR.toFixed(2);
   if(r.USD) document.getElementById('MU').value=r.USD.toFixed(2);
