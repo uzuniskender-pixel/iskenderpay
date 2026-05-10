@@ -506,7 +506,7 @@ select.fi{appearance:none}
   <div class="pin-title">Ödeme <span>Takvimi</span></div>
   <div class="pin-sub">Şifrenizi girin</div>
   <div class="pin-wrap">
-    <input class="pin-inp" id="PI" type="password" placeholder="••••••" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    <input class="pin-inp" id="PI" type="password" placeholder="••••••" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()" onkeypress="if(event.key==='Enter')doLogin()">
     <button class="pin-eye" onclick="toggleEye('PI',this)">👁</button>
   </div>
   <button class="pin-btn" onclick="doLogin()">Giriş →</button>
@@ -630,9 +630,9 @@ select.fi{appearance:none}
         <div class="acard">
           <div class="acard-title">🔐 Şifre Değiştir</div>
           <div class="acard-sub">Mevcut şifreyi doğrula, yeni şifre belirle</div>
-          <div class="pw-wrap"><input class="fi mono-inp" id="CP" type="password" placeholder="Mevcut şifre"><button class="pw-eye" onclick="toggleEye('CP')">👁</button></div>
-          <div class="pw-wrap"><input class="fi mono-inp" id="NP" type="password" placeholder="Yeni şifre"><button class="pw-eye" onclick="toggleEye('NP')">👁</button></div>
-          <div class="pw-wrap" style="margin-bottom:6px"><input class="fi mono-inp" id="NP2" type="password" placeholder="Yeni şifre tekrar"><button class="pw-eye" onclick="toggleEye('NP2')">👁</button></div>
+          <div class="pw-wrap"><input class="fi mono-inp" id="CP" type="password" placeholder="Mevcut şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP').focus()"><button class="pw-eye" onclick="toggleEye('CP')">👁</button></div>
+          <div class="pw-wrap"><input class="fi mono-inp" id="NP" type="password" placeholder="Yeni şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP2').focus()"><button class="pw-eye" onclick="toggleEye('NP')">👁</button></div>
+          <div class="pw-wrap" style="margin-bottom:6px"><input class="fi mono-inp" id="NP2" type="password" placeholder="Yeni şifre tekrar" onkeydown="if(event.key===\'Enter\')chPass()"><button class="pw-eye" onclick="toggleEye('NP2')">👁</button></div>
           <div id="PM" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
           <button onclick="chPass()" class="btn bs" style="width:100%">Şifreyi Güncelle</button>
         </div>
@@ -679,7 +679,7 @@ select.fi{appearance:none}
       <div class="ph">
         <div><h1>📒 <span>Rehber</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">İletişim bilgileri · Şifreli</div></div>
         <div style="display:flex;gap:6px">
-          <button onclick="rhbImport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="İçe Aktar">⬆️</button>
+          <button onclick="rhbImport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="İçe Aktar (JSON/CSV)">⬆️</button>
           <button onclick="rhbExport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="Dışa Aktar">⬇️</button>
           <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
         </div>
@@ -2017,8 +2017,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.7';
-const APP_BUILD   = '20260510-7';
+const APP_VERSION = 'v7.8';
+const APP_BUILD   = '20260510-8';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2496,31 +2496,133 @@ function rhbExport() {
 
 function rhbImport() {
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json';
+  inp.type = 'file'; inp.accept = '.json,.csv,text/csv';
   inp.onchange = async e => {
     const file = e.target.files[0];
     if (!file) return;
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      if (!Array.isArray(data)) { alert('Geçersiz dosya formatı'); return; }
-      const existing = new Set(rehber.map(p => String(p.id)));
-      let added = 0;
+      let data = [];
+      if (file.name.toLowerCase().endsWith('.csv') || file.type.includes('csv')) {
+        data = rhbParseCsv(text);
+      } else {
+        data = JSON.parse(text);
+        if (!Array.isArray(data)) { alert('Geçersiz JSON formatı'); return; }
+        // eski format uyumluluğu
+        data = data.map(p => {
+          if (!p.name && (p.firstName || p.lastName))
+            p.name = ((p.firstName||'')+' '+(p.lastName||'')).trim();
+          return p;
+        });
+      }
+      if (!data.length) { alert('Aktarılacak kayıt bulunamadı.'); return; }
+      // Telefon normalize + büyük harf
       data.forEach(p => {
-        if (!existing.has(String(p.id))) {
-          // telefon numaralarını normalize et
-          if (p.phones) p.phones = p.phones.map(ph => ({...ph, num: normPhone(ph.num)}));
-          // eski format uyumluluğu
-          if (!p.name && (p.firstName || p.lastName)) p.name = ((p.firstName||'')+' '+(p.lastName||'')).trim();
-          rehber.push(p); added++;
-        }
+        p.name    = (p.name||'').toLocaleUpperCase('tr');
+        p.company = (p.company||'').toLocaleUpperCase('tr');
+        if (p.phones) p.phones = p.phones.map(ph => ({...ph, num: normPhone(ph.num)}));
+      });
+      // Tekrar eden isim+telefon çiftini atla
+      const existKey = new Set(rehber.map(p => rhbGetName(p)+'|'+(p.phones?.[0]?.num||'')));
+      let added = 0, skipped = 0;
+      data.forEach(p => {
+        const key = rhbGetName(p)+'|'+(p.phones?.[0]?.num||'');
+        if (existKey.has(key)) { skipped++; return; }
+        p.id = p.id || Date.now() + added;
+        rehber.push(p); added++;
+        existKey.add(key);
       });
       rhbSave();
       renderRhb();
-      alert(added + ' kişi eklendi' + (data.length-added > 0 ? ', '+(data.length-added)+' zaten mevcut' : '') + '.');
+      alert(added + ' kişi eklendi' + (skipped > 0 ? ', ' + skipped + ' zaten mevcut' : '') + '.');
     } catch(err) { alert('Dosya okunamadı: ' + err.message); }
   };
   inp.click();
+}
+
+function rhbParseCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  // Başlık satırı
+  const headers = rhbCsvRow(lines[0]).map(h => h.trim().toLowerCase());
+  const idx = k => headers.findIndex(h => h.includes(k));
+
+  const iFirst   = idx('first name');
+  const iMiddle  = idx('middle name');
+  const iLast    = idx('last name');
+  const iOrg     = idx('organization');
+  const iEmail   = idx('e-mail') >= 0 ? idx('e-mail') : idx('email');
+  const iNote    = idx('note');
+  // Telefon kolonlarını bul (Phone 1 - Value, Phone 2 - Value ...)
+  const phoneValCols   = headers.map((h,i) => h.includes('value') && h.includes('phone') ? i : -1).filter(i=>i>=0);
+  const phoneLblCols   = headers.map((h,i) => h.includes('label') && h.includes('phone') ? i : -1).filter(i=>i>=0);
+
+  const contacts = [];
+  for (let r = 1; r < lines.length; r++) {
+    const cols = rhbCsvRow(lines[r]);
+    if (!cols.length) continue;
+
+    // İsim: middle name genellikle şirket etiketi — onu atla
+    const firstName = (cols[iFirst]||'').trim();
+    const middleName= iMiddle >= 0 ? (cols[iMiddle]||'').trim() : '';
+    const lastName  = iLast   >= 0 ? (cols[iLast]  ||'').trim() : '';
+
+    // Bazen first name = "Şirket Ad Soyad" formatı — şirketi çıkar
+    let name = '';
+    if (middleName && lastName) {
+      // First=şirket etiketi, Middle=Ad, Last=Soyad
+      name = (middleName + ' ' + lastName).trim();
+    } else if (firstName && lastName) {
+      name = (firstName + ' ' + lastName).trim();
+    } else {
+      // Tek hücrede "Şirket Ad Soyad" — ilk kelimeyi şirket say
+      const parts = firstName.split(' ').filter(Boolean);
+      name = parts.length > 1 ? parts.slice(1).join(' ') : firstName;
+    }
+    if (!name) continue;
+
+    // Şirket
+    const orgVal = iOrg >= 0 ? (cols[iOrg]||'').trim() : '';
+    // First name'den şirket tespiti (eğer ilk kelime org ile eşleşiyorsa)
+    const firstWord = firstName.split(' ')[0];
+    let company = orgVal || '';
+
+    // Telefonlar
+    const phones = [];
+    const lblMap = {'work':'İş','home':'Ev','mobile':'Cep','cell':'Cep','other':'Diğer','main':'İş'};
+    phoneValCols.forEach((vi, n) => {
+      const rawNums = (cols[vi]||'').split(':::').map(s=>s.trim()).filter(Boolean);
+      const lblRaw  = phoneLblCols[n] >= 0 ? (cols[phoneLblCols[n]]||'').toLowerCase() : '';
+      const lbl     = Object.entries(lblMap).find(([k])=>lblRaw.includes(k))?.[1] || 'Cep';
+      const seen    = new Set();
+      rawNums.forEach(num => {
+        const n2 = normPhone(num.split(':::')[0].trim());
+        if (!seen.has(n2)) { phones.push({lbl, num: n2}); seen.add(n2); }
+      });
+    });
+
+    contacts.push({
+      id: Date.now() + r,
+      name, company,
+      phones,
+      email: iEmail >= 0 ? (cols[iEmail]||'').trim() : '',
+      note:  iNote  >= 0 ? (cols[iNote] ||'').trim() : ''
+    });
+  }
+  return contacts;
+}
+
+// CSV satır parser (tırnak içi virgülleri doğru böler)
+function rhbCsvRow(line) {
+  const res = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; continue; }
+    if (c === ',' && !inQ) { res.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  res.push(cur);
+  return res;
 }
 
 function rhbCopy(text, btn) {
