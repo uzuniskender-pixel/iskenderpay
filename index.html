@@ -398,8 +398,8 @@ select.fi{appearance:none}
 .rhb-header{background:var(--surf);border-bottom:1px solid var(--bdr);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 .rhb-back{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;padding:0 4px;line-height:1}
 .rhb-title{flex:1;font-size:17px;font-weight:700}
-.rhb-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--acc2),var(--acc));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#0f0e17;flex-shrink:0}
-.rhb-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .12s}
+.rhb-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--acc2),var(--acc));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0f0e17;flex-shrink:0}
+.rhb-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:7px 11px;margin-bottom:5px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .12s}
 .rhb-card:active{background:var(--surf2)}
 .rhb-field{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surf2);border-radius:9px;margin-bottom:7px}
 .rhb-field-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:2px}
@@ -644,7 +644,11 @@ select.fi{appearance:none}
     <div id="T6" style="display:none">
       <div class="ph">
         <div><h1>📒 <span>Rehber</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">İletişim bilgileri · Şifreli</div></div>
-        <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
+        <div style="display:flex;gap:6px">
+          <button onclick="rhbImport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="İçe Aktar">⬆️</button>
+          <button onclick="rhbExport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="Dışa Aktar">⬇️</button>
+          <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
+        </div>
       </div>
       <div style="padding:0 16px 10px">
         <input id="RHB_SRCH" type="text" placeholder="🔍 İsim veya numara ara..." oninput="renderRhb()"
@@ -2276,6 +2280,18 @@ function initApp(){
 // ── REHBER (şifresiz, localStorage) ─────────────────────────────────────────
 let _rhbPhones = [];
 
+
+// Telefon normalleştirme: +90... veya 90... → 0XXX XXX XX XX
+function normPhone(raw) {
+  let d = raw.replace(/[^\d]/g, '');
+  if (d.startsWith('90') && d.length === 12) d = '0' + d.slice(2);
+  if (d.length === 10 && d.startsWith('5')) d = '0' + d;
+  if (d.length === 11 && d.startsWith('05')) {
+    return d.slice(0,4)+' '+d.slice(4,7)+' '+d.slice(7,9)+' '+d.slice(9,11);
+  }
+  return raw.trim(); // formatlanamadıysa olduğu gibi bırak
+}
+
 function rhbSave() {
   saveSecure(); // şifreli Firebase'e kaydet
 }
@@ -2285,30 +2301,45 @@ function openRehber() {
   go(6);
 }
 
+
+function rhbGetName(p) {
+  if (p.name) return p.name;
+  return ((p.firstName||'') + ' ' + (p.lastName||'')).trim();
+}
+function rhbGetInitials(p) {
+  const n = rhbGetName(p);
+  const parts = n.split(' ').filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return (parts[0]?.[0] || '?').toUpperCase();
+}
+
 function renderRhb() {
   const q = (document.getElementById('RHB_SRCH')?.value||'').toLocaleLowerCase('tr');
   let list = [...rehber];
   if (q) list = list.filter(p =>
-    (p.firstName+' '+p.lastName).toLocaleLowerCase('tr').includes(q) ||
+    rhbGetName(p).toLocaleLowerCase('tr').includes(q) ||
+    (p.company||'').toLocaleLowerCase('tr').includes(q) ||
     (p.phones||[]).some(ph => ph.num.includes(q))
   );
-  list.sort((a,b) => ((a.lastName||'')+(a.firstName||'')).localeCompare((b.lastName||'')+(b.firstName||''),'tr'));
+  list.sort((a,b) => rhbGetName(a).localeCompare(rhbGetName(b),'tr'));
 
   const el = document.getElementById('RHB_LIST');
+  if (!el) return;
   if (!list.length) {
     el.innerHTML = '<div class="empty"><div class="ico">📒</div><p>Kişi bulunamadı.<br>+ Ekle ile başlayın.</p></div>';
     return;
   }
   el.innerHTML = list.map(p => {
-    const initials = ((p.firstName?.[0]||'')+(p.lastName?.[0]||'')).toUpperCase() || '?';
+    const initials = rhbGetInitials(p);
     const firstPhone = p.phones?.[0]?.num || '';
+    const sub = p.company ? esc(p.company) : (firstPhone ? `<span style="font-family:'IBM Plex Mono',monospace">${esc(firstPhone)}</span>` : '');
     return `<div class="rhb-card" onclick="openRhbDetail('${p.id}')">
       <div class="rhb-avatar">${initials}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:600">${esc(p.firstName)} ${esc(p.lastName)}</div>
-        ${firstPhone ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'IBM Plex Mono',monospace">${esc(firstPhone)}</div>` : ''}
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rhbGetName(p))}</div>
+        ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${sub}</div>` : ''}
       </div>
-      <div style="color:var(--muted);font-size:18px;font-weight:300">›</div>
+      <div style="color:var(--muted);font-size:16px;font-weight:300">›</div>
     </div>`;
   }).join('');
 }
@@ -2316,11 +2347,12 @@ function renderRhb() {
 function openRhbDetail(id) {
   const p = rehber.find(x => String(x.id) === String(id));
   if (!p) return;
-  const initials = ((p.firstName?.[0]||'')+(p.lastName?.[0]||'')).toUpperCase() || '?';
+  const initials = rhbGetInitials(p);
   let h = `
     <div style="text-align:center;margin-bottom:18px">
-      <div class="rhb-avatar" style="width:64px;height:64px;font-size:24px;margin:0 auto 10px">${initials}</div>
-      <div style="font-size:20px;font-weight:700">${esc(p.firstName)} ${esc(p.lastName)}</div>
+      <div class="rhb-avatar" style="width:56px;height:56px;font-size:20px;margin:0 auto 10px">${initials}</div>
+      <div style="font-size:18px;font-weight:700">${esc(rhbGetName(p))}</div>
+      ${p.company ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">🏢 ${esc(p.company)}</div>` : ''}
     </div>`;
 
   // Telefon numaraları
@@ -2371,6 +2403,45 @@ function openRhbDetail(id) {
   document.getElementById('RDET').classList.add('open');
 }
 
+
+function rhbExport() {
+  const data = JSON.stringify(rehber, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rehber_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function rhbImport() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) { alert('Geçersiz dosya formatı'); return; }
+      const existing = new Set(rehber.map(p => String(p.id)));
+      let added = 0;
+      data.forEach(p => {
+        if (!existing.has(String(p.id))) {
+          // telefon numaralarını normalize et
+          if (p.phones) p.phones = p.phones.map(ph => ({...ph, num: normPhone(ph.num)}));
+          // eski format uyumluluğu
+          if (!p.name && (p.firstName || p.lastName)) p.name = ((p.firstName||'')+' '+(p.lastName||'')).trim();
+          rehber.push(p); added++;
+        }
+      });
+      rhbSave();
+      renderRhb();
+      alert(added + ' kişi eklendi' + (data.length-added > 0 ? ', '+(data.length-added)+' zaten mevcut' : '') + '.');
+    } catch(err) { alert('Dosya okunamadı: ' + err.message); }
+  };
+  inp.click();
+}
+
 function rhbCopy(text, btn) {
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => rhbCopyFeedback(btn)).catch(() => rhbCopyFallback(text, btn));
@@ -2395,7 +2466,7 @@ function rhbCopyFeedback(btn) {
 function openRhbAdd() {
   document.getElementById('RMOD_ID').value = '';
   document.getElementById('RMOD_T').innerHTML = 'Kişi <span>Ekle</span>';
-  ['RMOD_FN','RMOD_LN','RMOD_EMAIL','RMOD_NOTE'].forEach(id => document.getElementById(id).value = '');
+  ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_NOTE'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   _rhbPhones = [{lbl:'', num:''}];
   renderRhbPhones();
   document.getElementById('RMOD').classList.add('open');
@@ -2407,8 +2478,10 @@ function openRhbEdit(id) {
   document.getElementById('RDET').classList.remove('open');
   document.getElementById('RMOD_ID').value = id;
   document.getElementById('RMOD_T').innerHTML = 'Kişi <span>Düzenle</span>';
-  document.getElementById('RMOD_FN').value = p.firstName || '';
-  document.getElementById('RMOD_LN').value = p.lastName || '';
+  const nameEl = document.getElementById('RMOD_NAME');
+  if (nameEl) nameEl.value = p.name || ((p.firstName||'')+' '+(p.lastName||'')).trim();
+  const coEl = document.getElementById('RMOD_COMPANY');
+  if (coEl) coEl.value = p.company || '';
   document.getElementById('RMOD_EMAIL').value = p.email || '';
   document.getElementById('RMOD_NOTE').value = p.note || '';
   _rhbPhones = (p.phones?.length ? p.phones.map(x=>({...x})) : [{lbl:'',num:''}]);
@@ -2436,18 +2509,18 @@ function rhbAddPhone() {
 }
 
 function rhbSavePerson() {
-  const firstName = document.getElementById('RMOD_FN').value.trim();
-  const lastName  = document.getElementById('RMOD_LN').value.trim();
-  if (!firstName && !lastName) { alert('En az isim veya soyisim girin'); return; }
-  const phones = _rhbPhones.filter(ph => ph.num.trim());
+  const name    = document.getElementById('RMOD_NAME')?.value.trim() || '';
+  const company = document.getElementById('RMOD_COMPANY')?.value.trim() || '';
+  if (!name) { alert('İsim Soyisim girin'); return; }
+  const phones = _rhbPhones.filter(ph => ph.num.trim()).map(ph => ({...ph, num: normPhone(ph.num)}));
   const email  = document.getElementById('RMOD_EMAIL').value.trim();
   const note   = document.getElementById('RMOD_NOTE').value.trim();
   const eid    = document.getElementById('RMOD_ID').value;
   if (eid) {
     const p = rehber.find(x => String(x.id) === String(eid));
-    if (p) Object.assign(p, {firstName, lastName, phones, email, note});
+    if (p) Object.assign(p, {name, company, phones, email, note});
   } else {
-    rehber.push({id: Date.now(), firstName, lastName, phones, email, note});
+    rehber.push({id: Date.now(), name, company, phones, email, note});
   }
   rhbSave();
   closeMov('RMOD');
@@ -2456,7 +2529,7 @@ function rhbSavePerson() {
 
 function rhbDel(id) {
   const p = rehber.find(x => String(x.id) === String(id));
-  if (!confirm((p?.firstName||'')+' '+(p?.lastName||'')+' silinecek. Emin misin?')) return;
+  if (!confirm(rhbGetName(p)+' silinecek. Emin misin?')) return;
   rehber = rehber.filter(x => String(x.id) !== String(id));
   rhbSave();
   document.getElementById('RDET').classList.remove('open');
@@ -2498,7 +2571,10 @@ function showUpdBanner() {
 function updApply() {
   navigator.serviceWorker.getRegistration().then(reg => {
     if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    // controllerchange event sayfayı yeniler
+  });
+  // Tüm cache'leri temizle, hard reload yap
+  caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+    window.location.reload(true);
   });
 }
 
@@ -2523,10 +2599,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="mhdl"></div>
     <h2 id="RMOD_T">Kişi <span>Ekle</span></h2>
     <input type="hidden" id="RMOD_ID">
-    <div class="frow">
-      <div class="fg"><label class="fl">İsim</label><input class="fi" id="RMOD_FN" type="text" placeholder="Ad"></div>
-      <div class="fg"><label class="fl">Soyisim</label><input class="fi" id="RMOD_LN" type="text" placeholder="Soyad"></div>
-    </div>
+    <div class="fg"><label class="fl">İsim Soyisim</label><input class="fi" id="RMOD_NAME" type="text" placeholder="Ad Soyad"></div>
+    <div class="fg"><label class="fl">Şirket</label><input class="fi" id="RMOD_COMPANY" type="text" placeholder="Şirket adı (opsiyonel)"></div>
     <div class="fg">
       <label class="fl">Telefon Numaraları</label>
       <div id="RMOD_PHONES"></div>
