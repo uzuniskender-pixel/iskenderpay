@@ -2365,7 +2365,7 @@ function openRhbDetail(id) {
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
           <a href="tel:${encodeURIComponent(ph.num)}" class="rhb-call-btn">📞</a>
-          <button class="rhb-copy-btn" onclick="rhbCopy('${ph.num.replace(/'/g,"\'")}'​,this)">📋</button>
+          <button class="rhb-copy-btn" onclick="rhbCopy('${ph.num.replace(/'/g,"\'")}',this)">📋</button>
         </div>
       </div>`;
     });
@@ -2380,7 +2380,7 @@ function openRhbDetail(id) {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
         <a href="mailto:${encodeURIComponent(p.email)}" class="rhb-call-btn">✉️</a>
-        <button class="rhb-copy-btn" onclick="rhbCopy('${p.email.replace(/'/g,"\'")}'​,this)">📋</button>
+        <button class="rhb-copy-btn" onclick="rhbCopy('${p.email.replace(/'/g,"\'")}',this)">📋</button>
       </div>
     </div>`;
   }
