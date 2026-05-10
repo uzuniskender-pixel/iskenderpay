@@ -711,15 +711,6 @@ select.fi{appearance:none}
       <datalist id="RHB_CO_LIST"></datalist>
       <div id="RHB_LIST" style="padding:0 16px 70px"></div>
     </div>
-        <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Tarih aralığı seçin</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="date" id="LOG_D1" class="fi" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px">
-            <span style="color:var(--muted);font-size:12px">—</span>
-            <input type="date" id="LOG_D2" class="fi" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px">
-          </div>
-
-  </div>
 
 
 
@@ -2087,8 +2078,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.6';
-const APP_BUILD   = '20260510-19';
+const APP_VERSION = 'v8.7';
+const APP_BUILD   = '20260510-20';
 
 function renderAI(){
   const el = document.getElementById('AI');
