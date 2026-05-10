@@ -2466,24 +2466,29 @@ function rhbDel(id) {
 // ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   let _swReg = null;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then(reg => {
-      _swReg = reg;
-      // Yeni SW bekliyorsa hemen bildir
-      if (reg.waiting) showUpdBanner();
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            showUpdBanner();
-          }
-        });
+
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    _swReg = reg;
+
+    // Zaten bekleyen SW varsa (sayfa yenilendi ama banner kaçırıldı)
+    if (reg.waiting) { showUpdBanner(); }
+
+    // Yeni SW yüklenmeye başladığında
+    reg.addEventListener('updatefound', () => {
+      const sw = reg.installing;
+      sw.addEventListener('statechange', () => {
+        // 'installed' = indirildi, eski SW hâlâ kontrolde → banner göster
+        if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdBanner();
+        }
       });
-    }).catch(err => console.log('SW hatası:', err));
-  });
-  // SW'den gelen mesajı dinle
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data?.type === 'SW_UPDATED') showUpdBanner();
+    });
+  }).catch(err => console.warn('SW kayıt hatası:', err));
+
+  // Yeni SW aktif olunca sayfayı otomatik yenile
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
   });
 }
 
@@ -2491,14 +2496,10 @@ function showUpdBanner() {
   document.getElementById('upd-banner')?.classList.add('show');
 }
 function updApply() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg?.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
-    });
-  }
-  window.location.reload(true);
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    // controllerchange event sayfayı yeniler
+  });
 }
 
 // PIN input enter key

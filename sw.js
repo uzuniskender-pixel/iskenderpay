@@ -1,11 +1,11 @@
-// İskenderPay Service Worker — v1.1
-const CACHE = 'ip-cache-v2';
+// İskenderPay Service Worker — v1.2
+const CACHE = 'ip-cache-v3';
 
 self.addEventListener('install', e => {
+  // skipWaiting YOK — banner göründükten sonra manuel geçiş
   e.waitUntil(
     caches.open(CACHE).then(c => c.add('./index.html').catch(() => {}))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -15,10 +15,11 @@ self.addEventListener('activate', e => {
     )
   );
   self.clients.claim();
-  // Tüm açık sekmelere güncelleme mesajı gönder
-  self.clients.matchAll({ includeUncontrolled: true }).then(clients => {
-    clients.forEach(client => client.postMessage({ type: 'SW_UPDATED' }));
-  });
+});
+
+// Sayfadan SKIP_WAITING mesajı gelince aktif ol
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
