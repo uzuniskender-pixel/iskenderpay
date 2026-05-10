@@ -1777,7 +1777,7 @@ function markOk(keyEnc,month){
     else{const orig=findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
     // paidItems'a bağımsız kopya ekle
     paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
-    addLog('paid','Ödeme yapıldı',p.name+' · ₺'+toTRY(p.amount,p.currency||'TRY').toLocaleString('tr-TR',{maximumFractionDigits:0}),1);
+    try{ addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1); }catch(e){}
   });
   save().then(()=>{closeDV();render();});
 }
@@ -1926,12 +1926,14 @@ function savePay(){
       pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:dateStr,category,status:'pending',paid:0});
     }
   }
-  const _eid3 = document.getElementById('EID').value;
-  const _spn2 = document.getElementById('PN').value.trim();
-  const _spa2 = parseFloat(document.getElementById('PA').value)||0;
-  const _spc2 = document.getElementById('PC').value||'TRY';
-  if(_eid3){ addLog('plan_edit','Kayıt düzenlendi',_spn2+' · '+fmtAmt(_spa2,_spc2),0); }
-  else     { addLog('plan_add', 'Kayıt eklendi',   _spn2+' · '+fmtAmt(_spa2,_spc2),0); }
+  try{
+    const _eid3 = (document.getElementById('EID')||{}).value||'';
+    const _spn2 = (document.getElementById('PN')||{}).value||'';
+    const _spa2 = parseFloat((document.getElementById('PA')||{}).value)||0;
+    const _spc2 = (document.getElementById('PC')||{}).value||'TRY';
+    if(_eid3){ addLog('plan_edit','Kayıt düzenlendi',_spn2+' · '+fmtAmt(_spa2,_spc2),0); }
+    else     { addLog('plan_add', 'Kayıt eklendi',   _spn2+' · '+fmtAmt(_spa2,_spc2),0); }
+  } catch(e){ console.warn('plan log hata:',e); }
   saveSecure();
   closeMov('PM2');
   render();
@@ -2017,7 +2019,7 @@ function delMonthEntry(idEnc){
   const id=decodeURIComponent(idEnc);
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
   const p=findPayById(id);
-  if(p){addLog('plan_del','Kayıt silindi',p.name+' · '+fmtAmt(p.amount,p.currency||'TRY'),0);hist.unshift({...p,delAt:new Date().toISOString()});pays=pays.filter(x=>String(x.id)!==id);}
+  if(p){try{addLog('plan_del','Kayıt silindi',p.name+' · '+fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};hist.unshift({...p,delAt:new Date().toISOString()});pays=pays.filter(x=>String(x.id)!==id);}
   saveSecure();closeDV();render();
 }
 function delCellItems(keyEnc,month){
@@ -2050,8 +2052,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.1';
-const APP_BUILD   = '20260510-12';
+const APP_VERSION = 'v8.2';
+const APP_BUILD   = '20260510-13';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2407,14 +2409,19 @@ const LOG_ICONS = {
 function fmtAmt(a,c){ return (c&&c!=='TRY'?c+' ':'₺')+Number(a).toLocaleString('tr-TR',{maximumFractionDigits:0}); }
 
 function addLog(type, title, detail, navTab) {
-  const entry = {
-    id: Date.now() + Math.random(),
-    type, title, detail: detail || '',
-    navTab: navTab ?? -1,
-    at: new Date().toISOString()
-  };
-  actLog.unshift(entry);
-  saveSecure();
+  try {
+    const entry = {
+      id: Date.now() + Math.random(),
+      type, title: String(title||''), detail: String(detail||''),
+      navTab: (navTab !== undefined && navTab !== null) ? navTab : -1,
+      at: new Date().toISOString()
+    };
+    actLog.unshift(entry);
+    // Bir sonraki saveSecure zaten actLog'u da kaydeder
+    // Ek güvence: 800ms sonra kaydet
+    clearTimeout(window._logSaveTimer);
+    window._logSaveTimer = setTimeout(() => { try { saveSecure(); } catch(e){} }, 800);
+  } catch(e) { console.warn('addLog hata:', e); }
 }
 
 function renderActLog() {
