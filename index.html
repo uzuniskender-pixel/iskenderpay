@@ -2867,6 +2867,8 @@ function rhbSavePerson() {
 function rhbDel(id) {
   const p = rehber.find(x => String(x.id) === String(id));
   if (!confirm(rhbGetName(p)+' silinecek. Emin misin?')) return;
+  const _rdp = rehber.find(x => String(x.id) === String(id));
+  addLog('rhb_del','Kişi silindi', rhbGetName(_rdp||{})+(_rdp?.company?' · '+_rdp.company:''), 6);
   rehber = rehber.filter(x => String(x.id) !== String(id));
   rhbSave();
   document.getElementById('RDET').classList.remove('open');
