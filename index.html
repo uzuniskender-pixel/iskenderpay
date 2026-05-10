@@ -684,10 +684,17 @@ select.fi{appearance:none}
           <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
         </div>
       </div>
-      <div style="padding:0 16px 10px">
+      <div style="padding:0 16px 6px;display:flex;gap:7px">
         <input id="RHB_SRCH" type="text" placeholder="🔍 İsim veya numara ara..." oninput="renderRhb()"
-          style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none">
+          style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:9px 12px;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none">
+        <select id="RHB_SORT" onchange="renderRhb()"
+          style="background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:9px 10px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;outline:none">
+          <option value="name">İsim ↑</option>
+          <option value="lastname">Soyisim ↑</option>
+          <option value="company">Şirket ↑</option>
+        </select>
       </div>
+      <datalist id="RHB_CO_LIST"></datalist>
       <div id="RHB_LIST" style="padding:0 16px 70px"></div>
     </div>
   </div>
@@ -2010,8 +2017,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.6';
-const APP_BUILD   = '20260510-6';
+const APP_VERSION = 'v7.7';
+const APP_BUILD   = '20260510-7';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2376,7 +2383,23 @@ function renderRhb() {
     (p.company||'').toLocaleLowerCase('tr').includes(q) ||
     (p.phones||[]).some(ph => ph.num.includes(q))
   );
-  list.sort((a,b) => rhbGetName(a).localeCompare(rhbGetName(b),'tr'));
+  const sort = document.getElementById('RHB_SORT')?.value || 'name';
+  list.sort((a,b) => {
+    if (sort === 'lastname') {
+      const la = rhbGetName(a).trim().split(' ').pop() || '';
+      const lb = rhbGetName(b).trim().split(' ').pop() || '';
+      return la.localeCompare(lb,'tr') || rhbGetName(a).localeCompare(rhbGetName(b),'tr');
+    }
+    if (sort === 'company') {
+      const ca = (a.company||'\uffff').toLocaleLowerCase('tr');
+      const cb = (b.company||'\uffff').toLocaleLowerCase('tr');
+      return ca.localeCompare(cb,'tr') || rhbGetName(a).localeCompare(rhbGetName(b),'tr');
+    }
+    return rhbGetName(a).localeCompare(rhbGetName(b),'tr');
+  });
+  const coSet = [...new Set(rehber.map(p=>p.company).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
+  const dlEl = document.getElementById('RHB_CO_LIST');
+  if (dlEl) dlEl.innerHTML = coSet.map(c=>`<option value="${esc(c)}">`).join('');
 
   const el = document.getElementById('RHB_LIST');
   if (!el) return;
@@ -2525,7 +2548,7 @@ function openRhbAdd() {
   document.getElementById('RMOD_ID').value = '';
   document.getElementById('RMOD_T').innerHTML = 'Kişi <span>Ekle</span>';
   ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_NOTE'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  _rhbPhones = [{lbl:'', num:''}];
+  _rhbPhones = [{lbl:'Cep', num:''}];
   renderRhbPhones();
   document.getElementById('RMOD').classList.add('open');
 }
@@ -2547,11 +2570,14 @@ function openRhbEdit(id) {
   setTimeout(() => document.getElementById('RMOD').classList.add('open'), 100);
 }
 
+const RHB_LBL_OPTS = ['Cep','İş','Özel','Ev','Şirket','Diğer'];
 function renderRhbPhones() {
-  document.getElementById('RMOD_PHONES').innerHTML = _rhbPhones.map((ph, i) => `
+  document.getElementById('RMOD_PHONES').innerHTML = _rhbPhones.map((ph, i) => {
+    const cur = ph.lbl || 'Cep';
+    const opts = RHB_LBL_OPTS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
+    return `
     <div class="rhb-phone-row">
-      <input class="fi" type="text" placeholder="Etiket (Cep, İş...)" value="${esc(ph.lbl)}"
-        oninput="_rhbPhones[${i}].lbl=this.value" style="flex:0.7">
+      <select class="fi" onchange="_rhbPhones[${i}].lbl=this.value" style="flex:0.65;padding:9px 8px;font-size:13px">${opts}</select>
       <input class="fi mono-inp" type="tel" placeholder="05XX XXX XX XX" value="${esc(ph.num)}"
         oninput="_rhbPhones[${i}].num=this.value" style="flex:1">
       ${_rhbPhones.length > 1
@@ -2666,7 +2692,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     <h2 id="RMOD_T">Kişi <span>Ekle</span></h2>
     <input type="hidden" id="RMOD_ID">
     <div class="fg"><label class="fl">İsim Soyisim</label><input class="fi" id="RMOD_NAME" type="text" placeholder="Ad Soyad" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase"></div>
-    <div class="fg"><label class="fl">Şirket</label><input class="fi" id="RMOD_COMPANY" type="text" placeholder="Şirket adı (opsiyonel)" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase"></div>
+    <div class="fg"><label class="fl">Şirket</label><input class="fi" id="RMOD_COMPANY" type="text" list="RHB_CO_LIST" placeholder="Şirket adı (opsiyonel)" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase" autocomplete="off"></div>
     <div class="fg">
       <label class="fl">Telefon Numaraları</label>
       <div id="RMOD_PHONES"></div>
