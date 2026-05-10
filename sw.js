@@ -1,11 +1,14 @@
-// İskenderPay Service Worker — v1.2
-const CACHE = 'ip-cache-v3';
+// İskenderPay Service Worker — v1.3
+const CACHE = 'ip-static-v1';
+
+// Sadece statik dosyaları cache'le, index.html HİÇBİR ZAMAN
+const STATIC = ['./icon-192.png', './icon-512.png', './manifest.json'];
 
 self.addEventListener('install', e => {
-  // skipWaiting YOK — banner göründükten sonra manuel geçiş
   e.waitUntil(
-    caches.open(CACHE).then(c => c.add('./index.html').catch(() => {}))
+    caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {}))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -17,28 +20,47 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Sayfadan SKIP_WAITING mesajı gelince aktif ol
 self.addEventListener('message', e => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
+
+  // Firebase, API → network only
   if (url.includes('firestore.googleapis.com') ||
       url.includes('firebase') ||
       url.includes('exchangerate-api') ||
       url.includes('gold-api')) {
     return;
   }
+
+  // index.html ve version.json → her zaman ağdan, offline'da cache fallback
+  if (url.endsWith('/') || url.endsWith('index.html') || url.endsWith('version.json')) {
+    e.respondWith(
+      fetch(e.request).then(resp => {
+        // Başarılıysa version.json'u cache'le (offline için)
+        if (resp.ok && url.endsWith('version.json')) {
+          const clone = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return resp;
+      }).catch(() => caches.match(e.request)) // offline fallback
+    );
+    return;
+  }
+
+  // Diğer statik dosyalar → cache first
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(resp => {
-        if (!resp || resp.status !== 200 || e.request.method !== 'GET') return resp;
-        const clone = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        if (resp?.ok && e.request.method === 'GET') {
+          const clone = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
         return resp;
-      }).catch(() => cached);
+      });
     })
   );
 });
