@@ -1974,8 +1974,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.2';
-const APP_BUILD   = '20260510-1';
+const APP_VERSION = 'v7.3';
+const APP_BUILD   = '20260510-3';
 
 function renderAI(){
   const el = document.getElementById('AI');
