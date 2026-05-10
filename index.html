@@ -391,6 +391,12 @@ select.fi{appearance:none}
 .rhb-call-btn{background:rgba(74,222,128,.15);color:var(--ok);border:1px solid rgba(74,222,128,.2);border-radius:7px;padding:7px 10px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;flex-shrink:0}
 .rhb-phone-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
 .rhb-phone-row .fi{padding:9px 10px;font-size:13px}
+
+/* GÜNCELLEME BANNER */
+#upd-banner{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#1e3a5f,#1a4a3a);border-top:1px solid rgba(96,165,250,.3);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+#upd-banner.show{transform:translateY(0)}
+#upd-banner .upd-txt{font-size:13px;font-weight:500;color:#e2e8f0}
+#upd-banner .upd-btn{background:linear-gradient(135deg,var(--acc2),var(--acc));color:#0f0e17;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .empty{text-align:center;padding:32px 16px;color:var(--muted)}
 .empty .ico{font-size:36px;margin-bottom:9px}
 .empty p{font-size:13px;line-height:1.6}
@@ -2357,11 +2363,40 @@ function rhbDel(id) {
 
 // ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
+  let _swReg = null;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW kayıtlı:', reg.scope))
-      .catch(err => console.log('SW hatası:', err));
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      _swReg = reg;
+      // Yeni SW bekliyorsa hemen bildir
+      if (reg.waiting) showUpdBanner();
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdBanner();
+          }
+        });
+      });
+    }).catch(err => console.log('SW hatası:', err));
   });
+  // SW'den gelen mesajı dinle
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_UPDATED') showUpdBanner();
+  });
+}
+
+function showUpdBanner() {
+  document.getElementById('upd-banner')?.classList.add('show');
+}
+function updApply() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg?.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    });
+  }
+  window.location.reload(true);
 }
 
 // PIN input enter key
@@ -2456,5 +2491,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
+
+<div id="upd-banner">
+  <div class="upd-txt">🔄 Yeni sürüm mevcut</div>
+  <button class="upd-btn" onclick="updApply()">Güncelle</button>
+</div>
 </body>
 </html>
