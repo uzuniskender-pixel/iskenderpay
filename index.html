@@ -2404,6 +2404,8 @@ const LOG_ICONS = {
   default:    {icon:'📋', bg:'rgba(255,255,255,.07)'},
 };
 
+function fmtAmt(a,c){ return (c&&c!=='TRY'?c+' ':'₺')+Number(a).toLocaleString('tr-TR',{maximumFractionDigits:0}); }
+
 function addLog(type, title, detail, navTab) {
   const entry = {
     id: Date.now() + Math.random(),
