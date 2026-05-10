@@ -2333,12 +2333,15 @@ function renderRhb() {
   el.innerHTML = list.map(p => {
     const initials = rhbGetInitials(p);
     const firstPhone = p.phones?.[0]?.num || '';
-    const sub = p.company ? esc(p.company) : (firstPhone ? `<span style="font-family:'IBM Plex Mono',monospace">${esc(firstPhone)}</span>` : '');
+    const subParts = [];
+    if (p.company) subParts.push(`<span>${esc(p.company)}</span>`);
+    if (firstPhone) subParts.push(`<span style="font-family:'IBM Plex Mono',monospace">${esc(firstPhone)}</span>`);
+    const sub = subParts.join('<span style="color:var(--bdr);margin:0 4px">·</span>');
     return `<div class="rhb-card" onclick="openRhbDetail('${p.id}')">
       <div class="rhb-avatar">${initials}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rhbGetName(p))}</div>
-        ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${sub}</div>` : ''}
+        ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div>` : ''}
       </div>
       <div style="color:var(--muted);font-size:16px;font-weight:300">›</div>
     </div>`;
