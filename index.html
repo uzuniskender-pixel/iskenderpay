@@ -2068,8 +2068,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.4';
-const APP_BUILD   = '20260510-15';
+const APP_VERSION = 'v8.5';
+const APP_BUILD   = '20260510-16';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2449,19 +2449,31 @@ function renderActLog() {
     el.innerHTML = '<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';
     return;
   }
-  el.innerHTML = actLog.map(e => {
-    const cfg  = LOG_ICONS[e.type] || LOG_ICONS.default;
-    const time = fmtLogTime(e.at);
-    const nav  = (e.navTab !== undefined && e.navTab >= 0) ? e.navTab : -1;
-    return `<div onclick="logNav(${nav})" style="display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--bdr);cursor:pointer;align-items:flex-start">
-      <div style="width:34px;height:34px;border-radius:50%;background:${cfg.bg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${cfg.icon}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--txt);margin-bottom:2px">${esc(e.title)}</div>
-        ${e.detail ? `<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.detail)}</div>` : ''}
-      </div>
-      <div style="font-size:10px;color:var(--muted);flex-shrink:0;margin-top:2px;font-family:'IBM Plex Mono',monospace;text-align:right">${time}</div>
-    </div>`;
-  }).join('');
+  try {
+    el.innerHTML = actLog.map((e, i) => {
+      try {
+        const cfg  = (LOG_ICONS && LOG_ICONS[e.type]) || {icon:'📋', bg:'rgba(255,255,255,.07)'};
+        const time = e.at ? fmtLogTime(e.at) : '';
+        const nav  = (typeof e.navTab === 'number' && e.navTab >= 0) ? e.navTab : -1;
+        const title  = e.title  ? String(e.title)  : '(başlık yok)';
+        const detail = e.detail ? String(e.detail) : '';
+        const icon   = cfg.icon || '📋';
+        const bg     = cfg.bg   || 'rgba(255,255,255,.1)';
+        return '<div onclick="logNav(' + nav + ')" style="display:flex;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer;align-items:flex-start">'
+          + '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + icon + '</div>'
+          + '<div style="flex:1;min-width:0;padding-right:8px">'
+          + '<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:2px">' + title + '</div>'
+          + (detail ? '<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + detail + '</div>' : '')
+          + '</div>'
+          + '<div style="font-size:10px;color:#64748b;flex-shrink:0;margin-top:3px;white-space:nowrap">' + time + '</div>'
+          + '</div>';
+      } catch(itemErr) {
+        return '<div style="padding:8px;color:orange;font-size:11px">Hata ' + i + ': ' + String(itemErr) + '</div>';
+      }
+    }).join('');
+  } catch(renderErr) {
+    el.innerHTML = '<div style="padding:12px;color:red">Render hatası: ' + String(renderErr) + '</div>';
+  }
 }
 
 function fmtLogTime(iso) {
