@@ -638,6 +638,19 @@ select.fi{appearance:none}
           <div class="acard-title">ℹ️ Bilgi</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.9;font-family:'IBM Plex Mono',monospace" id="AI"></div>
         </div>
+
+        <div class="acard">
+          <div class="acard-title">🔄 Güncelleme</div>
+          <div class="acard-sub" id="UPD_STATUS">Sürüm kontrol ediliyor...</div>
+          <button onclick="manualCheckUpdate()" class="btn bs" style="width:100%;margin-top:8px">Güncelleme Kontrol Et</button>
+          <button id="UPD_BTN" onclick="updApply()" class="btn bc" style="width:100%;margin-top:6px;display:none">⬇️ Güncellemeyi Yükle</button>
+        </div>
+
+        <div class="acard" style="border-color:rgba(248,113,113,.2)">
+          <div class="acard-title">🚪 Oturum</div>
+          <div class="acard-sub">Çıkış yap ve giriş ekranına dön</div>
+          <button onclick="doGoogleSignOut()" class="btn" style="width:100%;margin-top:8px;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Çıkış Yap</button>
+        </div>
       </div>
     </div>
     <!-- REHBER -->
@@ -1974,8 +1987,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.3';
-const APP_BUILD   = '20260510-3';
+const APP_VERSION = 'v7.4';
+const APP_BUILD   = '20260510-4';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2289,6 +2302,28 @@ function normPhone(raw) {
   return raw.trim(); // formatlanamadıysa olduğu gibi bırak
 }
 
+
+async function manualCheckUpdate() {
+  const statusEl = document.getElementById('UPD_STATUS');
+  const btnEl    = document.getElementById('UPD_BTN');
+  if (statusEl) statusEl.textContent = 'Kontrol ediliyor...';
+  try {
+    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) throw new Error('Sunucuya ulaşılamadı');
+    const d = await r.json();
+    if (d.build && d.build !== APP_BUILD) {
+      if (statusEl) statusEl.textContent = '🆕 Yeni sürüm mevcut: v' + d.v;
+      if (btnEl) btnEl.style.display = '';
+      showUpdBanner(d.v);
+    } else {
+      if (statusEl) statusEl.textContent = '✅ Güncel sürümdesiniz (v' + APP_VERSION + ')';
+      if (btnEl) btnEl.style.display = 'none';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠️ Kontrol edilemedi: ' + e.message;
+  }
+}
+
 function rhbSave() {
   saveSecure(); // şifreli Firebase'e kaydet
 }
@@ -2591,7 +2626,14 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <!-- REHBER KİŞİ DETAY -->
 <div class="dov" id="RDET" style="z-index:3050">
-  <div class="dpanel"><div class="dhdl"></div><div id="RDET_C"></div></div>
+  <div class="dpanel">
+    <div class="dhdl"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <button onclick="document.getElementById('RDET').classList.remove('open')"
+        style="background:rgba(255,255,255,.07);border:1px solid var(--bdr);color:var(--txt);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">← Geri</button>
+    </div>
+    <div id="RDET_C"></div>
+  </div>
 </div>
 
 <!-- REHBER EKLE/DÜZENLE MODAL -->
