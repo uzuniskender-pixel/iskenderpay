@@ -709,14 +709,6 @@ select.fi{appearance:none}
       <datalist id="RHB_CO_LIST"></datalist>
       <div id="RHB_LIST" style="padding:0 16px 70px"></div>
     </div>
-
-    <!-- LOG -->
-    <div id="T7" style="display:none">
-      <div class="ph">
-        <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="LOG_CNT"></div></div>
-        <button onclick="openLogDel()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">🗑️ Sil</button>
-      </div>
-      <div style="padding:0 16px 8px;display:none" id="LOG_DEL_BAR">
         <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Tarih aralığı seçin</div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -727,6 +719,31 @@ select.fi{appearance:none}
 
   </div>
 
+
+
+    <!-- LOG -->
+    <div id="T7" style="display:none">
+      <div class="ph">
+        <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="LOG_CNT"></div></div>
+        <button onclick="openLogDel()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">🗑️ Sil</button>
+      </div>
+      <div id="LOG_DEL_BAR" style="padding:0 16px 8px;display:none">
+        <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Tarih aralığı seçin</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="date" id="LOG_D1" class="fi" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px">
+            <span style="color:var(--muted);font-size:12px">—</span>
+            <input type="date" id="LOG_D2" class="fi" style="flex:1;min-width:120px;padding:7px 10px;font-size:13px">
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button onclick="doLogDel()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Seçili Aralığı Sil</button>
+            <button onclick="doLogDelAll()" class="btn bc" style="flex:1;font-size:12px">Tümünü Sil</button>
+            <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+          </div>
+        </div>
+      </div>
+      <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
+    </div>
 
 
 <!-- DETAY PANELİ -->
@@ -2068,8 +2085,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.5';
-const APP_BUILD   = '20260510-16';
+const APP_VERSION = 'v8.6';
+const APP_BUILD   = '20260510-17';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -3004,11 +3021,6 @@ document.addEventListener('DOMContentLoaded',()=>{
           </div>
         </div>
       </div>
-      <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
-    </div>
-    </div>
-  </div>
-</div>
 
 <!-- NOT MODAL -->
 <div class="mov" id="NM">
