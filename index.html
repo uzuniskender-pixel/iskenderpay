@@ -43,22 +43,45 @@ window._fbSave = async function(encData) {
   await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).set({ data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
-// Realtime listener — başlat/durdur
-window._fbUnsubscribe = null;
+// Polling tabanlı sync (onSnapshot yerine — mobilde daha güvenilir)
+window._syncTimer   = null;
+window._lastUpdated = 0;   // Firestore'dan gelen son updatedAt
+window._syncCb      = null;
+
 window._fbStartListen = function(onData) {
   if (!_fbUid || !window._planId) return;
-  if (window._fbUnsubscribe) window._fbUnsubscribe(); // önce eskiyi kapat
-  const docRef = _fbDb.collection('users').doc(_fbUid + '_' + window._planId);
-  let firstSnap = true;
-  window._fbUnsubscribe = docRef.onSnapshot(snap => {
-    if (firstSnap) { firstSnap = false; return; } // ilk anlık okumayı atla
-    if (snap.exists && snap.data().data) {
-      onData(snap.data().data);
-    }
-  }, err => console.warn('Realtime sync hatası:', err));
+  window._syncCb = onData;
+  if (window._syncTimer) clearInterval(window._syncTimer);
+  window._syncTimer = setInterval(window._fbPoll, 30000); // 30 sn
+  // İlk poll'ı biraz geciktir (loadSecure henüz bitmemiş olabilir)
+  setTimeout(window._fbPoll, 5000);
 };
+
+window._fbPoll = async function() {
+  if (!_fbUid || !window._planId || !window._syncCb) return;
+  try {
+    const snap = await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).get();
+    if (!snap.exists) return;
+    const d = snap.data();
+    const ts = d.updatedAt || 0;
+    if (ts > window._lastUpdated && window._lastUpdated > 0) {
+      // Veri değişmiş — callback'i çağır
+      window._lastUpdated = ts;
+      if (d.data) window._syncCb(d.data);
+    } else if (window._lastUpdated === 0) {
+      // İlk poll — sadece timestamp'i kaydet, veriyi işleme
+      window._lastUpdated = ts;
+    }
+    setSyncDot('active');
+  } catch(e) {
+    console.warn('Sync poll hatası:', e);
+    setSyncDot('error');
+  }
+};
+
 window._fbStopListen = function() {
-  if (window._fbUnsubscribe) { window._fbUnsubscribe(); window._fbUnsubscribe = null; }
+  if (window._syncTimer) { clearInterval(window._syncTimer); window._syncTimer = null; }
+  window._syncCb = null;
 };
 
 // Firebase'den veri yükle
@@ -1145,6 +1168,7 @@ function enterApp() {
 async function startRealtimeSync() {
   if (!window._fbStartListen) return;
   setSyncDot('connecting');
+  window._lastUpdated = 0; // yeni oturum — timestamp sıfırla
   window._fbStartListen(async encData => {
     if (!_cryptoKey) return;
     try {
@@ -1166,16 +1190,18 @@ async function startRealtimeSync() {
       setSyncDot('synced');
       showSyncToast();
     } catch(e) {
-      console.error('Realtime decrypt hatası:', e);
+      console.warn('Sync decrypt hatası:', e);
       setSyncDot('error');
     }
   });
-  setSyncDot('active');
 }
 
-// visibilitychange: sadece BİR KEZ kayıt — startRealtimeSync DIŞINDA
+// visibilitychange: ekrana dönünce anında poll yap
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') startRealtimeSync();
+  if (document.visibilityState === 'visible') {
+    setSyncDot('connecting');
+    setTimeout(window._fbPoll, 500);
+  }
 });
 
 
@@ -1987,8 +2013,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v7.4';
-const APP_BUILD   = '20260510-4';
+const APP_VERSION = 'v7.5';
+const APP_BUILD   = '20260510-5';
 
 function renderAI(){
   const el = document.getElementById('AI');
