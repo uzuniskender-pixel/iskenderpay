@@ -665,7 +665,7 @@ select.fi{appearance:none}
           <div class="acard-sub">Yedek şifreli JSON olarak indirilir. Şifreni bilen geri yükleyebilir.</div>
           <div style="display:flex;gap:8px">
             <button onclick="doBackup()" class="btn bs" style="flex:1">Yedek Al</button>
-            <button onclick="document.getElementById('RM').classList.add('open')" class="btn bc" style="flex:1">Geri Yükle</button>
+            <button onclick="ModalManager.open('RM')" class="btn bc" style="flex:1">Geri Yükle</button>
           </div>
         </div>
 
@@ -1452,7 +1452,7 @@ function openAddPerson(){
   document.getElementById('PRMT').innerHTML='Kişi <span>Ekle</span>';
   document.getElementById('PRNAME').value='';
   document.getElementById('PRDESC').value='';
-  document.getElementById('PRM').classList.add('open');
+  ModalManager.open('PRM');
 }
 function editPerson(i){
   const p=persons[i];
@@ -1460,7 +1460,7 @@ function editPerson(i){
   document.getElementById('PRMT').innerHTML='Kişi <span>Düzenle</span>';
   document.getElementById('PRNAME').value=p.name;
   document.getElementById('PRDESC').value=p.desc||'';
-  document.getElementById('PRM').classList.add('open');
+  ModalManager.open('PRM');
 }
 function savePerson(){
   const name=document.getElementById('PRNAME').value.trim();
@@ -1827,7 +1827,7 @@ function openKM(keyEnc,month){
   document.getElementById('KA').value='';
   document.getElementById('KI').textContent=c?fmt(c.try)+' toplam':'';
   closeDV();
-  document.getElementById('KM').classList.add('open');
+  ModalManager.open('KM');
 }
 function doPartial(){
   const amt=parseFloat(document.getElementById('KA').value)||0;
@@ -1912,7 +1912,7 @@ function openPay(){
   document.getElementById('PC').value='TRY';
   document.getElementById('COPYMO').value=0;
   updateDatalist();
-  document.getElementById('PM2').classList.add('open');
+  ModalManager.open('PM2');
 }
 function editPay(id){
   const p=findPayById(id);if(!p)return;
@@ -1924,7 +1924,7 @@ function editPay(id){
   document.getElementById('PD').value=p.date;
   document.getElementById('PK').value=p.category||'Diğer';
   document.getElementById('COPYMO').value=0;
-  document.getElementById('PM2').classList.add('open');
+  ModalManager.open('PM2');
 }
 function savePay(){
   const name=document.getElementById('PN').value.trim();
@@ -1971,7 +1971,7 @@ function openCred(){
   ['CN','CT','CI','CM2'].forEach(id=>document.getElementById(id).value='');
   const _cd=new Date();document.getElementById('CS').value=toLocalISO(_cd.getFullYear(),_cd.getMonth(),_cd.getDate());
   document.getElementById('LP').classList.remove('show');
-  document.getElementById('CM').classList.add('open');
+  ModalManager.open('CM');
 }
 function editCred(id){
   const c=findCredById(id);if(!c)return;
@@ -1981,7 +1981,7 @@ function editCred(id){
   document.getElementById('CI').value=c.inst;
   document.getElementById('CM2').value=c.monthly;
   document.getElementById('CS').value=c.start;
-  document.getElementById('CM').classList.add('open');
+  ModalManager.open('CM');
 }
 function saveCred(){
   const name=document.getElementById('CN').value.trim();
@@ -2103,7 +2103,7 @@ function renderAI(){
 function doBackup(){
   document.getElementById('BPP').value='';
   document.getElementById('BPERR').textContent='';
-  document.getElementById('BPM').classList.add('open');
+  ModalManager.open('BPM');
 }
 async function confirmBackup(){
   const entered=document.getElementById('BPP').value;
@@ -2158,8 +2158,44 @@ function doRestore(){
   alert('Veriler yüklendi!');
 }
 
-// ── MODAL ─────────────────────────────────────────────────────────────────────
-function closeMov(id){document.getElementById(id).classList.remove('open');}
+// ── MODAL MANAGER ─────────────────────────────────────────────────────────────
+const ModalManager = (() => {
+  const _open = new Set();
+
+  function open(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('open');
+    _open.add(id);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function close(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('open');
+    _open.delete(id);
+    if (_open.size === 0) document.body.style.overflow = '';
+  }
+
+  function closeAll() {
+    _open.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('open'); });
+    _open.clear();
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', e => {
+    if (e.target.classList.contains('mov') && e.target.id) close(e.target.id);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && _open.size > 0) close([..._open].pop());
+  });
+
+  return { open, close, closeAll };
+})();
+
+function closeMov(id) { ModalManager.close(id); }
 
 // ── NOTLAR ───────────────────────────────────────────────────────────────────
 function renderNotes(){
@@ -2190,7 +2226,7 @@ function openNoteModal(){
   document.getElementById('NTIT').value='';
   document.getElementById('NCONT').value='';
   document.getElementById('NCAT').value='Banka / IBAN';
-  document.getElementById('NM').classList.add('open');
+  ModalManager.open('NM');
 }
 function editNote(nid){
   const n=notes.find(x=>x.nid===nid);
@@ -2200,7 +2236,7 @@ function editNote(nid){
   document.getElementById('NTIT').value=n.title||'';
   document.getElementById('NCONT').value=n.content||'';
   document.getElementById('NCAT').value=n.cat||'Genel Not';
-  document.getElementById('NM').classList.add('open');
+  ModalManager.open('NM');
 }
 function saveNote(){
   const title=document.getElementById('NTIT').value.trim();
@@ -2292,7 +2328,7 @@ function openPaidEdit(paidId){
   document.getElementById('PINAM').value=p.name||'';
   document.getElementById('PIAMT').value=p.paid!=null?p.paid:(p.amount||'');
   document.getElementById('PIDAT').value=p.date||'';
-  document.getElementById('PIMOD').classList.add('open');
+  ModalManager.open('PIMOD');
 }
 function savePaidItem(){
   const paidId=document.getElementById('PIEID').value;
@@ -2870,7 +2906,7 @@ function openRhbAdd() {
   ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_NOTE'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   _rhbPhones = [{lbl:'Cep', num:''}];
   renderRhbPhones();
-  document.getElementById('RMOD').classList.add('open');
+  ModalManager.open('RMOD');
 }
 
 function openRhbEdit(id) {
@@ -2887,7 +2923,7 @@ function openRhbEdit(id) {
   document.getElementById('RMOD_NOTE').value = p.note || '';
   _rhbPhones = (p.phones?.length ? p.phones.map(x=>({...x})) : [{lbl:'',num:''}]);
   renderRhbPhones();
-  setTimeout(() => document.getElementById('RMOD').classList.add('open'), 100);
+  setTimeout(() => ModalManager.open('RMOD'), 100);
 }
 
 const RHB_LBL_OPTS = ['Cep','İş','Özel','Ev','Şirket','Diğer'];
