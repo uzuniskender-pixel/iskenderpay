@@ -355,7 +355,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .mov.open{display:flex}
 @media(min-width:768px){.mov{align-items:center;justify-content:center}}
 .modal{background:var(--surf);border:1px solid var(--bdr);border-radius:20px 20px 0 0;padding:18px 16px 38px;width:100%;animation:sup .22s cubic-bezier(.32,.72,0,1);max-height:92vh;overflow-y:auto}
-@media(min-width:768px){.modal{border-radius:16px;max-width:460px;animation:fin .18s ease}}
+@media(min-width:768px){.modal{border-radius:16px;max-width:560px;animation:fin .18s ease}}
 .mhdl{width:30px;height:3px;background:var(--surf2);border-radius:2px;margin:0 auto 14px}
 .modal h2{font-size:18px;font-weight:700;margin-bottom:14px}
 .modal h2 span{color:var(--acc2)}
@@ -2276,8 +2276,8 @@ function renderPaid(){
           ${isPartial?`<div style="font-size:10px;color:var(--muted)">${fmt(tryAmt-paidAmt)} kaldı</div>`:''}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button onclick="editPaidItem(${pidIdx})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Düzenle</button>
-          <button onclick="delPaidItem(${pidIdx})" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Sil</button>
+          <button onclick="openPaidEdit('${p.paidId}')" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Düzenle</button>
+          <button onclick="delPaidItem('${p.paidId}')" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Sil</button>
         </div>
       </div>`;
     });
@@ -2286,20 +2286,31 @@ function renderPaid(){
 }
 
 // Yapılan Ödemeler düzenleme/silme (plan'a etkisi yok)
-function editPaidItem(idx){
-  const p=paidItems[idx]; if(!p) return;
-  const newName=prompt('Ödeme adı:',p.name); if(newName===null) return;
-  const newAmt=prompt('Ödenen tutar (₺):',p.paid||0); if(newAmt===null) return;
-  const newDate=prompt('Tarih (YYYY-MM-DD):',p.date); if(newDate===null) return;
-  if(newName.trim()) p.name=newName.trim();
-  const parsedAmt=parseFloat(newAmt);
-  if(!isNaN(parsedAmt)&&parsedAmt>=0) p.paid=parsedAmt;
-  if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) p.date=newDate;
-  saveSecure(); renderPaid();
+function openPaidEdit(paidId){
+  const p=paidItems.find(x=>x.paidId===paidId); if(!p) return;
+  document.getElementById('PIEID').value=paidId;
+  document.getElementById('PINAM').value=p.name||'';
+  document.getElementById('PIAMT').value=p.paid!=null?p.paid:(p.amount||'');
+  document.getElementById('PIDAT').value=p.date||'';
+  document.getElementById('PIMOD').classList.add('open');
 }
-function delPaidItem(idx){
-  if(!confirm(paidItems[idx]?.name+' yapılan ödemelerden silinecek. Plan etkilenmez. Emin misin?'))return;
-  paidItems.splice(idx,1);
+function savePaidItem(){
+  const paidId=document.getElementById('PIEID').value;
+  const p=paidItems.find(x=>x.paidId===paidId); if(!p) return;
+  const name=document.getElementById('PINAM').value.trim();
+  const amt=parseFloat(document.getElementById('PIAMT').value);
+  const date=document.getElementById('PIDAT').value;
+  if(!name){alert('Ödeme adı boş olamaz');return;}
+  if(isNaN(amt)||amt<0){alert('Geçerli bir tutar girin');return;}
+  if(!date.match(/^\d{4}-\d{2}-\d{2}$/)){alert('Tarih YYYY-AA-GG formatında olmalı');return;}
+  p.name=name; p.paid=amt; p.date=date;
+  saveSecure(); closeMov('PIMOD'); renderPaid();
+}
+function delPaidItem(paidId){
+  const p=paidItems.find(x=>x.paidId===paidId); if(!p) return;
+  if(!confirm(p.name+' yapılan ödemelerden silinecek. Plan etkilenmez. Emin misin?'))return;
+  const idx=paidItems.indexOf(p);
+  if(idx!==-1) paidItems.splice(idx,1);
   saveSecure(); renderPaid();
 }
 
@@ -3074,6 +3085,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
+
+<!-- YAPILAN ÖDEMELER DÜZENLE MODAL -->
+<div class="mov" id="PIMOD">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Ödeme <span>Düzenle</span></h2>
+    <input type="hidden" id="PIEID">
+    <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="PINAM" type="text" placeholder="Kira, Elektrik..."></div>
+    <div class="fg"><label class="fl">Ödenen Tutar (₺)</label><input class="fi mono-inp" id="PIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg"><label class="fl">Tarih</label><input class="fi" id="PIDAT" type="date"></div>
+    <div class="brow"><button class="btn bc" onclick="closeMov('PIMOD')">İptal</button><button class="btn bs" onclick="savePaidItem()">Kaydet</button></div>
+  </div>
+</div>
 
 <div id="sync-toast">🔄 Senkronize edildi</div>
 <div id="upd-banner">
