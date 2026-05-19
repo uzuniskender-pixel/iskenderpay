@@ -1,5 +1,5 @@
 // İskenderPay Service Worker — v1.3
-const CACHE = 'ip-static-v1';
+const CACHE = 'ip-static-v2'; // Sürümü v2 yaptık, eski cache çöpe gidecek!;
 
 // Sadece statik dosyaları cache'le, index.html HİÇBİR ZAMAN
 const STATIC = ['./icon-192.png', './icon-512.png', './manifest.json'];
