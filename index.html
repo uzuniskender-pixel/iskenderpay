@@ -2165,17 +2165,19 @@ function closeMov(id){document.getElementById(id).classList.remove('open');}
 function renderNotes(){
   const nl=document.getElementById('NL');
   if(!notes.length){nl.innerHTML='<div class="empty"><div class="ico">📝</div><p>Henüz not yok.<br>+ Not Ekle ile başlayın.</p></div>';return;}
+  // Her nota yoksa stabil bir nid (note id) ver
+  notes.forEach((n,i)=>{ if(!n.nid) n.nid = 'n'+(Date.now()+i)+'_'+Math.random().toString(36).slice(2,7); });
   const catColors={'Banka / IBAN':'var(--blue)','Şifre / Hesap':'var(--danger)','Telefon / İletişim':'var(--ok)','Genel Not':'var(--muted)'};
-  nl.innerHTML=notes.map((n,i)=>`
+  nl.innerHTML=notes.map((n)=>`
     <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:9px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div>
           <div style="font-size:14px;font-weight:700">${esc(n.title)}</div>
-          <div style="font-size:10px;color:${catColors[n.cat]||'var(--muted)'};font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.8px">${esc(n.cat)}</div>
+          <div style="font-size:10px;color:${catColors[n.cat]||'var(--muted)'};font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.8px">${esc(n.cat||'')}</div>
         </div>
         <div style="display:flex;gap:6px">
-          <button onclick="editNote(${i})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
-          <button onclick="delNote(${i})" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
+          <button onclick="editNote(${JSON.stringify(n.nid)})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
+          <button onclick="delNote(${JSON.stringify(n.nid)})" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
         </div>
       </div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt);white-space:pre-wrap;background:var(--surf2);border-radius:7px;padding:10px;line-height:1.7;border:1px solid var(--bdr)">${esc(n.content)}</div>
@@ -2187,15 +2189,17 @@ function openNoteModal(){
   document.getElementById('NMT').innerHTML='Yeni <span>Not</span>';
   document.getElementById('NTIT').value='';
   document.getElementById('NCONT').value='';
+  document.getElementById('NCAT').value='Banka / IBAN';
   document.getElementById('NM').classList.add('open');
 }
-function editNote(i){
-  const n=notes[i];
-  document.getElementById('NEID').value=i;
+function editNote(nid){
+  const n=notes.find(x=>x.nid===nid);
+  if(!n){console.error('editNote: not bulunamadı',nid);return;}
+  document.getElementById('NEID').value=nid;
   document.getElementById('NMT').innerHTML='Not <span>Düzenle</span>';
-  document.getElementById('NTIT').value=n.title;
-  document.getElementById('NCONT').value=n.content;
-  document.getElementById('NCAT').value=n.cat;
+  document.getElementById('NTIT').value=n.title||'';
+  document.getElementById('NCONT').value=n.content||'';
+  document.getElementById('NCAT').value=n.cat||'Genel Not';
   document.getElementById('NM').classList.add('open');
 }
 function saveNote(){
@@ -2204,13 +2208,20 @@ function saveNote(){
   const cat=document.getElementById('NCAT').value;
   if(!title||!content){alert('Başlık ve içerik zorunlu');return;}
   const eid=document.getElementById('NEID').value;
-  if(eid!==''){notes[parseInt(eid)]={title,content,cat,at:notes[parseInt(eid)].at,upd:new Date().toISOString()};}
-  else{notes.unshift({title,content,cat,at:new Date().toISOString()});}
+  if(eid!==''){
+    const idx=notes.findIndex(x=>x.nid===eid);
+    if(idx!==-1){notes[idx]={...notes[idx],title,content,cat,upd:new Date().toISOString()};}
+  } else {
+    const nid='n'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    notes.unshift({nid,title,content,cat,at:new Date().toISOString()});
+  }
   saveNotes();closeMov('NM');renderNotes();
 }
-function delNote(i){
+function delNote(nid){
   if(!confirm('Bu notu silmek istiyor musun?'))return;
-  notes.splice(i,1);saveNotes();renderNotes();
+  const idx=notes.findIndex(x=>x.nid===nid);
+  if(idx!==-1){notes.splice(idx,1);}
+  saveNotes();renderNotes();
 }
 
 // ── KISMI SIFIRLA ─────────────────────────────────────────────────────────────
