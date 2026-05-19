@@ -665,7 +665,7 @@ select.fi{appearance:none}
           <div class="acard-sub">Yedek şifreli JSON olarak indirilir. Şifreni bilen geri yükleyebilir.</div>
           <div style="display:flex;gap:8px">
             <button onclick="doBackup()" class="btn bs" style="flex:1">Yedek Al</button>
-            <button onclick="ModalManager.open('RM')" class="btn bc" style="flex:1">Geri Yükle</button>
+            <button data-modal-open="RM" class="btn bc" style="flex:1">Geri Yükle</button>
           </div>
         </div>
 
@@ -767,7 +767,7 @@ select.fi{appearance:none}
       </div>
     </div>
     <div class="fg"><label class="fl">Kaç Aya Kopyalansın? (0 = sadece bu ay)</label><input class="fi mono-inp" id="COPYMO" type="number" value="0" min="0" max="60" inputmode="numeric" placeholder="0"></div>
-    <div class="brow"><button class="btn bc" onclick="closeMov('PM2')">İptal</button><button class="btn bs" onclick="savePay()">Kaydet</button></div>
+    <div class="brow"><button class="btn bc" data-modal-close="PM2">İptal</button><button class="btn bs" onclick="savePay()">Kaydet</button></div>
   </div>
 </div>
 
@@ -791,7 +791,7 @@ select.fi{appearance:none}
       <div class="lp-row"><span>Taksit</span><span id="LPC">-</span></div>
       <div class="lp-row"><span>Bitiş</span><span id="LPE" style="font-size:11px;font-family:'Inter',sans-serif;font-weight:600">-</span></div>
     </div>
-    <div class="brow"><button class="btn bc" onclick="closeMov('CM')">İptal</button><button class="btn bsc" onclick="saveCred()">Taksitleri Oluştur</button></div>
+    <div class="brow"><button class="btn bc" data-modal-close="CM">İptal</button><button class="btn bsc" onclick="saveCred()">Taksitleri Oluştur</button></div>
   </div>
 </div>
 
@@ -802,7 +802,7 @@ select.fi{appearance:none}
     <h2>Kısmi <span>Ödeme</span></h2>
     <div class="fg"><label class="fl">Ödenen Tutar (₺)</label><input class="fi mono-inp" id="KA" type="number" placeholder="0" inputmode="decimal" style="font-size:20px;text-align:center"></div>
     <div id="KI" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px"></div>
-    <div class="brow"><button class="btn bc" onclick="closeMov('KM')">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,var(--ora),#f97316);color:#fff" onclick="doPartial()">Kaydet</button></div>
+    <div class="brow"><button class="btn bc" data-modal-close="KM">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,var(--ora),#f97316);color:#fff" onclick="doPartial()">Kaydet</button></div>
   </div>
 </div>
 
@@ -814,7 +814,7 @@ select.fi{appearance:none}
     <div class="fg"><label class="fl">Yedek Dosyası (.json)</label><input class="fi" id="RF" type="file" accept=".json" onchange="readRF(this)" style="padding:10px;cursor:pointer"></div>
     <div id="RS" style="font-size:12px;min-height:16px;margin-bottom:10px"></div>
     <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15);border-radius:9px;padding:9px;margin-bottom:12px;font-size:11px;color:var(--muted)">⚠️ Mevcut tüm veriler silinir ve yedekten yüklenir.</div>
-    <div class="brow"><button class="btn bc" onclick="closeMov('RM')">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="doRestore()">Geri Yükle</button></div>
+    <div class="brow"><button class="btn bc" data-modal-close="RM">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="doRestore()">Geri Yükle</button></div>
   </div>
 </div>
 
@@ -1163,12 +1163,26 @@ function getPlanName(planId) {
 }
 
 function editPlanName(planId) {
-  const current = getPlanName(planId);
-  const newName = prompt('Plan adını girin:', current);
-  if (newName && newName.trim()) {
-    localStorage.setItem('v6-name-' + planId, newName.trim());
+  const elId = planId === 'plan1' ? 'PLS_NAME1' : 'PLS_NAME2';
+  const el = document.getElementById(elId);
+  if (!el || el.querySelector('input')) return; // zaten açık
+  const current = el.textContent;
+  el.innerHTML = '';
+  const inp = document.createElement('input');
+  inp.value = current;
+  inp.style.cssText = 'background:rgba(255,255,255,.1);border:1px solid var(--acc);border-radius:6px;color:var(--txt);font-size:14px;font-weight:600;padding:2px 8px;width:140px;outline:none';
+  el.appendChild(inp);
+  inp.focus(); inp.select();
+  function save() {
+    const val = inp.value.trim();
+    if (val) localStorage.setItem('v6-name-' + planId, val);
     renderPlanNames();
   }
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { inp.blur(); }
+    if (e.key === 'Escape') { inp.value = current; inp.blur(); }
+  });
 }
 
 function renderPlanNames() {
@@ -1677,7 +1691,7 @@ function openRow(keyEnc){
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
   </div>`;
   document.getElementById('DC').innerHTML=h;
-  document.getElementById('DV').classList.add('open');
+  ModalManager.open('DV');
 }
 function openCell(keyEnc,month){
   const key=decodeURIComponent(keyEnc),all=getAllItems(),mx=buildMx(all);
@@ -1723,9 +1737,10 @@ function openCell(keyEnc,month){
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
   </div>`;
   document.getElementById('DC').innerHTML=h;
-  document.getElementById('DV').classList.add('open');
+  ModalManager.open('DV');
 }
-function closeDV(){document.getElementById('DV').classList.remove('open');}
+function closeDV(){ ModalManager.close('DV'); }
+function closeRDET(){ ModalManager.close('RDET'); }
 
 function openEmptyCell(keyEnc,month){
   const key=decodeURIComponent(keyEnc);
@@ -1763,7 +1778,7 @@ function openEmptyCell(keyEnc,month){
     <button class="dact da-close" onclick="closeDV()">İptal</button>
   </div>`;
   document.getElementById('DC').innerHTML=h;
-  document.getElementById('DV').classList.add('open');
+  ModalManager.open('DV');
   setTimeout(()=>document.getElementById('ECA')?.focus(),100);
 }
 
@@ -2032,14 +2047,22 @@ function renderHist(){
 }
 function editHistItem(idx){
   const p=hist[idx]; if(!p) return;
-  const newName=prompt('Ödeme adı:',p.name); if(newName===null) return;
-  const newAmt=prompt('Tutar:',p.amount); if(newAmt===null) return;
-  const newDate=prompt('Tarih (YYYY-MM-DD):',p.date); if(newDate===null) return;
-  if(newName.trim()) p.name=newName.trim();
-  const parsedAmt=parseFloat(newAmt);
-  if(!isNaN(parsedAmt)&&parsedAmt>0) p.amount=parsedAmt;
+  document.getElementById('HIIDX').value=idx;
+  document.getElementById('HINAM').value=p.name||'';
+  document.getElementById('HIAMT').value=p.amount||'';
+  document.getElementById('HIDAT').value=p.date||'';
+  ModalManager.open('HIMOD');
+}
+function saveHistItem(){
+  const idx=parseInt(document.getElementById('HIIDX').value);
+  const p=hist[idx]; if(!p) return;
+  const newName=document.getElementById('HINAM').value.trim();
+  const newAmt=parseFloat(document.getElementById('HIAMT').value);
+  const newDate=document.getElementById('HIDAT').value;
+  if(newName) p.name=newName;
+  if(!isNaN(newAmt)&&newAmt>0) p.amount=newAmt;
   if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) p.date=newDate;
-  saveSecure(); renderHist();
+  saveSecure(); ModalManager.close('HIMOD'); renderHist();
 }
 function delMonthEntry(idEnc){
   const id=decodeURIComponent(idEnc);
@@ -2185,7 +2208,14 @@ const ModalManager = (() => {
   }
 
   document.addEventListener('click', e => {
-    if (e.target.classList.contains('mov') && e.target.id) close(e.target.id);
+    // Click-outside-to-close (.mov ve .dov backdrop)
+    if ((e.target.classList.contains('mov') || e.target.classList.contains('dov')) && e.target.id) { close(e.target.id); return; }
+    // data-modal-open
+    const openBtn = e.target.closest('[data-modal-open]');
+    if (openBtn) { open(openBtn.dataset.modalOpen); return; }
+    // data-modal-close
+    const closeBtn = e.target.closest('[data-modal-close]');
+    if (closeBtn) { close(closeBtn.dataset.modalClose); return; }
   });
 
   document.addEventListener('keydown', e => {
@@ -2730,11 +2760,11 @@ function openRhbDetail(id) {
   h += `<div class="dacts">
     <button class="dact da-edit" onclick="openRhbEdit('${p.id}')">Düzenle</button>
     <button class="dact da-del" onclick="rhbDel('${p.id}')">Sil</button>
-    <button class="dact da-close" onclick="document.getElementById('RDET').classList.remove('open')">Kapat</button>
+    <button class="dact da-close" onclick="closeRDET()">Kapat</button>
   </div>`;
 
   document.getElementById('RDET_C').innerHTML = h;
-  document.getElementById('RDET').classList.add('open');
+  ModalManager.open('RDET');
 }
 
 
@@ -2912,7 +2942,7 @@ function openRhbAdd() {
 function openRhbEdit(id) {
   const p = rehber.find(x => String(x.id) === String(id));
   if (!p) return;
-  document.getElementById('RDET').classList.remove('open');
+  closeRDET();
   document.getElementById('RMOD_ID').value = id;
   document.getElementById('RMOD_T').innerHTML = 'Kişi <span>Düzenle</span>';
   const nameEl = document.getElementById('RMOD_NAME');
@@ -2977,7 +3007,7 @@ function rhbDel(id) {
   addLog('rhb_del','Kişi silindi', rhbGetName(_rdp||{})+(_rdp?.company?' · '+_rdp.company:''), 6);
   rehber = rehber.filter(x => String(x.id) !== String(id));
   rhbSave();
-  document.getElementById('RDET').classList.remove('open');
+  closeRDET();
   renderRhb();
 }
 
@@ -3039,7 +3069,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   <div class="dpanel">
     <div class="dhdl"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <button onclick="document.getElementById('RDET').classList.remove('open')"
+      <button onclick="closeRDET()"
         style="background:rgba(255,255,255,.07);border:1px solid var(--bdr);color:var(--txt);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">← Geri</button>
     </div>
     <div id="RDET_C"></div>
@@ -3062,7 +3092,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="fg"><label class="fl">E-posta</label><input class="fi" id="RMOD_EMAIL" type="email" placeholder="ornek@mail.com"></div>
     <div class="fg"><label class="fl">Not</label><textarea class="fi" id="RMOD_NOTE" rows="3" placeholder="Açıklama..." style="resize:vertical"></textarea></div>
     <div class="brow">
-      <button class="btn bc" onclick="closeMov('RMOD')">İptal</button>
+      <button class="btn bc" data-modal-close="RMOD">İptal</button>
       <button class="btn bs" onclick="rhbSavePerson()">Kaydet</button>
     </div>
   </div>
@@ -3084,7 +3114,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         <option>Genel Not</option>
       </select>
     </div>
-    <div class="brow"><button class="btn bc" onclick="closeMov('NM')">İptal</button><button class="btn bs" onclick="saveNote()">Kaydet</button></div>
+    <div class="brow"><button class="btn bc" data-modal-close="NM">İptal</button><button class="btn bs" onclick="saveNote()">Kaydet</button></div>
   </div>
 </div>
 
@@ -3100,7 +3130,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     <div id="BPERR" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:8px"></div>
     <div class="brow">
-      <button class="btn bc" onclick="closeMov('BPM')">İptal</button>
+      <button class="btn bc" data-modal-close="BPM">İptal</button>
       <button class="btn bs" onclick="confirmBackup()">İndir</button>
     </div>
   </div>
@@ -3115,7 +3145,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="fg"><label class="fl">İsim</label><input class="fi" id="PRNAME" type="text" placeholder="Ad Soyad veya Kurum Adı"></div>
     <div class="fg"><label class="fl">Açıklama (opsiyonel)</label><input class="fi" id="PRDESC" type="text" placeholder="Kira, kredi, vs."></div>
     <div class="brow">
-      <button class="btn bc" onclick="closeMov('PRM')">İptal</button>
+      <button class="btn bc" data-modal-close="PRM">İptal</button>
       <button class="btn bs" onclick="savePerson()">Kaydet</button>
     </div>
   </div>
@@ -3131,7 +3161,19 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="PINAM" type="text" placeholder="Kira, Elektrik..."></div>
     <div class="fg"><label class="fl">Ödenen Tutar (₺)</label><input class="fi mono-inp" id="PIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
     <div class="fg"><label class="fl">Tarih</label><input class="fi" id="PIDAT" type="date"></div>
-    <div class="brow"><button class="btn bc" onclick="closeMov('PIMOD')">İptal</button><button class="btn bs" onclick="savePaidItem()">Kaydet</button></div>
+    <div class="brow"><button class="btn bc" data-modal-close="PIMOD">İptal</button><button class="btn bs" onclick="savePaidItem()">Kaydet</button></div>
+  </div>
+</div>
+
+<div class="mov" id="HIMOD">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Geçmiş <span>Düzenle</span></h2>
+    <input type="hidden" id="HIIDX">
+    <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="HINAM" type="text" placeholder="Kira, Elektrik..."></div>
+    <div class="fg"><label class="fl">Tutar (₺)</label><input class="fi mono-inp" id="HIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg"><label class="fl">Tarih</label><input class="fi" id="HIDAT" type="date"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="HIMOD">İptal</button><button class="btn bs" onclick="saveHistItem()">Kaydet</button></div>
   </div>
 </div>
 
