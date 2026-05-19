@@ -1,94 +1,19 @@
-<script>
-  // Sürüm numarasını kesinleştiriyoruz
-  const APP_VERSION = 'v8.8'; 
-
-  function execGlobalSearch() {
-    const query = document.getElementById('SRCHINP').value.trim().toLowerCase();
-    const resDiv = document.getElementById('SRCHRES');
-    
-    if (!query) {
-      resDiv.innerHTML = '<div style="text-align: center; opacity: 0.5; padding: 20px 0; color:#fff;">Yazmaya başlayın...</div>';
-      return;
-    }
-    
-    let html = '';
-    let count = 0;
-
-    // 1. Plan Ödemeleri Araması
-    if (typeof pays !== 'undefined' && Array.isArray(pays)) {
-      pays.forEach(p => {
-        if ((p.name && p.name.toLowerCase().includes(query)) || (p.amt && String(p.amt).includes(query))) {
-          count++;
-          html += `<div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #ffd200; color:#fff; margin-bottom:8px; font-family:sans-serif;"><div style="font-weight: bold; font-size:14px;">${p.name}</div><div style="font-size: 12px; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;"><span>📅 Plan Ödemesi</span><span style="color: #ffd200; font-weight:bold;">₺${p.amt || '0'}</span></div></div>`;
-        }
-      });
-    }
-
-    // 2. Gerçekleşen Ödemeler Araması
-    if (typeof paidItems !== 'undefined' && Array.isArray(paidItems)) {
-      paidItems.forEach(pi => {
-        if ((pi.name && pi.name.toLowerCase().includes(query)) || (pi.amt && String(pi.amt).includes(query))) {
-          count++;
-          html += `<div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #00ebc7; color:#fff; margin-bottom:8px; font-family:sans-serif;"><div style="font-weight: bold; font-size:14px;">${pi.name}</div><div style="font-size: 12px; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;"><span>✅ Gerçekleşen Ödeme</span><span style="color: #00ebc7; font-weight:bold;">₺${pi.amt || '0'}</span></div></div>`;
-        }
-      });
-    }
-
-    // 3. Taksitler ve Krediler Araması
-    if (typeof creds !== 'undefined' && Array.isArray(creds)) {
-      creds.forEach(c => {
-        if ((c.name && c.name.toLowerCase().includes(query)) || (c.amt && String(c.amt).includes(query))) {
-          count++;
-          html += `<div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #ff5e62; color:#fff; margin-bottom:8px; font-family:sans-serif;"><div style="font-weight: bold; font-size:14px;">${c.name}</div><div style="font-size: 12px; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;"><span>💳 Taksit/Kredi</span><span style="color: #ff5e62; font-weight:bold;">₺${c.amt || '0'}</span></div></div>`;
-        }
-      });
-    }
-
-    // 4. Notlar Araması
-    if (typeof notes !== 'undefined' && Array.isArray(notes)) {
-      notes.forEach(n => {
-        if ((n.title && n.title.toLowerCase().includes(query)) || (n.text && n.text.toLowerCase().includes(query))) {
-          count++;
-          html += `<div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #ff8e3c; color:#fff; margin-bottom:8px; font-family:sans-serif;"><div style="font-weight: bold; font-size:14px;">${n.title || 'Başlıksız Not'}</div><div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">📝 ${n.text || ''}</div></div>`;
-        }
-      });
-    }
-
-    // 5. Rehber/IBAN Araması
-    if (typeof rehber !== 'undefined' && Array.isArray(rehber)) {
-      rehber.forEach(r => {
-        if ((r.name && r.name.toLowerCase().includes(query)) || (r.phone && r.phone.includes(query)) || (r.iban && r.iban.includes(query))) {
-          count++;
-          html += `<div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #38ef7d; color:#fff; margin-bottom:8px; font-family:sans-serif;"><div style="font-weight: bold; font-size:14px;">${r.name}</div><div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">${r.phone ? '📞 ' + r.phone : ''} ${r.iban ? ' | 🏦 ' + r.iban : ''}</div></div>`;
-        }
-      });
-    }
-
-    // Sonuçları Ekrana Yazdırma Durumu
-    if (count === 0) {
-      resDiv.innerHTML = '<div style="text-align: center; opacity: 0.5; padding: 20px 0; color:#fff;">Eşleşen sonuç bulunamadı.</div>';
-    } else {
-      resDiv.innerHTML = html;
-    }
-  }
-</script>
-
 <div id="ARAMAMODAL" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 99999999; font-family: sans-serif;">
-  <div style="max-width: 500px; width: 90%; background: #16161a; padding: 25px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 50px rgba(0,0,0,0.7); display:block !important; box-sizing: border-box;">
-    <h2 style="margin-top:0; margin-bottom:20px; color:#fff; font-size:22px; font-weight:600;">Verilerde <span style="color:#ffd200;">Ara</span></h2>
+  <div style="max-width: 500px; width: 90%; background: #1f2833; padding: 25px; border-radius: 20px; border: 1px solid rgba(102, 252, 241, 0.2); box-shadow: 0 20px 50px rgba(0,0,0,0.7); box-sizing: border-box;">
+    <h2 style="margin-top:0; margin-bottom:20px; color:#fff; font-size:22px; font-weight:600;">Verilerde <span style="color:#66fcf1;">Ara</span></h2>
     <div style="margin-bottom:15px;">
-      <input id="SRCHINP" type="text" placeholder="Kelime, kişi veya tutar yazın..." oninput="execGlobalSearch()" style="width:100%; padding:14px; border-radius:10px; background:#0f0e17; color:#fff; border:1px solid rgba(255,255,255,0.15); font-size:15px; outline:none; box-sizing: border-box;">
+      <input id="SRCHINP" type="text" placeholder="Kelime, kişi veya tutar yazın..." oninput="parent.execGlobalSearch()" style="width:100%; padding:14px; border-radius:10px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid rgba(255,255,255,0.15); font-size:15px; outline:none; box-sizing: border-box;">
     </div>
-    <div id="SRCHRES" style="max-height: 280px; overflow-y: auto; margin-top: 15px; display: flex; flex-direction: column; gap: 4px; padding-right:5px;">
+    <div id="SRCHRES" style="max-height: 280px; overflow-y: auto; margin-top: 15px; display: flex; flex-direction: column; gap: 6px; padding-right:5px;">
       <div style="text-align: center; opacity: 0.5; padding: 20px 0; color:#fff; font-size:14px;">Yazmaya başlayın...</div>
     </div>
     <div style="margin-top: 20px; display:flex; justify-content:flex-end;">
-      <button onclick="document.getElementById('ARAMAMODAL').style.display='none'" style="cursor:pointer; padding:10px 22px; background:#ef4444; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:14px;">Kapat</button>
+      <button onclick="document.getElementById('ARAMAMODAL').style.display='none'; parent.document.getElementById('ARAMAMODAL_FRAME').style.display='none';" style="cursor:pointer; padding:10px 22px; background:#ff4d4d; color:#fff; border:none; border-radius:10px; font-weight:bold; font-size:14px;">Kapat</button>
     </div>
   </div>
 </div>
 
 <button onclick="document.getElementById('ARAMAMODAL').style.display='flex'; setTimeout(() => document.getElementById('SRCHINP').focus(), 100);" 
-        style="position: fixed; bottom: 25px; right: 25px; z-index: 9999998; background: #ffd200; color: #000; border: none; padding: 15px 24px; font-weight: bold; font-size: 15px; border-radius: 50px; box-shadow: 0 4px 25px rgba(0,0,0,0.6); cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: sans-serif;">
-  🔍 Verilerde Ara
+        style="position: fixed; bottom: 85px; right: 20px; z-index: 99998; background: #66fcf1; color: #0b0c10; border: none; padding: 12px 20px; font-weight: bold; font-size: 14px; border-radius: 50px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: sans-serif;">
+  🔍 Ara
 </button>
