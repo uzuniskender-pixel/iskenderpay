@@ -1,7 +1,7 @@
-// İskenderPay Service Worker — v1.3
-const CACHE = 'ip-static-v2'; // Sürümü v2 yaptık, eski cache çöpe gidecek!;
+// İskenderPay Service Worker — v2.0 (v8.8 Güncelleme Garantili)
+const CACHE = 'ip-static-v2'; // Sürüm v2 yapıldı, eski statik cache'ler temizlenecek
 
-// Sadece statik dosyaları cache'le, index.html HİÇBİR ZAMAN
+// Sadece değişmeyen statik dosyalar cache'e alınır
 const STATIC = ['./icon-192.png', './icon-512.png', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -27,7 +27,7 @@ self.addEventListener('message', e => {
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Firebase, API → network only
+  // Firebase, API vb. dinamik veri akışları → Her zaman doğrudan internete gider (Asla cache'lenmez)
   if (url.includes('firestore.googleapis.com') ||
       url.includes('firebase') ||
       url.includes('exchangerate-api') ||
@@ -35,32 +35,36 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // index.html ve version.json → her zaman ağdan, offline'da cache fallback
+  // index.html, ana dizin ve version.json → Tarayıcı ve Sunucu kilidini kırmak için zaman damgasıyla (Cache-Busting) zorla çekilir!
   if (url.endsWith('/') || url.endsWith('index.html') || url.endsWith('version.json')) {
+    let newUrl = url;
+    
+    // URL sonuna benzersiz milisaniye ekleyerek tarayıcının eski hafızayı getirmesini engelliyoruz
+    if (url.endsWith('version.json')) {
+      newUrl = url + '?t=' + Date.now();
+    } else if (url.endsWith('index.html') || url.endsWith('/')) {
+      const baseUrl = url.endsWith('/') ? url + 'index.html' : url;
+      newUrl = baseUrl + '?t=' + Date.now();
+    }
+
     e.respondWith(
-      fetch(e.request).then(resp => {
-        // Başarılıysa version.json'u cache'le (offline için)
-        if (resp.ok && url.endsWith('version.json')) {
+      fetch(new Request(newUrl, { cache: 'no-store' })).then(resp => {
+        // Ağdan başarılı geldiyse ve istek version.json ise, sadece çevrimdışı kalma durumu için yedekle
+        if (resp.ok && url.includes('version.json')) {
           const clone = resp.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return resp;
-      }).catch(() => caches.match(e.request)) // offline fallback
+      }).catch(() => caches.match(e.request)) // Eğer internet tamamen yoksa, mecburen eski yedekten göster
     );
     return;
   }
 
-  // Diğer statik dosyalar → cache first
+  // Diğer yan resim, ikon, manifest gibi değişmeyen dosyalar → Önce hafızaya bak, yoksa internetten al
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(e.request).then(resp => {
-        if (resp?.ok && e.request.method === 'GET') {
-          const clone = resp.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return resp;
-      });
+      return fetch(e.request);
     })
   );
 });
