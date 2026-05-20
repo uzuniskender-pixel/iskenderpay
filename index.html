@@ -371,7 +371,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .pin-bio-reg{background:none;border:1px dashed var(--bdr);color:var(--muted);font-size:12px;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
 .pin-bio-reg:hover{border-color:var(--acc);color:var(--acc)}
 .pin-screen.hidden{display:none}
-@keyframes qrScan{0%{top:0}50%{top:calc(100% - 2px)}100%{top:0}}
 
 /* LAYOUT */
 .shell{display:flex;min-height:100vh;position:relative;z-index:1;max-width:100vw;overflow-x:hidden}
@@ -645,9 +644,6 @@ select.fi{appearance:none}
 <!-- PIN -->
 <div class="pin-screen" id="PS" style="display:none">
   <div class="pin-logo">🔐</div>
-  <div id="SW_UPDATE_BANNER" style="display:none;background:rgba(96,165,250,.15);border:1px solid var(--blue);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);text-align:center;max-width:300px;cursor:pointer" onclick="forceClearAndReload()">
-    🔄 Yeni sürüm yüklendi — Yenilemek için tıklayın
-  </div>
   <div class="pin-title">Ödeme <span>Takvimi</span></div>
   <div class="pin-sub">Şifrenizi girin</div>
   <div class="pin-wrap">
@@ -662,33 +658,6 @@ select.fi{appearance:none}
   <div id="BIO_REG_WRAP" style="display:none;margin-top:18px;text-align:center">
     <button class="pin-bio-reg" onclick="registerBiometric()">🔏 Parmak izi / Face ID kaydet</button>
     <div style="font-size:11px;color:var(--muted);margin-top:6px">Bir sonraki girişten itibaren şifre sormaz</div>
-  </div>
-  <button class="pin-bio-btn" id="QR_BTN" onclick="showQrLogin()" style="margin-top:8px;background:var(--surf);border:1px solid var(--bdr)">
-    📷 QR Kod ile Giriş
-  </button>
-</div>
-
-<!-- QR GİRİŞ MODALİ -->
-<div id="QR_MODAL" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:1100;flex-direction:column;align-items:center;justify-content:center;padding:24px">
-  <div style="background:var(--surf);border-radius:18px;padding:24px;max-width:340px;width:100%;text-align:center">
-    <div style="font-size:22px;margin-bottom:8px">📷 QR Kod ile Giriş</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Kamera ile QR kodu okutun veya kodu yapıştırın</div>
-    <div id="QR_VIDEO_WRAP" style="position:relative;width:100%;aspect-ratio:1;background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px">
-      <video id="QR_VIDEO" style="width:100%;height:100%;object-fit:cover" autoplay muted playsinline></video>
-      <div style="position:absolute;inset:0;border:2px solid var(--acc);border-radius:12px;pointer-events:none"></div>
-      <div id="QR_SCAN_LINE" style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc);animation:qrScan 2s linear infinite"></div>
-      <div id="QR_CAM_ERR" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-size:13px;padding:16px">
-        <div style="font-size:28px;margin-bottom:8px">🚫</div>
-        <div id="QR_CAM_ERR_MSG">Kamera açılamadı</div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">— veya —</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="QR_MANUAL" class="pin-inp" type="text" placeholder="QR kodunu buraya yapıştırın" style="font-size:13px;letter-spacing:0;flex:1;margin:0" onkeydown="if(event.key==='Enter')doQrLogin()">
-      <button onclick="doQrLogin()" style="background:var(--acc);border:none;color:#0f0e17;border-radius:10px;padding:0 14px;font-weight:700;font-size:13px;cursor:pointer">→</button>
-    </div>
-    <div id="QR_ERR" style="font-size:13px;color:var(--danger);min-height:18px;margin-bottom:10px"></div>
-    <button onclick="closeQrLogin()" style="width:100%;padding:11px;border-radius:10px;background:var(--surf2);border:1px solid var(--bdr);color:var(--txt);font-size:13px;cursor:pointer">İptal</button>
   </div>
 </div>
 
@@ -1379,115 +1348,90 @@ function loadNotes(){} // loadSecure içinde yapılıyor
 // ── PIN ─────────────────────────────────────────────────────────────────────
 let _plainPin = ''; // Sadece oturum boyunca bellekte, localStorage'a yazılmaz
 
-let _loginInProgress = false;
 async function doLogin() {
-  if (_loginInProgress) return;
   const val = document.getElementById('PI').value;
   if (!val) return;
 
-  _loginInProgress = true;
-  const btn = document.querySelector('.pin-btn');
-  const origBtnText = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Kontrol ediliyor…'; }
+  // pinSalt: PIN hash doğrulama + wrappedKey için
+  const pinSalt = await getSaltAsync('v5-pin-salt');
 
-  try {
-    // _fbUid hazır olana kadar bekle (max 5s)
-    if (!_fbUid) {
-      let waited = 0;
-      await new Promise(resolve => {
-        const check = setInterval(() => {
-          waited += 100;
-          if (_fbUid || waited >= 5000) { clearInterval(check); resolve(); }
-        }, 100);
-      });
+  // PIN hash'i Firebase'den al
+  let storedHash = null;
+  if (window._fbLoadPinHash) {
+    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
+  }
+
+  if (!storedHash) {
+    // İlk kullanım — şifreyi kaydet
+    if (val.length < 4) {
+      showPinErr('En az 4 karakter girmelisiniz!'); return;
     }
-
-    // pinSalt: PIN hash doğrulama + wrappedKey için
-    const pinSalt = await getSaltAsync('v5-pin-salt');
-
-    // PIN hash'i Firebase'den al
-    let storedHash = null;
-    if (window._fbLoadPinHash) {
-      try { storedHash = await window._fbLoadPinHash(); } catch(e) { console.warn('pinHash yükleme hatası:', e); }
-    }
-
-    if (!storedHash) {
-      // İlk kullanım — şifreyi kaydet
-      if (val.length < 4) {
-        showPinErr('En az 4 karakter girmelisiniz!'); return;
-      }
-      const hash = await hashPin(val, pinSalt);
-      // Firebase'e kaydet
-      if (window._fbSavePinHash) {
-        try { await window._fbSavePinHash(hash); } catch(e) { console.warn('pinHash kayıt hatası:', e); }
-      }
-      // İlk kullanım — rastgele dataKey üret, wrap et
-      const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
-      const wrappedB64 = await wrapDataKey(dataKeyRaw, val, pinSalt);
-      _saveWrappedKeyLocal(wrappedB64);
-      await _saveWrappedKeyFirebase(wrappedB64);
-      _dataKeyRaw = dataKeyRaw;
-      _plainPin   = val;
-      _cryptoKey  = await importDataKey(dataKeyRaw);
-      await loadSecure();
-      await migrateToV7();
-      await migrateToV7b();
-      enterApp();
-      return;
-    }
-
-    // Şifreyi doğrula
     const hash = await hashPin(val, pinSalt);
-    if (hash !== storedHash) {
-      const inp = document.getElementById('PI');
-      inp.classList.add('err');
-      document.getElementById('PE').textContent = 'Hatalı şifre!';
-      setTimeout(() => { inp.classList.remove('err'); document.getElementById('PE').textContent=''; inp.value=''; }, 1400);
-      return;
+    // Firebase'e kaydet
+    if (window._fbSavePinHash) {
+      try { await window._fbSavePinHash(hash); } catch(e) {}
     }
-
-    // v8: wrapped key'i al ve unwrap et
-    let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
-    if (!wrappedB64) {
-      // v5'ten gelen kullanıcı — migrateToV8 çalışacak
-      const dataSalt = await getSaltAsync('v5-data-salt');
-      _cryptoKey = await deriveKey(val, dataSalt);
-      _plainPin  = val;
-      try {
-        await loadSecure();
-        await migrateToV7();
-        await migrateToV7b();
-        await migrateToV8(val, pinSalt);
-      } catch(e) {
-        showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
-      }
-      enterApp();
-      return;
-    }
-    let unwrapped;
-    try {
-      unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt);
-    } catch(e) {
-      showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
-    }
-    _dataKeyRaw = unwrapped.rawBytes;
+    // İlk kullanım — rastgele dataKey üret, wrap et
+    const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
+    const wrappedB64 = await wrapDataKey(dataKeyRaw, val, pinSalt);
+    _saveWrappedKeyLocal(wrappedB64);
+    await _saveWrappedKeyFirebase(wrappedB64);
+    _dataKeyRaw = dataKeyRaw;
     _plainPin   = val;
-    _cryptoKey  = unwrapped.cryptoKey;
+    _cryptoKey  = await importDataKey(dataKeyRaw);
+    await loadSecure();
+    await migrateToV7();
+    await migrateToV7b();
+    enterApp();
+    return;
+  }
+
+  // Şifreyi doğrula
+  const hash = await hashPin(val, pinSalt);
+  if (hash !== storedHash) {
+    const inp = document.getElementById('PI');
+    inp.classList.add('err');
+    document.getElementById('PE').textContent = 'Hatalı şifre!';
+    setTimeout(() => { inp.classList.remove('err'); document.getElementById('PE').textContent=''; inp.value=''; }, 1400);
+    return;
+  }
+
+  // v8: wrapped key'i al ve unwrap et
+  let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
+  if (!wrappedB64) {
+    // v5'ten gelen kullanıcı — migrateToV8 çalışacak
+    // Geçici olarak eski yöntemle key türet, migrasyon içinde wrap edilecek
+    const dataSalt = await getSaltAsync('v5-data-salt');
+    _cryptoKey = await deriveKey(val, dataSalt);
+    _plainPin  = val;
     try {
       await loadSecure();
       await migrateToV7();
       await migrateToV7b();
+      await migrateToV8(val, pinSalt); // ← v8'e yükselt
     } catch(e) {
       showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
     }
     enterApp();
-  } catch(e) {
-    console.error('doLogin kritik hata:', e);
-    showPinErr('Giriş hatası: ' + (e.message || e));
-  } finally {
-    _loginInProgress = false;
-    if (btn) { btn.disabled = false; btn.textContent = origBtnText; }
+    return;
   }
+  let unwrapped;
+  try {
+    unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt);
+  } catch(e) {
+    showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
+  }
+  _dataKeyRaw = unwrapped.rawBytes;
+  _plainPin   = val;
+  _cryptoKey  = unwrapped.cryptoKey;
+  try {
+    await loadSecure();
+    await migrateToV7();
+    await migrateToV7b();
+  } catch(e) {
+    showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
+  }
+  enterApp();
 }
 
 // ── BİYOMETRİK GİRİŞ (WebAuthn) ──────────────────────────────────────────────
@@ -1665,107 +1609,6 @@ function xEnc(str, key) {
   for (let i = 0; i < str.length; i++)
     r += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
   return btoa(unescape(encodeURIComponent(r)));
-}
-
-
-// ── QR KOD GİRİŞ ────────────────────────────────────────────────────────────
-let _qrStream = null;
-let _qrScanInterval = null;
-let _qrCanvas = null;
-let _qrCtx = null;
-
-function showQrLogin() {
-  const modal = document.getElementById('QR_MODAL');
-  modal.style.display = 'flex';
-  document.getElementById('QR_ERR').textContent = '';
-  document.getElementById('QR_MANUAL').value = '';
-  _startQrCamera();
-}
-
-function closeQrLogin() {
-  _stopQrCamera();
-  document.getElementById('QR_MODAL').style.display = 'none';
-}
-
-async function _startQrCamera() {
-  const errDiv = document.getElementById('QR_CAM_ERR');
-  const errMsg = document.getElementById('QR_CAM_ERR_MSG');
-  errDiv.style.display = 'none';
-  try {
-    _qrStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
-    });
-    const video = document.getElementById('QR_VIDEO');
-    video.srcObject = _qrStream;
-    await video.play();
-    _qrCanvas = document.createElement('canvas');
-    _qrCtx = _qrCanvas.getContext('2d', { willReadFrequently: true });
-    _qrScanInterval = setInterval(_qrScanFrame, 300);
-  } catch(e) {
-    errDiv.style.display = 'flex';
-    errMsg.textContent = e.name === 'NotAllowedError'
-      ? 'Kamera izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.'
-      : ('Kamera açılamadı: ' + (e.message || e.name));
-  }
-}
-
-function _stopQrCamera() {
-  if (_qrScanInterval) { clearInterval(_qrScanInterval); _qrScanInterval = null; }
-  if (_qrStream) { _qrStream.getTracks().forEach(t => t.stop()); _qrStream = null; }
-  const video = document.getElementById('QR_VIDEO');
-  if (video) { video.srcObject = null; }
-}
-
-function _qrScanFrame() {
-  const video = document.getElementById('QR_VIDEO');
-  if (!video || video.readyState < 2 || !_qrCanvas) return;
-  const w = video.videoWidth, h = video.videoHeight;
-  if (!w || !h) return;
-  _qrCanvas.width = w; _qrCanvas.height = h;
-  _qrCtx.drawImage(video, 0, 0, w, h);
-  const imgData = _qrCtx.getImageData(0, 0, w, h);
-  if (window.BarcodeDetector) {
-    // Modern API
-    const bd = new BarcodeDetector({ formats: ['qr_code'] });
-    bd.detect(video).then(codes => {
-      if (codes && codes.length > 0) {
-        _handleQrResult(codes[0].rawValue);
-      }
-    }).catch(() => {});
-  } else if (typeof jsQR !== 'undefined') {
-    const code = jsQR(imgData.data, w, h);
-    if (code) _handleQrResult(code.data);
-  }
-  // BarcodeDetector da jsQR da yoksa kullanıcı manuel giriş yapar
-}
-
-async function _handleQrResult(raw) {
-  if (!raw) return;
-  _stopQrCamera();
-  document.getElementById('QR_MODAL').style.display = 'none';
-  document.getElementById('QR_MANUAL').value = raw;
-  await _processQrToken(raw);
-}
-
-async function doQrLogin() {
-  const raw = document.getElementById('QR_MANUAL').value.trim();
-  if (!raw) { document.getElementById('QR_ERR').textContent = 'QR kodu boş olamaz.'; return; }
-  _stopQrCamera();
-  document.getElementById('QR_MODAL').style.display = 'none';
-  await _processQrToken(raw);
-}
-
-async function _processQrToken(raw) {
-  // QR format: "iskenderpay-login:{pin}" veya düz PIN
-  let pin = raw;
-  if (raw.startsWith('iskenderpay-login:')) {
-    pin = raw.slice('iskenderpay-login:'.length);
-  }
-  if (!pin) { showPinErr('QR kodu geçersiz.'); return; }
-  // PIN alanına yaz ve doLogin çalıştır
-  const piEl = document.getElementById('PI');
-  piEl.value = pin;
-  await doLogin();
 }
 
 function showPinErr(msg) {
@@ -2749,8 +2592,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.18';
-const APP_BUILD   = '20260520-11';
+const APP_VERSION = 'v8.16';
+const APP_BUILD   = '20260520-03';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -3135,11 +2978,13 @@ async function manualCheckUpdate() {
   const btnEl    = document.getElementById('UPD_BTN');
   if (statusEl) statusEl.textContent = 'Kontrol ediliyor...';
   try {
-    const stamp = await _fetchBuildStamp();
-    if (stamp && stamp !== _knownBuild) {
-      if (statusEl) statusEl.textContent = '🆕 Yeni sürüm mevcut';
+    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) throw new Error('Sunucuya ulaşılamadı');
+    const d = await r.json();
+    if (d.build && d.build !== _knownBuild) {
+      if (statusEl) statusEl.textContent = '🆕 Yeni sürüm mevcut: v' + d.v;
       if (btnEl) btnEl.style.display = '';
-      showUpdBanner();
+      showUpdBanner(d.v);
     } else {
       if (statusEl) statusEl.textContent = '✅ Güncel sürümdesiniz (v' + APP_VERSION + ')';
       if (btnEl) btnEl.style.display = 'none';
@@ -3659,73 +3504,44 @@ function rhbDel(id) {
 
 // ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
-// ── CACHE TEMİZLEME (debug / force refresh) ──────────────────────────────────
-async function forceClearAndReload() {
-  try {
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k => caches.delete(k)));
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(regs.map(r => r.unregister()));
-  } catch(e) {}
-  window.location.reload(true);
-}
-
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js')
-    .then(reg => {
-      console.log('SW kayıtlı');
-      // Hemen güncelleme kontrolü yap — eski SW varsa yeni versiyonu indir
-      reg.update();
-      // Yeni SW yüklenince banner göster
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
-        if (!newSW) return;
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // Yeni SW hazır — banner göster
-            const banner = document.getElementById('SW_UPDATE_BANNER');
-            if (banner) banner.style.display = 'block';
-          }
-        });
-      });
-      // Yeni SW aktive olunca sayfayı yenile
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
-    })
+    .then(() => console.log('SW kayıtlı'))
     .catch(err => console.warn('SW hatası:', err));
 }
 
 
 // ── VERSİYON POLLING ─────────────────────────────────────────────────────────
-// Versiyon takibi: version.json gerektirmez.
-// index.html'in ETag / Last-Modified header'ı her push'ta otomatik değişir.
+// Single source of truth: version.json
+// _knownBuild; initBuild() ile sayfa açılışında set edilir, APP_BUILD'e bağımlılık yok
 let _knownBuild = null;
 
-async function _fetchBuildStamp() {
-  const r = await fetch('./index.html?t=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
-  return r.headers.get('etag') || r.headers.get('last-modified') || null;
-}
-
 async function initBuild() {
-  try { _knownBuild = await _fetchBuildStamp(); } catch(e) {}
+  try {
+    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.build) _knownBuild = d.build;
+  } catch(e) {}
 }
 
 async function checkVersion() {
   try {
-    const stamp = await _fetchBuildStamp();
-    if (stamp && stamp !== _knownBuild) {
-      _knownBuild = stamp;
-      showUpdBanner();
+    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.build && d.build !== _knownBuild) {
+      _knownBuild = d.build;
+      showUpdBanner(d.v);
     }
   } catch(e) {}
 }
 
-function showUpdBanner() {
+function showUpdBanner(newVer) {
   const b = document.getElementById('upd-banner');
   if (!b) return;
   const txt = b.querySelector('.upd-txt');
-  if (txt) txt.textContent = '🔄 Yeni sürüm mevcut';
+  if (txt) txt.textContent = '🔄 Yeni sürüm: ' + (newVer || '');
   b.classList.add('show');
 }
 
