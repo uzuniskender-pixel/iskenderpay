@@ -2978,13 +2978,11 @@ async function manualCheckUpdate() {
   const btnEl    = document.getElementById('UPD_BTN');
   if (statusEl) statusEl.textContent = 'Kontrol ediliyor...';
   try {
-    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
-    if (!r.ok) throw new Error('Sunucuya ulaşılamadı');
-    const d = await r.json();
-    if (d.build && d.build !== _knownBuild) {
-      if (statusEl) statusEl.textContent = '🆕 Yeni sürüm mevcut: v' + d.v;
+    const stamp = await _fetchBuildStamp();
+    if (stamp && stamp !== _knownBuild) {
+      if (statusEl) statusEl.textContent = '🆕 Yeni sürüm mevcut';
       if (btnEl) btnEl.style.display = '';
-      showUpdBanner(d.v);
+      showUpdBanner();
     } else {
       if (statusEl) statusEl.textContent = '✅ Güncel sürümdesiniz (v' + APP_VERSION + ')';
       if (btnEl) btnEl.style.display = 'none';
@@ -3512,36 +3510,34 @@ if ('serviceWorker' in navigator) {
 
 
 // ── VERSİYON POLLING ─────────────────────────────────────────────────────────
-// Single source of truth: version.json
-// _knownBuild; initBuild() ile sayfa açılışında set edilir, APP_BUILD'e bağımlılık yok
+// Versiyon takibi: version.json gerektirmez.
+// index.html'in ETag / Last-Modified header'ı her push'ta otomatik değişir.
 let _knownBuild = null;
 
+async function _fetchBuildStamp() {
+  const r = await fetch('./index.html?t=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+  return r.headers.get('etag') || r.headers.get('last-modified') || null;
+}
+
 async function initBuild() {
-  try {
-    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
-    if (!r.ok) return;
-    const d = await r.json();
-    if (d.build) _knownBuild = d.build;
-  } catch(e) {}
+  try { _knownBuild = await _fetchBuildStamp(); } catch(e) {}
 }
 
 async function checkVersion() {
   try {
-    const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
-    if (!r.ok) return;
-    const d = await r.json();
-    if (d.build && d.build !== _knownBuild) {
-      _knownBuild = d.build;
-      showUpdBanner(d.v);
+    const stamp = await _fetchBuildStamp();
+    if (stamp && stamp !== _knownBuild) {
+      _knownBuild = stamp;
+      showUpdBanner();
     }
   } catch(e) {}
 }
 
-function showUpdBanner(newVer) {
+function showUpdBanner() {
   const b = document.getElementById('upd-banner');
   if (!b) return;
   const txt = b.querySelector('.upd-txt');
-  if (txt) txt.textContent = '🔄 Yeni sürüm: ' + (newVer || '');
+  if (txt) txt.textContent = '🔄 Yeni sürüm mevcut';
   b.classList.add('show');
 }
 
