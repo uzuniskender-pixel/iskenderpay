@@ -645,6 +645,9 @@ select.fi{appearance:none}
 <!-- PIN -->
 <div class="pin-screen" id="PS" style="display:none">
   <div class="pin-logo">🔐</div>
+  <div id="SW_UPDATE_BANNER" style="display:none;background:rgba(96,165,250,.15);border:1px solid var(--blue);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);text-align:center;max-width:300px;cursor:pointer" onclick="forceClearAndReload()">
+    🔄 Yeni sürüm yüklendi — Yenilemek için tıklayın
+  </div>
   <div class="pin-title">Ödeme <span>Takvimi</span></div>
   <div class="pin-sub">Şifrenizi girin</div>
   <div class="pin-wrap">
@@ -2746,8 +2749,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.17';
-const APP_BUILD   = '20260520-10';
+const APP_VERSION = 'v8.18';
+const APP_BUILD   = '20260520-11';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -3656,9 +3659,40 @@ function rhbDel(id) {
 
 // ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
+// ── CACHE TEMİZLEME (debug / force refresh) ──────────────────────────────────
+async function forceClearAndReload() {
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+  } catch(e) {}
+  window.location.reload(true);
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js')
-    .then(() => console.log('SW kayıtlı'))
+    .then(reg => {
+      console.log('SW kayıtlı');
+      // Hemen güncelleme kontrolü yap — eski SW varsa yeni versiyonu indir
+      reg.update();
+      // Yeni SW yüklenince banner göster
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (!newSW) return;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            // Yeni SW hazır — banner göster
+            const banner = document.getElementById('SW_UPDATE_BANNER');
+            if (banner) banner.style.display = 'block';
+          }
+        });
+      });
+      // Yeni SW aktive olunca sayfayı yenile
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    })
     .catch(err => console.warn('SW hatası:', err));
 }
 
