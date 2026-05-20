@@ -2199,8 +2199,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.7';
-const APP_BUILD   = '20260510-20';
+const APP_VERSION = 'v8.8';
+const APP_BUILD   = '20260520-01';
 
 function renderAI(){
   const el = document.getElementById('AI');
