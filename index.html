@@ -918,7 +918,44 @@ select.fi{appearance:none}
 
 <script>
 // ── CRYPTO (Web Crypto API — AES-256-GCM + PBKDF2) ────────────────────────
-let _cryptoKey = null; // Oturum boyunca bellekte tutulan anahtar
+let _cryptoKey  = null; // Oturum boyunca bellekte tutulan AES-GCM anahtarı
+let _dataKeyRaw = null; // Ham 32 byte dataKey — PIN değişiminde wrap için tutulur
+
+// dataKey'i import et (AES-GCM için)
+async function importDataKey(rawBytes) {
+  return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+// dataKey'i PIN'den türetilen AES-KW anahtarıyla wrap et
+async function wrapDataKey(dataKeyRaw, pin, pinSalt) {
+  const enc = new TextEncoder();
+  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const kwKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
+    kwMat, { name: 'AES-KW', length: 256 }, false, ['wrapKey']
+  );
+  const keyToWrap = await crypto.subtle.importKey('raw', dataKeyRaw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+  const wrapped = await crypto.subtle.wrapKey('raw', keyToWrap, kwKey, 'AES-KW');
+  return btoa(String.fromCharCode(...new Uint8Array(wrapped)));
+}
+
+// wrap'lı dataKey'i PIN ile unwrap et, ham byte dizisi olarak döndür
+async function unwrapDataKey(wrappedB64, pin, pinSalt) {
+  const enc = new TextEncoder();
+  const wrapped = Uint8Array.from(atob(wrappedB64), c => c.charCodeAt(0));
+  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const kwKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
+    kwMat, { name: 'AES-KW', length: 256 }, false, ['unwrapKey']
+  );
+  const unwrapped = await crypto.subtle.unwrapKey(
+    'raw', wrapped, kwKey, 'AES-KW',
+    { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
+  );
+  // Ham byte'ları da sakla (PIN değişiminde yeniden wrap için)
+  const exportedRaw = await crypto.subtle.exportKey('raw', unwrapped);
+  return { cryptoKey: unwrapped, rawBytes: new Uint8Array(exportedRaw) };
+}
 
 async function deriveKey(password, salt) {
   const enc = new TextEncoder();
@@ -975,6 +1012,29 @@ function getSalt(key) {
   let s = localStorage.getItem(key);
   if (!s) { const arr = crypto.getRandomValues(new Uint8Array(16)); s = btoa(String.fromCharCode(...arr)); localStorage.setItem(key, s); }
   return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+
+// v8 wrapped key — localStorage + Firebase
+function _getWrappedKey() {
+  return localStorage.getItem('v8-wrapped-key');
+}
+function _saveWrappedKeyLocal(wrappedB64) {
+  localStorage.setItem('v8-wrapped-key', wrappedB64);
+}
+async function _saveWrappedKeyFirebase(wrappedB64) {
+  if (!window._fbDb || !window._fbUid) return;
+  try {
+    await window._fbDb.collection('users').doc(window._fbUid + '_meta').set(
+      { wrappedKey: wrappedB64 }, { merge: true }
+    );
+  } catch(e) { console.warn('wrappedKey Firebase kayıt hatası:', e); }
+}
+async function _loadWrappedKeyFirebase() {
+  if (!window._fbDb || !window._fbUid) return null;
+  try {
+    const snap = await window._fbDb.collection('users').doc(window._fbUid + '_meta').get();
+    return snap.exists ? (snap.data().wrappedKey || null) : null;
+  } catch(e) { return null; }
 }
 
 // ── STATE ───────────────────────────────────────────────────────────────────
@@ -1181,6 +1241,50 @@ async function migrateToV7b() {
   console.log('v7b migrasyon tamamlandı — groupId ay-çakışma algoritması ile düzeltildi');
 }
 
+// ── V8 MİGRASYON: deriveKey(PIN) → wrapDataKey(dataKey, PIN) ─────────────────
+async function migrateToV8(pin, pinSalt) {
+  const migKey = 'v8-migrated-' + (_fbUid || 'local');
+  if (localStorage.getItem(migKey)) return;
+
+  // Bu noktada _cryptoKey v5 yöntemiyle (deriveKey) türetilmiş, veri yüklü
+  // 1. Yeni rastgele dataKey üret
+  const dataKeyRaw   = crypto.getRandomValues(new Uint8Array(32));
+  const newCryptoKey = await importDataKey(dataKeyRaw);
+
+  // 2. Tüm plan verilerini yeni key ile yeniden şifrele
+  const planIds = ['plan1', 'plan2'];
+  for (const planId of planIds) {
+    const encOld = await (async () => {
+      if (window._fbLoad && window._planId === planId) {
+        try { return await window._fbLoad(); } catch(e) {}
+      }
+      return localStorage.getItem('v5-data-' + planId) || null;
+    })();
+    if (!encOld) continue;
+    try {
+      const data   = await decryptData(encOld, _cryptoKey); // eski key ile çöz
+      const encNew = await encryptData(data, newCryptoKey); // yeni key ile şifrele
+      localStorage.setItem('v5-data-' + planId, encNew);
+      // Firebase: sadece aktif planı güncelle (diğer plan login'de güncellenir)
+      if (window._fbSave && window._planId === planId) {
+        try { await window._fbSave(encNew); } catch(e) {}
+      }
+    } catch(e) { console.warn('v8 migrasyon plan ' + planId + ' atlandı:', e); }
+  }
+
+  // 3. dataKey'i PIN ile wrap et, kaydet
+  const wrappedB64 = await wrapDataKey(dataKeyRaw, pin, pinSalt);
+  _saveWrappedKeyLocal(wrappedB64);
+  await _saveWrappedKeyFirebase(wrappedB64);
+
+  // 4. Oturumdaki key'leri güncelle
+  _dataKeyRaw = dataKeyRaw;
+  _cryptoKey  = newCryptoKey;
+
+  localStorage.setItem(migKey, '1');
+  console.log('v8 migrasyon tamamlandı — dataKey mimarisine geçildi');
+}
+
 // compat: xDec eski v4 notlar için hâlâ gerekli
 function xDec(e,p){try{const t=decodeURIComponent(escape(atob(e)));let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return r;}catch(e){return null;}}
 function xEnc(t,p){let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return btoa(unescape(encodeURIComponent(r)));}
@@ -1198,9 +1302,8 @@ async function doLogin() {
   const val = document.getElementById('PI').value;
   if (!val) return;
 
-  // Salt'ları Firebase'den al (cihazlar arası senkron)
-  const pinSalt  = await getSaltAsync('v5-pin-salt');
-  const dataSalt = await getSaltAsync('v5-data-salt');
+  // pinSalt: PIN hash doğrulama + wrappedKey için
+  const pinSalt = await getSaltAsync('v5-pin-salt');
 
   // PIN hash'i Firebase'den al
   let storedHash = null;
@@ -1218,8 +1321,14 @@ async function doLogin() {
     if (window._fbSavePinHash) {
       try { await window._fbSavePinHash(hash); } catch(e) {}
     }
+    // İlk kullanım — rastgele dataKey üret, wrap et
+    const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
+    const wrappedB64 = await wrapDataKey(dataKeyRaw, val, pinSalt);
+    _saveWrappedKeyLocal(wrappedB64);
+    await _saveWrappedKeyFirebase(wrappedB64);
+    _dataKeyRaw = dataKeyRaw;
     _plainPin   = val;
-    _cryptoKey  = await deriveKey(val, dataSalt);
+    _cryptoKey  = await importDataKey(dataKeyRaw);
     await loadSecure();
     await migrateToV7();
     await migrateToV7b();
@@ -1237,8 +1346,34 @@ async function doLogin() {
     return;
   }
 
-  _plainPin  = val;
-  _cryptoKey = await deriveKey(val, dataSalt);
+  // v8: wrapped key'i al ve unwrap et
+  let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
+  if (!wrappedB64) {
+    // v5'ten gelen kullanıcı — migrateToV8 çalışacak
+    // Geçici olarak eski yöntemle key türet, migrasyon içinde wrap edilecek
+    const dataSalt = await getSaltAsync('v5-data-salt');
+    _cryptoKey = await deriveKey(val, dataSalt);
+    _plainPin  = val;
+    try {
+      await loadSecure();
+      await migrateToV7();
+      await migrateToV7b();
+      await migrateToV8(val, pinSalt); // ← v8'e yükselt
+    } catch(e) {
+      showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
+    }
+    enterApp();
+    return;
+  }
+  let unwrapped;
+  try {
+    unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt);
+  } catch(e) {
+    showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
+  }
+  _dataKeyRaw = unwrapped.rawBytes;
+  _plainPin   = val;
+  _cryptoKey  = unwrapped.cryptoKey;
   try {
     await loadSecure();
     await migrateToV7();
@@ -1400,8 +1535,7 @@ async function chPass() {
   const nw2  = document.getElementById('NP2').value;
   const msg  = document.getElementById('PM');
 
-  const pinSalt  = await getSaltAsync('v5-pin-salt');
-  const dataSalt = await getSaltAsync('v5-data-salt');
+  const pinSalt = await getSaltAsync('v5-pin-salt');
 
   let storedHash = null;
   if (window._fbLoadPinHash) {
@@ -1417,9 +1551,12 @@ async function chPass() {
   if (window._fbSavePinHash) {
     try { await window._fbSavePinHash(newHash); } catch(e) {}
   }
-  _plainPin  = nw;
-  _cryptoKey = await deriveKey(nw, dataSalt);
-  await saveSecureNow();
+  // dataKey değişmez — sadece yeni PIN ile yeniden wrap edilir
+  const newWrappedB64 = await wrapDataKey(_dataKeyRaw, nw, pinSalt);
+  _saveWrappedKeyLocal(newWrappedB64);
+  await _saveWrappedKeyFirebase(newWrappedB64);
+  _plainPin = nw;
+  // _cryptoKey ve _dataKeyRaw değişmez, veri dokunulmaz
 
   msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
   ['CP','NP','NP2'].forEach(id => document.getElementById(id).value='');
