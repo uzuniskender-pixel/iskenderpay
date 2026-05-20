@@ -14,11 +14,14 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Ödeme Takvimi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script>
-// ── FİREBASE BAŞLAT ──────────────────────────────────────────────────────────
+<script type="module">
+// ── FİREBASE MODULAR v10 ─────────────────────────────────────────────────────
+import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider,
+         signInWithPopup, signInWithRedirect,
+         getRedirectResult, onAuthStateChanged,
+         signOut }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
@@ -30,24 +33,32 @@ const firebaseConfig = {
   measurementId: "G-SPPX7F1BDY"
 };
 
-firebase.initializeApp(firebaseConfig);
-const _fbAuth = firebase.auth();
-const _fbDb   = firebase.firestore();
+const _app    = initializeApp(firebaseConfig);
+const _auth   = getAuth(_app);
+const _db     = getFirestore(_app);
 let   _fbUid  = null;
 window._fbUid = null;
 
 // Aktif plan (plan1 veya plan2)
 window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
+// ── FIRESTORE YARDIMCI ────────────────────────────────────────────────────────
+function _planDoc(planId) {
+  return doc(_db, 'users', _fbUid + '_' + (planId || window._planId));
+}
+function _metaDoc() {
+  return doc(_db, 'users', _fbUid + '_meta');
+}
+
 // Firebase'e veri kaydet
 window._fbSave = async function(encData) {
   if (!_fbUid) return;
-  await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).set({ data: encData, updatedAt: Date.now() }, { merge: true });
+  await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
 // Polling tabanlı sync (onSnapshot yerine — mobilde daha güvenilir)
 window._syncTimer   = null;
-window._lastUpdated = 0;   // Firestore'dan gelen son updatedAt
+window._lastUpdated = 0;
 window._syncCb      = null;
 
 window._fbStartListen = function(onData) {
@@ -55,15 +66,14 @@ window._fbStartListen = function(onData) {
   window._syncCb = onData;
   if (window._syncTimer) clearInterval(window._syncTimer);
   window._syncTimer = setInterval(window._fbPoll, 30000); // 30 sn
-  // İlk poll'ı biraz geciktir (loadSecure henüz bitmemiş olabilir)
   setTimeout(window._fbPoll, 5000);
 };
 
 window._fbPoll = async function() {
   if (!_fbUid || !window._planId || !window._syncCb) return;
   try {
-    const snap = await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).get();
-    if (!snap.exists) { setSyncDot('active'); return; }
+    const snap = await getDoc(_planDoc());
+    if (!snap.exists()) { setSyncDot('active'); return; }
     const d = snap.data();
     const ts = d.updatedAt || 0;
     if (ts > window._lastUpdated && window._lastUpdated > 0) {
@@ -75,7 +85,6 @@ window._fbPoll = async function() {
     setSyncDot('active');
   } catch(e) {
     console.warn('Sync poll hatası:', e.message || e);
-    // Hata sessiz geç — dot gri kalır, bir sonraki poll'da yeşile döner
   }
 };
 
@@ -87,8 +96,8 @@ window._fbStopListen = function() {
 // Firebase'den veri yükle
 window._fbLoad = async function() {
   if (!_fbUid) return null;
-  const snap = await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).get();
-  return snap.exists ? snap.data().data : null;
+  const snap = await getDoc(_planDoc());
+  return snap.exists() ? snap.data().data : null;
 };
 
 // Firebase'e salt kaydet
@@ -96,14 +105,14 @@ window._fbSaveSalt = async function(saltKey, saltVal) {
   if (!_fbUid) return;
   const update = {};
   update['salts.' + saltKey] = saltVal;
-  await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).set(update, { merge: true });
+  await setDoc(_planDoc(), update, { merge: true });
 };
 
 // Firebase'den salt yükle
 window._fbLoadSalt = async function(saltKey) {
   if (!_fbUid) return null;
-  const snap = await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).get();
-  if (!snap.exists) return null;
+  const snap = await getDoc(_planDoc());
+  if (!snap.exists()) return null;
   const salts = snap.data().salts || {};
   return salts[saltKey] || null;
 };
@@ -111,25 +120,37 @@ window._fbLoadSalt = async function(saltKey) {
 // Firebase'e PIN hash kaydet
 window._fbSavePinHash = async function(hash) {
   if (!_fbUid) return;
-  await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).set({ pinHash: hash }, { merge: true });
+  await setDoc(_planDoc(), { pinHash: hash }, { merge: true });
 };
 
 // Firebase'den PIN hash yükle
 window._fbLoadPinHash = async function() {
   if (!_fbUid) return null;
-  const snap = await _fbDb.collection('users').doc(_fbUid + '_' + window._planId).get();
-  return snap.exists ? (snap.data().pinHash || null) : null;
+  const snap = await getDoc(_planDoc());
+  return snap.exists() ? (snap.data().pinHash || null) : null;
 };
 
+// v8 wrapped key — Firebase _meta document
+window._fbSaveWrappedKey = async function(wrappedB64) {
+  if (!_fbUid) return;
+  await setDoc(_metaDoc(), { wrappedKey: wrappedB64 }, { merge: true });
+};
+window._fbLoadWrappedKey = async function() {
+  if (!_fbUid) return null;
+  try {
+    const snap = await getDoc(_metaDoc());
+    return snap.exists() ? (snap.data().wrappedKey || null) : null;
+  } catch(e) { return null; }
+};
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
 let _redirectChecked = false;
 
-// Önce redirect sonucunu kontrol et
-_fbAuth.getRedirectResult().then((result) => {
+getRedirectResult(_auth).then((result) => {
   if (result && result.user) console.log('Redirect ile giriş başarılı:', result.user.email);
 }).catch(e => console.warn('redirect result error:', e)).finally(() => { _redirectChecked = true; });
 
-// Kullanıcı durumunu izle
-_fbAuth.onAuthStateChanged((user) => {
+onAuthStateChanged(_auth, (user) => {
   const loadEl = document.getElementById('LOAD');
   if (loadEl) loadEl.style.display = 'none';
 
@@ -141,8 +162,7 @@ _fbAuth.onAuthStateChanged((user) => {
     _fbUid = user.uid;
     window._fbUid = user.uid;
     if (glsEl) glsEl.style.display = 'none';
-    // Plan seçim ekranını göster
-    const plsEl = document.getElementById('PLS');
+    const plsEl   = document.getElementById('PLS');
     const plsUser = document.getElementById('PLS_USER');
     if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
     if (plsEl) plsEl.style.display = 'flex';
@@ -151,7 +171,6 @@ _fbAuth.onAuthStateChanged((user) => {
   } else {
     _fbUid = null;
     window._fbUid = null;
-    // Redirect kontrol edilmeden Google ekranını gösterme
     setTimeout(() => {
       if (!_fbUid) {
         if (glsEl) glsEl.style.display = 'flex';
@@ -167,11 +186,11 @@ _fbAuth.onAuthStateChanged((user) => {
 // Google ile giriş — popup kullan
 window.doGoogleLogin = async function() {
   try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await _fbAuth.signInWithPopup(provider);
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(_auth, provider);
   } catch(e) {
     if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
-      try { await _fbAuth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); } catch(e2) { alert('Giriş başarısız: ' + e2.message); }
+      try { await signInWithRedirect(_auth, new GoogleAuthProvider()); } catch(e2) { alert('Giriş başarısız: ' + e2.message); }
     } else {
       alert('Giriş başarısız: ' + e.message);
     }
@@ -181,8 +200,10 @@ window.doGoogleLogin = async function() {
 // Çıkış
 window.doGoogleSignOut = async function() {
   if (!confirm('Çıkış yapmak istiyor musunuz?')) return;
-  await _fbAuth.signOut();
+  await signOut(_auth);
 };
+</script>
+<script>
 
 function execGlobalSearch() {
   const query = document.getElementById('SRCHINP').value.trim().toLowerCase();
@@ -280,6 +301,7 @@ function execGlobalSearch() {
     resDiv.innerHTML = html;
   }
 }
+
 
 </script>
 <style>
@@ -1022,19 +1044,15 @@ function _saveWrappedKeyLocal(wrappedB64) {
   localStorage.setItem('v8-wrapped-key', wrappedB64);
 }
 async function _saveWrappedKeyFirebase(wrappedB64) {
-  if (!window._fbDb || !window._fbUid) return;
-  try {
-    await window._fbDb.collection('users').doc(window._fbUid + '_meta').set(
-      { wrappedKey: wrappedB64 }, { merge: true }
-    );
-  } catch(e) { console.warn('wrappedKey Firebase kayıt hatası:', e); }
+  if (window._fbSaveWrappedKey) {
+    try { await window._fbSaveWrappedKey(wrappedB64); } catch(e) { console.warn('wrappedKey Firebase kayıt hatası:', e); }
+  }
 }
 async function _loadWrappedKeyFirebase() {
-  if (!window._fbDb || !window._fbUid) return null;
-  try {
-    const snap = await window._fbDb.collection('users').doc(window._fbUid + '_meta').get();
-    return snap.exists ? (snap.data().wrappedKey || null) : null;
-  } catch(e) { return null; }
+  if (window._fbLoadWrappedKey) {
+    return await window._fbLoadWrappedKey();
+  }
+  return null;
 }
 
 // ── STATE ───────────────────────────────────────────────────────────────────
@@ -2336,8 +2354,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.9';
-const APP_BUILD   = '20260520-02';
+const APP_VERSION = 'v8.10';
+const APP_BUILD   = '20260520-03';
 
 function renderAI(){
   const el = document.getElementById('AI');
