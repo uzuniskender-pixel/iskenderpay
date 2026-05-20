@@ -222,14 +222,15 @@ function execGlobalSearch() {
 
   if (typeof pays !== 'undefined' && Array.isArray(pays)) {
     pays.forEach(p => {
-      if ((p.name && p.name.toLowerCase().includes(query)) || (p.amt && String(p.amt).includes(query))) {
+      if ((p.name && p.name.toLowerCase().includes(query)) || (p.amount && String(p.amount).includes(query))) {
         count++;
+        const amtStr = p.amount ? Number(p.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ffd200;">
             <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${p.name}</div>
             <div style="font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;">
               <span>📅 Plan Ödemesi (${p.date || ''})</span>
-              <span class="mono" style="color: #ffd200;">₺${p.amt || '0'}</span>
+              <span class="mono" style="color: #ffd200;">₺${amtStr}</span>
             </div>
           </div>`;
       }
@@ -238,14 +239,15 @@ function execGlobalSearch() {
 
   if (typeof paidItems !== 'undefined' && Array.isArray(paidItems)) {
     paidItems.forEach(pi => {
-      if ((pi.name && pi.name.toLowerCase().includes(query)) || (pi.amt && String(pi.amt).includes(query))) {
+      if ((pi.name && pi.name.toLowerCase().includes(query)) || (pi.amount && String(pi.amount).includes(query))) {
         count++;
+        const amtStr = pi.amount ? Number(pi.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #00ebc7;">
             <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${pi.name}</div>
             <div style="font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;">
               <span>✅ Gerçekleşen Ödeme (${pi.date || ''})</span>
-              <span class="mono" style="color: #00ebc7;">₺${pi.amt || '0'}</span>
+              <span class="mono" style="color: #00ebc7;">₺${amtStr}</span>
             </div>
           </div>`;
       }
@@ -260,8 +262,8 @@ function execGlobalSearch() {
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff5e62;">
             <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${c.name}</div>
             <div style="font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;">
-              <span>💳 Taksit/Kredi</span>
-              <span class="mono" style="color: #ff5e62;">₺${c.amt || '0'}</span>
+              <span>💳 Taksit/Kredi · ${c.installments || (c.pays && c.pays.length) || 0} taksit</span>
+              <span class="mono" style="color: #ff5e62;">₺${c.pays ? Number(c.pays.reduce((s,p)=>s+p.amount,0)).toLocaleString('tr-TR',{maximumFractionDigits:0}) : '0'}</span>
             </div>
           </div>`;
       }
@@ -1102,9 +1104,10 @@ async function saveSecure() {
   if (_suppressSave) return;
   if (!_cryptoKey) return;
   invalidateLookups();
-  // Debounce: önceki timer'ı iptal et, yeni timer kur
+  // Debounce kaldırıldı — tek kullanıcı, anında kaydet
   if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(_doSave, SAVE_DEBOUNCE_MS);
+  _saveTimer = null;
+  await _doSave();
 }
 
 async function _doSave() {
@@ -2386,7 +2389,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.12';
+const APP_VERSION = 'v8.13';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
