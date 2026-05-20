@@ -209,7 +209,7 @@ window.doGoogleSignOut = async function() {
 <script>
 
 function execGlobalSearch() {
-  const query = document.getElementById('SRCHINP').value.trim().toLowerCase();
+  const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
   const resDiv = document.getElementById('SRCHRES');
   
   if (!query) {
@@ -222,7 +222,7 @@ function execGlobalSearch() {
 
   if (typeof pays !== 'undefined' && Array.isArray(pays)) {
     pays.forEach(p => {
-      if ((p.name && p.name.toLowerCase().includes(query)) || (p.amount && String(p.amount).includes(query))) {
+      if ((p.name && p.name.toLocaleLowerCase('tr').includes(query)) || (p.amount && String(p.amount).includes(query))) {
         count++;
         const amtStr = p.amount ? Number(p.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
         html += `
@@ -239,7 +239,7 @@ function execGlobalSearch() {
 
   if (typeof paidItems !== 'undefined' && Array.isArray(paidItems)) {
     paidItems.forEach(pi => {
-      if ((pi.name && pi.name.toLowerCase().includes(query)) || (pi.amount && String(pi.amount).includes(query))) {
+      if ((pi.name && pi.name.toLocaleLowerCase('tr').includes(query)) || (pi.amount && String(pi.amount).includes(query))) {
         count++;
         const amtStr = pi.amount ? Number(pi.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
         html += `
@@ -256,7 +256,7 @@ function execGlobalSearch() {
 
   if (typeof creds !== 'undefined' && Array.isArray(creds)) {
     creds.forEach(c => {
-      if ((c.name && c.name.toLowerCase().includes(query)) || (c.amt && String(c.amt).includes(query))) {
+      if ((c.name && c.name.toLocaleLowerCase('tr').includes(query)) || (c.amt && String(c.amt).includes(query))) {
         count++;
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff5e62;">
@@ -272,7 +272,7 @@ function execGlobalSearch() {
 
   if (typeof notes !== 'undefined' && Array.isArray(notes)) {
     notes.forEach(n => {
-      if ((n.title && n.title.toLowerCase().includes(query)) || (n.text && n.text.toLowerCase().includes(query))) {
+      if ((n.title && n.title.toLocaleLowerCase('tr').includes(query)) || (n.text && n.text.toLocaleLowerCase('tr').includes(query))) {
         count++;
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff8e3c;">
@@ -287,7 +287,7 @@ function execGlobalSearch() {
 
   if (typeof rehber !== 'undefined' && Array.isArray(rehber)) {
     rehber.forEach(r => {
-      if ((r.name && r.name.toLowerCase().includes(query)) || (r.phone && r.phone.includes(query)) || (r.iban && r.iban.includes(query))) {
+      if ((r.name && r.name.toLocaleLowerCase('tr').includes(query)) || (r.phone && r.phone.includes(query)) || (r.iban && r.iban.includes(query))) {
         count++;
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #38ef7d;">
@@ -2389,7 +2389,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.13';
+const APP_VERSION = 'v8.14';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
