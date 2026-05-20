@@ -7,9 +7,9 @@ GitHub Pages'de yayında, PWA (manifest + service worker), Firebase auth + Fires
 ---
 
 ## Mevcut Versiyon
-- **APP_VERSION:** `v8.8`
-- **Build:** `20260520-01`
-- **index.html satır sayısı:** ~3.250
+- **APP_VERSION:** `v8.13`
+- **Build:** `20260520-04`
+- **index.html satır sayısı:** ~3.510
 
 ---
 
@@ -37,8 +37,21 @@ GitHub Pages'de yayında, PWA (manifest + service worker), Firebase auth + Fires
 ## Yapılacaklar (Todo List)
 
 - [x] **Global Arama Modalı (Search Modal)** — Tüm veri katmanlarında (`pays`, `paidItems`, `creds`, `notes`, `rehber`) lokal çözülmüş veriler üzerinden anlık arama desteği eklendi (v8.8).
+- [x] **Kur API hata yönetimi** — `fetchRates` sessiz hata yutma giderildi, `_fetchedAt` timestamp eklendi, eski kur ⚠ ile gösteriliyor (v8.11).
+- [x] **Sync race condition** — `_fbPoll` debounce aktifken atlanıyor, `_doSave` sonrası `_lastUpdated` güncelleniyor (v8.12).
+- [x] **Arama tutar sıfır sorunu** — `p.amt` → `p.amount` düzeltildi (v8.13).
+- [x] **Debounce kaldırıldı** — `saveSecure()` anında kaydediyor, race window tamamen kapandı (v8.13).
 - [ ] **Geçmiş Detay Modalı (History Detail)** — Silinen geçmiş satırlarının (`hist[]`) detaylı görünümü ve tek tıkla geri yükleme altyapısı (HIMOD/PIMOD benzeri bir yapı taşınabilir).
 - [ ] **editPlanName prompt** — Plan adlarının `prompt()` veya şık bir inline input ile ("Ev", "İş" vb.) özelleştirilebilmesi ve `localStorage` / Firebase üzerinde tutulması.
+
+---
+
+## ⚠️ VERSİYON GÜNCELLEME KURALI
+Her `APP_VERSION` değişikliğinde **iki dosya birlikte** güncellenmeli:
+1. `index.html` → `const APP_VERSION = 'vX.XX';`
+2. `version.json` → `{"v": "X.XX", "build": "YYYYMMDD-NN"}`
+
+`version.json` güncellenmezse uygulama "Güncel sürümdesiniz" der ama yanlış versiyon çalışır.
 
 ---
 
@@ -60,7 +73,7 @@ iskenderpay-main/
 ├── index.html          ← Tek kaynak dosya (Arama sistemi eklendi)
 ├── manifest.json
 ├── sw.js               ← Service worker (PWA)
-├── version.json        ← {"v":"8.8","build":"20260520-01"}
+├── version.json        ← {"v":"8.13","build":"20260520-04"}
 ├── icon-192.png
 ├── icon-512.png
 ├── CHANGELOG_v7.md

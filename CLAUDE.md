@@ -6,10 +6,13 @@ _Son güncelleme: 2026-05-20_
 
 ## Çalışma kuralları
 
-- **Her iş bitiminde versiyon güncellenir:** `version.json` + `APP_VERSION` + `APP_BUILD`
-  - Patch (bug fix, refactor): üçüncü hane — `v8.8` → `v8.9`
-  - Minor (yeni özellik): ikinci hane — `v8.9` → `v9.0`
-  - Build formatı: `YYYYMMDD-NN` (aynı günde sıralı) — örn. `20260520-02`
+- **Her iş bitiminde versiyon güncellenir — İKİ DOSYA BİRLİKTE:**
+  1. `index.html` → `const APP_VERSION = 'vX.XX';`
+  2. `version.json` → `{"v": "X.XX", "build": "YYYYMMDD-NN"}`
+  - ⚠️ Sadece biri güncellenirse uygulama yanlış versiyon gösterir
+  - Patch (bug fix, refactor): üçüncü hane — `v8.13` → `v8.14`
+  - Minor (yeni özellik): ikinci hane — `v8.x` → `v9.0`
+  - Build formatı: `YYYYMMDD-NN` (aynı günde sıralı) — örn. `20260520-04`
 - **İş bitmeden CLAUDE.md güncellenmez** — biten iş kayıt altına alınır, sıradaki planlanır
 
 ---
@@ -20,6 +23,20 @@ _Son güncelleme: 2026-05-20_
 - `_knownBuild` artık `APP_BUILD` sabitiyle değil `initBuild()` ile `version.json`'dan initialize ediliyor
 - `initBuild()` sayfa açılışında bir kez çalışıyor; polling ve `manualCheckUpdate` bu baseline'a güveniyor
 - `APP_BUILD` sabiti sadece `renderAI()` UI fallback'i olarak kaldı — fonksiyonel mantık yok
+
+### v8.11 → Kur API hata yönetimi (`20260520-03`)
+- `fetchRates` sessiz `catch(e){}` kaldırıldı, `console.warn` eklendi
+- `rates._fetchedAt` ISO timestamp — `renderKur` artık gerçek fetch zamanını gösteriyor
+- 1 saatten eski kur ⚠ kırmızı gösteriyor, `localStorage.setItem` sadece başarılı fetch'te çağrılıyor
+
+### v8.12 → Sync race condition düzeltme (`20260520-03`)
+- `_fbPoll`: `_saveTimer !== null` iken poll callback atlanıyor
+- `_doSave`: Firebase yazımı sonrası `window._lastUpdated = Date.now()` — poll kendi verisini tekrar yüklemiyor
+
+### v8.13 → Arama tutarı + debounce (`20260520-04`)
+- Arama: `p.amt` → `p.amount`, `pi.amt` → `pi.amount`, `c.amt` → kredi taksit toplamı
+- `saveSecure()` debounce kaldırıldı — anında `_doSave()` çağrısı, race window tamamen kapandı
+- `version.json` v8.13'e güncellendi
 
 ### v8.9 → PIN/dataKey mimarisi (`20260520-02`)
 - **Sorun:** `_cryptoKey` doğrudan PIN'den türetiliyordu. PIN değişince veri yeniden şifreleniyor, sync başarısızsa kalıcı veri kaybı riski vardı.
@@ -34,10 +51,8 @@ _Son güncelleme: 2026-05-20_
 
 ## Sıradaki: bilinen sorunlar (öncelik sırası)
 
-1. **87 global ID / duplicate ID riski** — `go(N)` geçişlerinde `getElementById` null dönüyor, hata başka yerde patlıyor. Çözüm: kritik ID'leri wrapper fonksiyonla sarmak, null guard eklemek.
-2. **`exchangerate-api` sessiz başarısız** — `catch(e){}` ile yutulmuş. `ktime` span'ı var ama son başarılı fetch zamanı yazılmıyor. Çözüm: `lastRateFetch` timestamp tutmak, UI'da göstermek.
-3. **Firebase compat mode v10.12.0** — deprecated yol. Acil değil ama modular API geçişi planlanmalı.
-4. **Tek dosya büyümesi** — 3457 satır. Bir sonraki büyük özellik öncesi fonksiyon gruplarını `<script>` tag'lerine ayırmak düşünülebilir (build tool olmadan).
+1. **Firebase compat mode v10.12.0** — deprecated yol. Acil değil ama modular API geçişi planlanmalı.
+2. **Tek dosya büyümesi** — ~3.510 satır. Bir sonraki büyük özellik öncesi fonksiyon gruplarını `<script>` tag'lerine ayırmak düşünülebilir (build tool olmadan).
 
 ---
 
@@ -45,7 +60,7 @@ _Son güncelleme: 2026-05-20_
 
 ```
 index.html        Ana uygulama — tek dosya, 3457 satır
-version.json      {"v": "8.9", "build": "20260520-02"}
+version.json      {"v": "8.13", "build": "20260520-04"}
 sw.js             Service Worker — network-first index.html, cache-first assets
 manifest.json     PWA manifest
 fix_groupids.js   Grup ID migrasyon yardımcısı
