@@ -43,8 +43,6 @@ GitHub Pages'de yayında, PWA (manifest + service worker), Firebase auth + Fires
 - [x] **Debounce kaldırıldı** — `saveSecure()` anında kaydediyor, race window tamamen kapandı (v8.13).
 - [ ] **Geçmiş Detay Modalı (History Detail)** — Silinen geçmiş satırlarının (`hist[]`) detaylı görünümü ve tek tıkla geri yükleme altyapısı (HIMOD/PIMOD benzeri bir yapı taşınabilir).
 - [ ] **editPlanName prompt** — Plan adlarının `prompt()` veya şık bir inline input ile ("Ev", "İş" vb.) özelleştirilebilmesi ve `localStorage` / Firebase üzerinde tutulması.
-- [ ] **WebAuthn Parmak İzi (Aşama 1)** — Telefonda PIN yerine parmak izi / Face ID. `navigator.credentials.create` ile kayıt, `navigator.credentials.get` ile doğrulama. Başarısız → PIN fallback.
-- [ ] **FCM Push Bildirim Onayı (Aşama 2)** — Masaüstü giriş isteği → telefona bildirim → onay → PIN atla. `sw.js` güncellemesi + Firestore `authRequests` koleksiyonu gerekli.
 
 ---
 

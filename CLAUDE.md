@@ -56,31 +56,6 @@ _Son güncelleme: 2026-05-20_
 
 ---
 
-## Planlanan Özellikler
-
-### 🔐 Biyometrik / Bildirim ile Giriş (öncelik sırası)
-
-**Aşama 1 — WebAuthn Parmak İzi (telefon)**
-- Telefonda ilk girişte PIN al, WebAuthn credential kaydet (`navigator.credentials.create`)
-- Sonraki açılışlarda `navigator.credentials.get` ile parmak izi / Face ID → PIN ekranı atla
-- Credential `localStorage`'da saklanır (cihaza özel)
-- Fallback: parmak izi başarısız → PIN ekranına düş
-
-**Aşama 2 — FCM Push Bildirim Onayı (masaüstü)**
-- Masaüstünde "Giriş" butonuna basılınca Firestore'a `pendingAuth` belgesi yaz
-- FCM ile tanımlı telefona bildirim gönder: "Giriş onayı — Onayla / Reddet"
-- Telefon service worker bildirimi alır (uygulama kapalı olsa bile)
-- Onay → Firestore'daki `pendingAuth` güncellenir → masaüstü poll ile görür → PIN atlanır
-- Telefon yönetimi: ayarlar ekranında kayıtlı FCM token göster, kaldır, yeni ekle
-
-**Teknik gereksinimler:**
-- Firebase Cloud Messaging (FCM) — ücretsiz, SMS değil push
-- `sw.js` güncellenmesi (push event handler)
-- Firestore'da yeni koleksiyon: `users/{uid}/authRequests/{reqId}`
-- WebAuthn: `PublicKeyCredential` API — modern mobil tarayıcıların tümü destekler
-
----
-
 ## Dosya yapısı referansı
 
 ```
