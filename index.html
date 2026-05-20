@@ -2389,7 +2389,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.14';
+const APP_VERSION = 'v8.15';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
@@ -3483,7 +3483,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     
     <div class="brow" style="margin-top: 15px;">
-      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeModal('SRCHMOD')">Kapat</button>
+      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeMov('SRCHMOD')">Kapat</button>
     </div>
   </div>
 </div>
