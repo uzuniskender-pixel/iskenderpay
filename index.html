@@ -1586,19 +1586,44 @@ async function fetchRates(){
   const s=localStorage.getItem('v5-rates-'+window._planId)||localStorage.getItem('v5-rates');
   if(s) try{Object.assign(rates,JSON.parse(s));}catch(e){}
   renderKur();
-  try{const r=await fetch('https://api.exchangerate-api.com/v4/latest/USD');if(r.ok){const d=await r.json();rates.USD=d.rates.TRY;rates.EUR=d.rates.TRY/d.rates.EUR;}}catch(e){}
-  try{const r2=await fetch('https://api.gold-api.com/price/XAU');if(r2.ok){const d=await r2.json();if(rates.USD)rates.GOLD=(d.price/31.1035)*rates.USD;}}catch(e){}
-  localStorage.setItem('v5-rates-'+window._planId,JSON.stringify(rates));
+  let anySuccess=false;
+  try{
+    const r=await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    if(r.ok){const d=await r.json();rates.USD=d.rates.TRY;rates.EUR=d.rates.TRY/d.rates.EUR;anySuccess=true;}
+    else{console.warn('exchangerate-api HTTP hatası:',r.status);}
+  }catch(e){console.warn('exchangerate-api erişim hatası:',e.message);}
+  try{
+    const r2=await fetch('https://api.gold-api.com/price/XAU');
+    if(r2.ok){const d=await r2.json();if(rates.USD)rates.GOLD=(d.price/31.1035)*rates.USD;anySuccess=true;}
+    else{console.warn('gold-api HTTP hatası:',r2.status);}
+  }catch(e){console.warn('gold-api erişim hatası:',e.message);}
+  if(anySuccess){
+    rates._fetchedAt=new Date().toISOString();
+    localStorage.setItem('v5-rates-'+window._planId,JSON.stringify(rates));
+  }
   renderKur();
   if(curTab===0) render();
 }
 function renderKur(){
-  const now=new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  let timeLabel='';
+  if(rates._fetchedAt){
+    const d=new Date(rates._fetchedAt);
+    const ageMin=Math.round((Date.now()-d.getTime())/60000);
+    const timeStr=d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+    if(ageMin>60){
+      const ageH=Math.floor(ageMin/60);
+      timeLabel=`<span class="ktime" style="color:var(--danger)" title="${timeStr} tarihli kur — güncel olmayabilir">⚠ ${ageH}s önce</span>`;
+    } else {
+      timeLabel=`<span class="ktime">${timeStr}</span>`;
+    }
+  } else if(rates.USD||rates.EUR||rates.GOLD){
+    timeLabel=`<span class="ktime" style="color:var(--danger)" title="Kurun ne zaman çekildiği bilinmiyor">⚠ önbellek</span>`;
+  }
   let h='';
   if(rates.EUR)  h+=`<div class="ki"><span class="kl">EUR</span><span class="kv e">₺${rates.EUR.toFixed(2)}</span></div><div class="ksep"></div>`;
   if(rates.USD)  h+=`<div class="ki"><span class="kl">USD</span><span class="kv u">₺${rates.USD.toFixed(2)}</span></div><div class="ksep"></div>`;
   if(rates.GOLD) h+=`<div class="ki"><span class="kl">Altın/gr</span><span class="kv g">₺${rates.GOLD.toFixed(0)}</span></div><div class="ksep"></div>`;
-  if(h){h+=`<span class="ktime">${now}</span><button class="kbtn" onclick="fetchRates()">🔄</button>`;}
+  if(h){h+=timeLabel+`<button class="kbtn" onclick="fetchRates()">🔄</button>`;}
   else{h=`<span style="font-size:11px;color:var(--danger)">Kur alınamadı</span><button class="kbtn" onclick="go(5)" style="color:var(--acc);font-weight:600;font-size:11px;margin-left:6px">Manuel Gir →</button><button class="kbtn" onclick="fetchRates()">🔄</button>`;}
   h += `<span id="sync-dot" title="Canlı sync"></span>`;
   h += `<span id="ver-tag" onclick="go(5)" title="Sürüm bilgisi" style="margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);cursor:pointer;flex-shrink:0;padding:2px 6px;border:1px solid var(--bdr);border-radius:4px">${APP_VERSION}</span>`;
@@ -2354,7 +2379,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.10';
+const APP_VERSION = 'v8.11';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
