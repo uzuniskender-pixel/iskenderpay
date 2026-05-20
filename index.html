@@ -71,6 +71,9 @@ window._fbStartListen = function(onData) {
 
 window._fbPoll = async function() {
   if (!_fbUid || !window._planId || !window._syncCb) return;
+  // Yerel kayıt bekliyorsa (debounce aktif) poll'dan gelen eski veriyi uygulama —
+  // aksi hâlde kullanıcının henüz kaydedilmemiş değişiklikleri ezilir.
+  if (typeof _saveTimer !== 'undefined' && _saveTimer !== null) return;
   try {
     const snap = await getDoc(_planDoc());
     if (!snap.exists()) { setSyncDot('active'); return; }
@@ -1111,7 +1114,11 @@ async function _doSave() {
   const enc = await encryptData(data, _cryptoKey);
   // Firebase'e kaydet (birincil)
   if (window._fbSave) {
-    try { await window._fbSave(enc); } catch(e) { console.warn('Firebase kayıt hatası:', e); }
+    try {
+      await window._fbSave(enc);
+      // Başarılı yazımdan sonra _lastUpdated'i güncelle — poll kendi verisini tekrar yüklemesin
+      window._lastUpdated = Date.now();
+    } catch(e) { console.warn('Firebase kayıt hatası:', e); }
   }
   // localStorage yedek olarak da tut (plan'a özel key)
   localStorage.setItem('v5-data-' + window._planId, enc);
@@ -2379,7 +2386,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.11';
+const APP_VERSION = 'v8.12';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
