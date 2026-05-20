@@ -2207,7 +2207,7 @@ function renderAI(){
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <span style="color:var(--txt);font-size:15px;font-weight:800;letter-spacing:.5px">${APP_VERSION}</span>
-      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:3px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace">${APP_BUILD}</span>
+      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:3px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace">${_knownBuild || APP_BUILD}</span>
     </div>
     <div>🔐 AES-256-GCM şifreli</div>
     <div>📦 ${pays.length} ödeme · ${creds.length} kredi · ${paidItems.length} yapılan</div>
@@ -2588,7 +2588,7 @@ async function manualCheckUpdate() {
     const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) throw new Error('Sunucuya ulaşılamadı');
     const d = await r.json();
-    if (d.build && d.build !== APP_BUILD) {
+    if (d.build && _knownBuild !== null && d.build !== _knownBuild) {
       if (statusEl) statusEl.textContent = '🆕 Yeni sürüm mevcut: v' + d.v;
       if (btnEl) btnEl.style.display = '';
       showUpdBanner(d.v);
@@ -3118,16 +3118,20 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── VERSİYON POLLING ─────────────────────────────────────────────────────────
-let _knownBuild = APP_BUILD;
+let _knownBuild = null; // version.json'dan initialize edilir — APP_BUILD'e bağımlılık yok
 
 async function checkVersion() {
   try {
     const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) return;
     const d = await r.json();
-    if (d.build && d.build !== _knownBuild) {
-      _knownBuild = d.build;
-      showUpdBanner(d.v);
+    if (d.build) {
+      if (_knownBuild === null) {
+        _knownBuild = d.build; // baseline: ilk fetch, index.html'e bağımlılık yok
+      } else if (d.build !== _knownBuild) {
+        _knownBuild = d.build;
+        showUpdBanner(d.v);
+      }
     }
   } catch(e) {}
 }
