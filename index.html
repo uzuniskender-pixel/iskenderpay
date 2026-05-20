@@ -209,7 +209,7 @@ window.doGoogleSignOut = async function() {
 <script>
 
 function execGlobalSearch() {
-  const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
+  const query = document.getElementById('SRCHINP').value.trim().toLowerCase();
   const resDiv = document.getElementById('SRCHRES');
   
   if (!query) {
@@ -222,7 +222,7 @@ function execGlobalSearch() {
 
   if (typeof pays !== 'undefined' && Array.isArray(pays)) {
     pays.forEach(p => {
-      if ((p.name && p.name.toLocaleLowerCase('tr').includes(query)) || (p.amount && String(p.amount).includes(query))) {
+      if ((p.name && p.name.toLowerCase().includes(query)) || (p.amount && String(p.amount).includes(query))) {
         count++;
         const amtStr = p.amount ? Number(p.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
         html += `
@@ -239,7 +239,7 @@ function execGlobalSearch() {
 
   if (typeof paidItems !== 'undefined' && Array.isArray(paidItems)) {
     paidItems.forEach(pi => {
-      if ((pi.name && pi.name.toLocaleLowerCase('tr').includes(query)) || (pi.amount && String(pi.amount).includes(query))) {
+      if ((pi.name && pi.name.toLowerCase().includes(query)) || (pi.amount && String(pi.amount).includes(query))) {
         count++;
         const amtStr = pi.amount ? Number(pi.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
         html += `
@@ -256,7 +256,7 @@ function execGlobalSearch() {
 
   if (typeof creds !== 'undefined' && Array.isArray(creds)) {
     creds.forEach(c => {
-      if ((c.name && c.name.toLocaleLowerCase('tr').includes(query)) || (c.amt && String(c.amt).includes(query))) {
+      if ((c.name && c.name.toLowerCase().includes(query)) || (c.amt && String(c.amt).includes(query))) {
         count++;
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff5e62;">
@@ -272,7 +272,7 @@ function execGlobalSearch() {
 
   if (typeof notes !== 'undefined' && Array.isArray(notes)) {
     notes.forEach(n => {
-      if ((n.title && n.title.toLocaleLowerCase('tr').includes(query)) || (n.text && n.text.toLocaleLowerCase('tr').includes(query))) {
+      if ((n.title && n.title.toLowerCase().includes(query)) || (n.text && n.text.toLowerCase().includes(query))) {
         count++;
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff8e3c;">
@@ -287,7 +287,7 @@ function execGlobalSearch() {
 
   if (typeof rehber !== 'undefined' && Array.isArray(rehber)) {
     rehber.forEach(r => {
-      if ((r.name && r.name.toLocaleLowerCase('tr').includes(query)) || (r.phone && r.phone.includes(query)) || (r.iban && r.iban.includes(query))) {
+      if ((r.name && r.name.toLowerCase().includes(query)) || (r.phone && r.phone.includes(query)) || (r.iban && r.iban.includes(query))) {
         count++;
         html += `
           <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #38ef7d;">
@@ -366,10 +366,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .pin-eye{position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px}
 .pin-btn{width:100%;max-width:300px;padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--acc2),var(--acc));border:none;color:#0f0e17;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
 .pin-err{margin-top:10px;font-size:13px;color:var(--danger);height:18px;position:relative;z-index:1}
-.pin-bio-btn{width:100%;max-width:300px;padding:13px;border-radius:12px;background:var(--surf2);border:1px solid var(--bdr);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-top:10px;transition:background .2s}
-.pin-bio-btn:hover{background:var(--surf)}
-.pin-bio-reg{background:none;border:1px dashed var(--bdr);color:var(--muted);font-size:12px;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
-.pin-bio-reg:hover{border-color:var(--acc);color:var(--acc)}
 .pin-screen.hidden{display:none}
 
 /* LAYOUT */
@@ -651,14 +647,7 @@ select.fi{appearance:none}
     <button class="pin-eye" onclick="toggleEye('PI',this)">👁</button>
   </div>
   <button class="pin-btn" onclick="doLogin()">Giriş →</button>
-  <button class="pin-bio-btn" id="BIO_BTN" onclick="doBioLogin()" style="display:none">
-    <span id="BIO_ICO">🪪</span> Biyometrik Giriş
-  </button>
   <div class="pin-err" id="PE"></div>
-  <div id="BIO_REG_WRAP" style="display:none;margin-top:18px;text-align:center">
-    <button class="pin-bio-reg" onclick="registerBiometric()">🔏 Parmak izi / Face ID kaydet</button>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px">Bir sonraki girişten itibaren şifre sormaz</div>
-  </div>
 </div>
 
 <!-- APP -->
@@ -785,17 +774,6 @@ select.fi{appearance:none}
           <div class="pw-wrap" style="margin-bottom:6px"><input class="fi mono-inp" id="NP2" type="password" placeholder="Yeni şifre tekrar" onkeydown="if(event.key===\'Enter\')chPass()"><button class="pw-eye" onclick="toggleEye('NP2')">👁</button></div>
           <div id="PM" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
           <button onclick="chPass()" class="btn bs" style="width:100%">Şifreyi Güncelle</button>
-        </div>
-
-        <div class="acard" id="BIO_CARD">
-          <div class="acard-title">👆 Biyometrik Giriş</div>
-          <div class="acard-sub" id="BIO_STATUS">Yükleniyor...</div>
-          <div id="BIO_REMOVE_WRAP" style="display:none">
-            <button onclick="removeBiometric()" class="btn" style="width:100%;margin-top:8px;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Biyometrik Girişi Kaldır</button>
-          </div>
-          <div id="BIO_ADD_WRAP" style="display:none">
-            <button onclick="registerBiometric()" class="btn bs" style="width:100%;margin-top:8px">Parmak İzi / Face ID Kaydet</button>
-          </div>
         </div>
 
         <div class="acard">
@@ -1434,183 +1412,6 @@ async function doLogin() {
   enterApp();
 }
 
-// ── BİYOMETRİK GİRİŞ (WebAuthn) ──────────────────────────────────────────────
-
-// Cihaz WebAuthn destekliyor mu?
-function bioSupported() {
-  return window.PublicKeyCredential !== undefined;
-}
-
-// Kayıtlı credential var mı? (plan bazlı)
-function getBioCredId() {
-  return localStorage.getItem('v8-bio-cred-' + window._planId) || null;
-}
-
-// PIN ekranı açılınca biyometrik butonu göster/gizle
-function initBioBtn() {
-  const btn = document.getElementById('BIO_BTN');
-  if (!btn) return;
-  if (bioSupported() && getBioCredId()) {
-    btn.style.display = '';
-    // İkon: platform authenticator varsa parmak izi
-    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-      .then(ok => { document.getElementById('BIO_ICO').textContent = ok ? '👆' : '🪪'; })
-      .catch(() => {});
-  } else {
-    btn.style.display = 'none';
-  }
-}
-
-// PIN doğrulandıktan sonra kayıt teklif et
-function showBioRegOffer() {
-  if (!bioSupported()) return;
-  if (getBioCredId()) return; // zaten kayıtlı
-  const wrap = document.getElementById('BIO_REG_WRAP');
-  if (wrap) wrap.style.display = '';
-}
-
-// Biyometrik kayıt — kullanıcı "Parmak izi kaydet" butonuna bastı
-async function registerBiometric() {
-  if (!bioSupported()) { alert('Bu cihaz biyometrik girişi desteklemiyor.'); return; }
-  if (!_plainPin) { alert('Önce PIN ile giriş yapın.'); return; }
-  try {
-    const planId = window._planId || 'plan1';
-    const uid = window._fbUid || 'local';
-    const userId = new TextEncoder().encode(uid + '-' + planId);
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: 'iskenderpay', id: location.hostname },
-        user: { id: userId, name: uid, displayName: 'iskenderpay' },
-        pubKeyCredParams: [
-          { type: 'public-key', alg: -7 },   // ES256
-          { type: 'public-key', alg: -257 }  // RS256
-        ],
-        authenticatorSelection: {
-          userVerification: 'required',
-          residentKey: 'preferred'
-        },
-        timeout: 60000,
-        attestation: 'none'
-      }
-    });
-
-    // credential ID'yi kaydet
-    const credIdB64 = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
-    localStorage.setItem('v8-bio-cred-' + planId, credIdB64);
-
-    // PIN'i credential ile şifrele ve sakla
-    // Basit XOR + base64 — gerçek güvenlik WebAuthn doğrulamasından geliyor
-    const enc = xEnc(_plainPin, credIdB64.slice(0, 32));
-    localStorage.setItem('v8-bio-pin-' + planId, enc);
-
-    const wrap = document.getElementById('BIO_REG_WRAP');
-    if (wrap) wrap.style.display = 'none';
-    showSyncToast && showSyncToast();
-    alert('✅ Biyometrik giriş kaydedildi! Bir sonraki girişte şifre sormayacak.');
-  } catch(e) {
-    if (e.name === 'NotAllowedError') return; // kullanıcı iptal etti
-    console.warn('WebAuthn kayıt hatası:', e);
-    alert('Kayıt başarısız: ' + e.message);
-  }
-}
-
-// Biyometrik giriş — "Biyometrik Giriş" butonuna basıldı
-async function doBioLogin() {
-  if (!bioSupported()) return;
-  const planId = window._planId || 'plan1';
-  const credIdB64 = getBioCredId();
-  if (!credIdB64) return;
-
-  try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
-
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{ type: 'public-key', id: credIdBytes }],
-        userVerification: 'required',
-        timeout: 60000
-      }
-    });
-
-    // Doğrulama başarılı — saklanan PIN'i çöz
-    const encPin = localStorage.getItem('v8-bio-pin-' + planId);
-    if (!encPin) {
-      showPinErr('Biyometrik veri eksik, PIN girin.');
-      return;
-    }
-    const pin = xDec(encPin, credIdB64.slice(0, 32));
-    if (!pin) { showPinErr('Veri çözülemedi, PIN girin.'); return; }
-
-    // PIN ile normal login akışını çalıştır
-    document.getElementById('PI').value = pin;
-    await doLogin();
-    document.getElementById('PI').value = '';
-
-  } catch(e) {
-    if (e.name === 'NotAllowedError') return; // iptal
-    console.warn('WebAuthn giriş hatası:', e);
-    showPinErr('Biyometrik doğrulama başarısız.');
-  }
-}
-
-// Biyometrik kaydı sil (ayarlar ekranından çağrılır)
-function removeBiometric() {
-  if (!confirm('Biyometrik giriş kaldırılsın mı?')) return;
-  const planId = window._planId || 'plan1';
-  localStorage.removeItem('v8-bio-cred-' + planId);
-  localStorage.removeItem('v8-bio-pin-' + planId);
-  const btn = document.getElementById('BIO_BTN');
-  if (btn) btn.style.display = 'none';
-  updateBioCard();
-  alert('Biyometrik giriş kaldırıldı.');
-}
-
-// Ayarlar ekranındaki biyometrik kartı güncelle
-function updateBioCard() {
-  const statusEl = document.getElementById('BIO_STATUS');
-  const removeWrap = document.getElementById('BIO_REMOVE_WRAP');
-  const addWrap = document.getElementById('BIO_ADD_WRAP');
-  const card = document.getElementById('BIO_CARD');
-  if (!statusEl) return;
-
-  if (!bioSupported()) {
-    if (card) card.style.display = 'none';
-    return;
-  }
-
-  PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-    .then(ok => {
-      if (!ok) {
-        statusEl.textContent = 'Bu cihaz platform biyometriği desteklemiyor.';
-        if (removeWrap) removeWrap.style.display = 'none';
-        if (addWrap) addWrap.style.display = 'none';
-        return;
-      }
-      if (getBioCredId()) {
-        statusEl.textContent = 'Parmak izi / Face ID kayıtlı ✓';
-        if (removeWrap) removeWrap.style.display = '';
-        if (addWrap) addWrap.style.display = 'none';
-      } else {
-        statusEl.textContent = 'Henüz kayıtlı değil.';
-        if (removeWrap) removeWrap.style.display = 'none';
-        if (addWrap) addWrap.style.display = '';
-      }
-    });
-}
-
-// xEnc: basit XOR encode (WebAuthn PIN cache için)
-function xEnc(str, key) {
-  let r = '';
-  for (let i = 0; i < str.length; i++)
-    r += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-  return btoa(unescape(encodeURIComponent(r)));
-}
-
 function showPinErr(msg) {
   const inp = document.getElementById('PI');
   inp.classList.add('err');
@@ -1673,8 +1474,6 @@ function selectPlan(planId) {
   // PIN inputunu temizle
   const pi = document.getElementById('PI');
   if (pi) pi.value = '';
-  // Biyometrik buton durumunu güncelle
-  setTimeout(initBioBtn, 100);
 }
 
 function enterApp() {
@@ -1684,8 +1483,6 @@ function enterApp() {
   rhbNormalizeCompanies();
   initApp();
   startRealtimeSync();
-  // PIN başarılıysa biyometrik kayıt teklif et (kayıtlı değilse)
-  setTimeout(showBioRegOffer, 800);
 }
 
 function rhbNormalizeCompanies() {
@@ -1888,7 +1685,7 @@ function go(n){
   if(n===2) renderPersons();
   if(n===3) renderNotes();
   if(n===4) renderHist();
-  if(n===5) { renderAI(); updateBioCard(); }
+  if(n===5) renderAI();
   if(n===6) renderRhb();
   if(n===7) renderActLog();
 }
@@ -2592,7 +2389,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.16';
+const APP_VERSION = 'v8.13';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
@@ -3686,7 +3483,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     
     <div class="brow" style="margin-top: 15px;">
-      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeMov('SRCHMOD')">Kapat</button>
+      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeModal('SRCHMOD')">Kapat</button>
     </div>
   </div>
 </div>
