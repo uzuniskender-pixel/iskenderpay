@@ -208,3 +208,11 @@ onAuthStateChanged(auth, (user) => {
     if (plsEl) plsEl.style.display = 'none';
   }
 });
+// ACİL DURUM: Eğer uygulama açıldı ama PIN ekranı DOM'da sıkışıp kaldıysa
+window.addEventListener('load', () => {
+  const psEl = document.getElementById('PS');
+  if (psEl && psEl.classList.contains('active')) {
+    psEl.style.setProperty('display', 'flex', 'important');
+    console.warn("[DEBUG] PIN ekranı CSS ile zorla görünür kılındı.");
+  }
+});
