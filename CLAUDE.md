@@ -33,6 +33,11 @@ _Son güncelleme: 2026-05-20_
 - `_fbPoll`: `_saveTimer !== null` iken poll callback atlanıyor
 - `_doSave`: Firebase yazımı sonrası `window._lastUpdated = Date.now()` — poll kendi verisini tekrar yüklemiyor
 
+### v8.18 → Migrasyon tek noktadan çalışma (`20260521-02`)
+- `migrateToV7/V7b` çağrıları `doLogin`'den tamamen çıkarıldı
+- `enterApp()` içinde tek noktadan çağrılıyor — kaç login dalı olursa olsun bir kez çalışır
+- Önceki davranış: doLogin'deki her dal (plan-switch, ilk kullanım, normal, fallback) ayrı ayrı tetikliyordu → konsolda 3 kez log görünüyordu
+
 ### v8.17 → Crypto temizliği — legacy migration kaldırıldı (`20260521-01`)
 - `deriveKey()` (v5 PIN→AES-GCM) fonksiyonu kaldırıldı
 - `migrateFromV4()` (XOR→AES şifresiz geçiş) fonksiyonu kaldırıldı

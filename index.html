@@ -1254,8 +1254,6 @@ async function doLogin() {
   if (_cryptoKey && _plainPin && _plainPin === val) {
     try {
       await loadSecure();
-      await migrateToV7();
-      await migrateToV7b();
       enterApp();
       return;
     } catch(e) {
@@ -1291,8 +1289,6 @@ async function doLogin() {
     _plainPin   = val;
     _cryptoKey  = await importDataKey(dataKeyRaw);
     await loadSecure();
-    await migrateToV7();
-    await migrateToV7b();
     enterApp();
     return;
   }
@@ -1326,8 +1322,6 @@ async function doLogin() {
   _saveWrappedKeyLocal(wrappedB64);
   try {
     await loadSecure();
-    await migrateToV7();
-    await migrateToV7b();
   } catch(e) {
     // loadSecure başarısız — diğer planı dene (plan değişikliği olmuş olabilir)
     const otherPlan = window._planId === 'plan1' ? 'plan2' : 'plan1';
@@ -1335,8 +1329,6 @@ async function doLogin() {
     window._planId = otherPlan;
     try {
       await loadSecure();
-      await migrateToV7();
-      await migrateToV7b();
       localStorage.setItem('v6-active-plan', otherPlan);
     } catch(e2) {
       window._planId = origPlan;
@@ -1413,6 +1405,8 @@ function enterApp() {
   document.getElementById('PS').style.display = 'none';
   document.getElementById('APP').style.display = '';
   rhbNormalizeCompanies();
+  // Migrasyon buradan tek çağrılır — doLogin'de kaç kez akış olursa olsun
+  migrateToV7().then(() => migrateToV7b()).catch(e => console.warn('Migrasyon hatası:', e));
   initApp();
   startRealtimeSync();
 }
@@ -2321,8 +2315,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.17';
-const APP_BUILD   = '20260521-01';
+const APP_VERSION = 'v8.18';
+const APP_BUILD   = '20260521-02';
 
 function renderAI(){
   const el = document.getElementById('AI');
