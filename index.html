@@ -1402,12 +1402,26 @@ async function doLogin() {
   _dataKeyRaw = unwrapped.rawBytes;
   _plainPin   = val;
   _cryptoKey  = unwrapped.cryptoKey;
+  // wrappedKey'i her zaman localStorage'a yaz (localStorage temizlense bile Firebase'den gelir)
+  _saveWrappedKeyLocal(wrappedB64);
   try {
     await loadSecure();
     await migrateToV7();
     await migrateToV7b();
   } catch(e) {
-    showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
+    // loadSecure başarısız — diğer planı dene (plan değişikliği olmuş olabilir)
+    const otherPlan = window._planId === 'plan1' ? 'plan2' : 'plan1';
+    const origPlan = window._planId;
+    window._planId = otherPlan;
+    try {
+      await loadSecure();
+      await migrateToV7();
+      await migrateToV7b();
+      localStorage.setItem('v6-active-plan', otherPlan);
+    } catch(e2) {
+      window._planId = origPlan;
+      showPinErr('Veri çözülemedi. Lütfen tekrar deneyin.'); return;
+    }
   }
   enterApp();
 }
@@ -2389,7 +2403,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.13';
+const APP_VERSION = 'v8.14';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
