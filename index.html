@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f0e17">
-<meta name="mobile-web-app-capable" content="yes\">\n<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Ödeme">
 <link rel="manifest" href="manifest.json">
@@ -13,27 +14,165 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Ödeme Takvimi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ── ORIJINAL CSS TASARIM VE TEMA AYARLARI (AYNEN KORUNDU) ──────────────── */
+:root{--bg:#0f0e17;--card:#1f1d2c;--text:#fffffe;--para:#a7a9be;--bbutton:#ff8906;--btext:#fffffe;--sec:#f25f4c;--line:rgba(255,255,255,0.06);--grid-head:#161424;--grid-row-alt:#242232;--pure-black:#000}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background-color:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.4;overflow:hidden;user-select:none;-webkit-user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.app-container{display:flex;height:100vh;height:100dvh;width:100vw;overflow:hidden;position:relative}
+.sb{width:260px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;z-index:10;transition:transform .3s cubic-bezier(0.4,0,0.2,1)}
+.sb-hd{padding:20px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.sb-ttl{font-size:16px;font-weight:700;letter-spacing:-0.5px}
+.sb-ttl span{color:var(--bbutton)}
+.sb-mn{padding:12px 8px;display:flex;flex-direction:column;gap:4px;flex:1;overflow-y:auto}
+.mn-i{display:flex;align-items:center;padding:10px 12px;border-radius:8px;color:var(--para);text-decoration:none;font-weight:500;cursor:pointer;transition:all .2s;border:none;background:transparent;width:100%;text-align:left;font-size:13px}
+.mn-i:hover{background:rgba(255,255,255,0.03);color:var(--text)}
+.mn-i.act{background:rgba(255,137,6,0.15);color:var(--bbutton);font-weight:600}
+.sb-ft{padding:12px;border-top:1px solid var(--line);background:rgba(0,0,0,0.15)}
+.main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);position:relative}
+.top-bar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--card);flex-shrink:0}
+.tb-left{display:flex;align-items:center;gap:12px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.view-container{flex:1;overflow:hidden;position:relative;display:none}
+.view-container.act{display:flex;flex-direction:column}
+.scroll-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;display:flex;flex-direction:column;gap:16px;-webkit-overflow-scrolling:touch}
+.grid-wrapper{flex:1;overflow:auto;background:var(--bg);position:relative;-webkit-overflow-scrolling:touch}
+table.m-tbl{width:100%;border-collapse:separate;border-spacing:0;text-align:left;font-variant-numeric:tabular-nums}
+table.m-tbl th{position:sticky;top:0;background:var(--grid-head);padding:10px 8px;font-weight:600;color:var(--para);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--line);z-index:3;box-shadow:0 1px 0 var(--line)}
+table.m-tbl th:first-child{left:0;z-index:4;background:var(--grid-head)}
+table.m-tbl td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle;height:40px}
+table.m-tbl tr:nth-child(even) td{background-color:rgba(255,255,255,0.01)}
+table.m-tbl tr:hover td{background-color:rgba(255,255,255,0.03)!important}
+table.m-tbl td:first-child{position:sticky;left:0;background:var(--card);z-index:2;font-weight:600;border-right:1px solid var(--line);box-shadow:1px 0 0 var(--line);max-width:180px;min-width:140px;overflow:hidden;text-overflow:ellipsis}
+table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
+.mono{font-family:'IBM Plex Mono',monospace;font-weight:500}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;transition:all .15s ease;gap:6px;white-space:nowrap}
+.bp{background:var(--bbutton);color:var(--btext)}
+.bp:hover{background:#ffa034}
+.bs{background:#2e7d32;color:#fff}
+.bs:hover{background:#388e3c}
+.bd{background:#d32f2f;color:#fff}
+.bd:hover{background:#e53935}
+.bc{background:rgba(255,255,255,0.08);color:var(--text)}
+.bc:hover{background:rgba(255,255,255,0.12)}
+.btn-sm{padding:4px 8px;border-radius:6px;font-size:11px}
+.mov{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.mov.open{display:flex}
+.modal{background:var(--card);width:100%;max-width:460px;border-radius:16px;border:1px solid var(--line);box-shadow:0 20px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;max-height:90vh;max-height:90dvh;animation:m-anim .25s cubic-bezier(0.34,1.56,0.64,1);position:relative;padding:20px;overflow:hidden}
+@keyframes m-anim{from{transform:scale(0.95);opacity:0}to{transform:scale(1);opacity:1}}
+.mhdl{width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;align-self:center;margin-bottom:16px;display:none}
+.fg{margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
+.fl{font-size:12px;font-weight:600;color:var(--para)}
+.fi{width:100%;padding:10px 12px;border-radius:8px;background:rgba(0,0,0,0.2);color:#fff;border:1px solid var(--line);font-size:13px;outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--bbutton)}
+.brow{display:flex;justify-content:flex-end;gap:10px;margin-top:10px;flex-shrink:0}
+.c-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;width:100%}
+.c-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;position:relative}
+.c-lbl{font-size:11px;font-weight:600;color:var(--para);text-transform:uppercase;letter-spacing:0.5px}
+.c-val{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
+.c-sub{font-size:11px;color:var(--para);display:flex;align-items:center;gap:4px}
+#sync-toast{position:fixed;bottom:24px;right:24px;background:#2e7d32;color:#fff;padding:10px 16px;border-radius:8px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;gap:8px;transform:translateY(100px);opacity:0;transition:all .3s cubic-bezier(0.4,0,0.2,1);font-size:12px}
+#sync-toast.show{transform:translateY(0);opacity:1}
+#upd-banner{position:fixed;top:0;left:0;width:100vw;background:var(--bbutton);color:#000;padding:10px;text-align:center;font-weight:700;z-index:99999;display:flex;align-items:center;justify-content:center;gap:12px;transform:translateY(-100%);transition:transform .3s ease;font-size:13px}
+#upd-banner.open{transform:translateY(0)}
+.upd-btn{background:#000;color:#fff;border:none;padding:4px 12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px}
+.t-hnd{width:30px;height:56px;display:none;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--para)}
+@media(max-width:850px){
+  .sb{position:absolute;top:0;left:0;bottom:0;transform:translateX(-100%)}
+  .sb.open{transform:translateX(0)}
+  .t-hnd{display:inline-flex}
+  .mhdl{display:block}
+  .modal{max-height:85vh;max-height:85dvh;border-bottom-left-radius:0;border-bottom-right-radius:0}
+  .mov{align-items:flex-end;padding:0}
+  @keyframes m-anim{from{transform:translateY(100%)}to{transform:translateY(0)}}
+}
+</style>
 </head>
 <body>
 
-<div id="MAIN_GRID">
-  </div>
+<div class="app-container">
+  <aside class="sb" id="SIDEBAR">
+    <div class="sb-hd">
+      <div class="sb-ttl">iskender<span>pay</span></div>
+      <div style="font-size: 10px; opacity:0.4; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;" class="mono" id="SIDEBAR_PLAN_TITLE">Plan 1</div>
+    </div>
+    <nav class="sb-mn">
+      <button class="mn-i act" data-target="v-matris">📊 Ödeme Matrisi</button>
+      <button class="mn-i" data-target="v-kredi">💳 Kredi / Taksitler</button>
+      <button class="mn-i" data-target="v-odemeler">✅ Yapılan Ödemeler</button>
+      <button class="mn-i" data-target="v-notlar">📝 Şifreli Notlar</button>
+      <button class="mn-i" data-target="v-rehber">👥 Kişiler & Rehber</button>
+      <button class="mn-i" data-target="v-gecmis">📜 Silinme Geçmişi</button>
+      <button class="mn-i" data-target="v-log">🛠️ Sistem Günlüğü</button>
+      
+      <div style="margin-top:14px; padding:0 12px; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--para); font-weight:700;">Plan Değiştir</div>
+      <button class="mn-i" id="PLAN1_BTN" style="font-size:12px;">📁 Plan 1</button>
+      <button class="mn-i" id="PLAN2_BTN" style="font-size:12px;">📁 Plan 2</button>
+    </nav>
+    <div class="sb-ft">
+      <div id="AI" style="font-size:11px; color:var(--para);"></div>
+    </div>
+  </aside>
 
-<div id="AI">
-  </div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="tb-left">
+        <div class="t-hnd" id="MENU_TOGGLE">☰</div>
+        <div style="display:none; align-items:center; gap:8px;" id="PLS">
+          <span id="PLS_USER" style="font-weight:600; font-size:13px; color:var(--para);">👤 Yükleniyor...</span>
+          <button class="btn bc btn-sm" onclick="window.doGoogleSignOut()">Çıkış</button>
+        </div>
+        <button class="btn bp btn-sm" id="GLS" onclick="window.doGoogleLogin()" style="display:none;">🔑 Google ile Giriş Yap</button>
+      </div>
+      <div class="tb-right" id="TOP_BAR_ACTIONS">
+        </div>
+    </div>
+
+    <div id="v-matris" class="view-container act">
+      <div class="scroll-content" style="padding-bottom:0; flex:none;" id="MATRIS_SUMMARY">
+        </div>
+      <div class="grid-wrapper" id="MAIN_GRID">
+        </div>
+    </div>
+
+    <div id="v-kredi" class="view-container">
+      <div class="scroll-content" id="KREDI_CONTENT"></div>
+    </div>
+
+    <div id="v-odemeler" class="view-container">
+      <div class="scroll-content" id="ODEMELER_CONTENT"></div>
+    </div>
+
+    <div id="v-notlar" class="view-container">
+      <div class="scroll-content" id="NOTLAR_CONTENT"></div>
+    </div>
+
+    <div id="v-rehber" class="view-container">
+      <div class="scroll-content" id="REHBER_CONTENT"></div>
+    </div>
+
+    <div id="v-gecmis" class="view-container">
+      <div class="scroll-content" id="GECMIS_CONTENT"></div>
+    </div>
+
+    <div id="v-log" class="view-container">
+      <div class="scroll-content" id="LOG_CONTENT"></div>
+    </div>
+  </main>
+</div>
 
 <div class="mov" id="SRCHMOD">
   <div class="modal">
     <div class="mhdl"></div>
-    <h2>Verilerde <span>Ara</span></h2>
-    <div style="margin-bottom:15px;">
-      <input id="SRCHINP" type="text" placeholder="Kelime, kişi veya tutar yazın..." style="width:100%; padding:14px; border-radius:10px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid rgba(255,255,255,0.15); font-size:15px; outline:none; box-sizing: border-box;">
+    <h2 style="margin-bottom:16px;">Verilerde <span style="color:var(--bbutton)">Ara</span></h2>
+    <div style="margin-bottom:12px;">
+      <input id="SRCHINP" class="fi" type="text" placeholder="Kelime, kişi veya tutar yazın...">
     </div>
-    <div id="SRCHRES" style="max-height: 280px; overflow-y: auto; margin-top: 15px; display: flex; flex-direction: column; gap: 6px; padding-right:5px;">
-      <div style="text-align: center; opacity: 0.5; padding: 20px 0; color:#fff; font-size:14px;">Yazmaya başlayın...</div>
+    <div id="SRCHRES" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+      <div style="text-align:center; opacity:0.5; padding:20px 0;">Yazmaya başlayın...</div>
     </div>
-    <div style="margin-top: 15px;">
-      <button class="btn bc" data-modal-close="SRCHMOD" onclick="document.getElementById('SRCHMOD').classList.remove('open')">Kapat</button>
+    <div class="brow">
+      <button class="btn bc" onclick="document.getElementById('SRCHMOD').classList.remove('open')">Kapat</button>
     </div>
   </div>
 </div>
@@ -41,12 +180,15 @@
 <div class="mov" id="HIMOD">
   <div class="modal">
     <div class="mhdl"></div>
-    <h2>Geçmiş <span>Düzenle</span></h2>
+    <h2>Geçmiş <span style="color:var(--bbutton)">Düzenle</span></h2>
     <input type="hidden" id="HIIDX">
-    <div class="fg"><label class=\"fl\">Ödeme Adı</label><input class="fi" id="HINAM" type="text" placeholder="Kira, Elektrik..."></div>
-    <div class="fg"><label class=\"fl\">Tutar (₺)</label><input class="fi mono-inp" id="HIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
-    <div class="fg"><label class=\"fl\">Tarih</label><input class="fi" id="HIDAT" type="date"></div>
-    <div class="brow"><button class="btn bc" data-modal-close="HIMOD" onclick="document.getElementById('HIMOD').classList.remove('open')">İptal</button><button class="btn bs" onclick="window.saveHistItem ? window.saveHistItem() : null">Kaydet</button></div>
+    <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="HINAM" type="text" placeholder="Kira, Elektrik..."></div>
+    <div class="fg"><label class="fl">Tutar (₺)</label><input class="fi mono" id="HIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg"><label class="fl">Tarih</label><input class="fi" id="HIDAT" type="date"></div>
+    <div class="brow">
+      <button class="btn bc" onclick="document.getElementById('HIMOD').classList.remove('open')">İptal</button>
+      <button class="btn bs" id="BTN_SAVE_HIST">Kaydet</button>
+    </div>
   </div>
 </div>
 
@@ -57,19 +199,40 @@
 </div>
 
 <script>
-  // Arayüz fallback sabiti
+  // Global Sürüm Sabiti
   const APP_VERSION = 'v8.16';
+
+  // Mobil Menü Aç/Kapat Etkileşimi
+  document.getElementById('MENU_TOGGLE').addEventListener('click', () => {
+    document.getElementById('SIDEBAR').classList.toggle('open');
+  });
+
+  // Yan Menü Sekme Değiştirme Mantığı
+  document.querySelectorAll('.mn-i[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mn-i').forEach(b => b.classList.remove('act'));
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('act'));
+      
+      btn.classList.add('act');
+      const target = btn.getAttribute('data-target');
+      const targetEl = document.getElementById(target);
+      if(targetEl) targetEl.classList.add('act');
+      
+      // Mobilde menüyü otomatik kapat
+      document.getElementById('SIDEBAR').classList.remove('open');
+    });
+  });
 </script>
 
 <script type="module" src="js/app.js"></script>
 
 <script>
-  // PWA Service Worker Bağlantısı
+  // PWA Service Worker offline engine activation
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('[PWA] Service Worker başarıyla bağlandı.'))
-        .catch(err => console.error('[PWA] SW Bağlantı hatası:', err));
+        .then(reg => console.log('[PWA] Service Worker aktif.'))
+        .catch(err => console.error('[PWA] SW Hatası:', err));
     });
   }
 </script>
