@@ -120,9 +120,11 @@ export function render() {
       months.forEach(m => {
         let match = row.items.find(p => p.date && p.date.substring(0, 7) === m);
         if (match) {
-          let isPaid = match.isPaid ? 'line-through; opacity: 0.5;' : '';
-          let color = match.isPaid ? '#2e7d32' : 'var(--bbutton)';
-          h += `<td class="mono" style="${isPaid} color: ${color}; font-weight:600;">${Number(match.amt).toLocaleString('tr-TR', {minimumFractionDigits:2})} ₺</td>`;
+          const paid = match.isPaid || match.status === 'paid';
+          const amt  = Number(match.amount || match.amt || 0);
+          let isPaid = paid ? 'text-decoration:line-through; opacity: 0.5;' : '';
+          let color  = paid ? '#2e7d32' : 'var(--bbutton)';
+          h += `<td class="mono" style="${isPaid} color: ${color}; font-weight:600;">${amt.toLocaleString('tr-TR', {minimumFractionDigits:2})} ₺</td>`;
         } else {
           h += `<td style="opacity:0.15; text-align:center;">-</td>`;
         }
@@ -135,7 +137,7 @@ export function render() {
 
     if (matrisSummary) {
       let unpaid = 0, paid = 0;
-      state.pays.forEach(p => { p.isPaid ? paid += Number(p.amt||0) : unpaid += Number(p.amt||0); });
+      state.pays.forEach(p => { const a = Number(p.amount || p.amt || 0); const done = p.isPaid || p.status === 'paid'; done ? paid += a : unpaid += a; });
       matrisSummary.innerHTML = `
         <div class="c-row">
           <div class="c-card"><span class="c-lbl">Gelecek Ödemeler</span><span class="c-val mono" style="color:var(--sec);">${unpaid.toLocaleString('tr-TR')} ₺</span></div>
