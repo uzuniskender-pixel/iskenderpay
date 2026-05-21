@@ -183,3 +183,9 @@ onAuthStateChanged(auth, (user) => {
     if (plsEl) plsEl.style.display = 'none';
   }
 });
+// app.js veya harici scriptlerin eski isimlerle çağrı yapabilmesi için alias (takma ad) exportları:
+export const loginWithGoogle = window.doGoogleLogin;
+export const logoutWithGoogle = window.doGoogleSignOut;
+
+// Eğer app.js içeride başka fonksiyonlar da bekliyorsa garantiye alalım:
+export { _planDoc, _metaDoc };
