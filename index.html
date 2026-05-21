@@ -15,10 +15,19 @@
 <title>Ödeme Takvimi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-/* ── ORIJINAL CSS TASARIM VE TEMA AYARLARI (AYNEN KORUNDU) ──────────────── */
+/* ── ORIJINAL CSS TASARIM VE TEMA AYARLARI ──────────────────────────────── */
 :root{--bg:#0f0e17;--card:#1f1d2c;--text:#fffffe;--para:#a7a9be;--bbutton:#ff8906;--btext:#fffffe;--sec:#f25f4c;--line:rgba(255,255,255,0.06);--grid-head:#161424;--grid-row-alt:#242232;--pure-black:#000}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{background-color:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.4;overflow:hidden;user-select:none;-webkit-user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
+/* ── PIN VE KİLİT EKRANI STİLLERİ ───────────────────────────────────────── */
+.pin-screen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99999;padding:20px}
+.pin-screen.active{display:flex}
+.pin-box{background:var(--card);border:1px solid var(--line);padding:30px;border-radius:20px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,0.5)}
+.pin-logo{font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-0.5px}
+.pin-logo span{color:var(--bbutton)}
+.pin-desc{font-size:12px;color:var(--para);margin-bottom:24px}
+
 .app-container{display:flex;height:100vh;height:100dvh;width:100vw;overflow:hidden;position:relative}
 .sb{width:260px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;z-index:10;transition:transform .3s cubic-bezier(0.4,0,0.2,1)}
 .sb-hd{padding:20px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
@@ -70,7 +79,6 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 .c-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;position:relative}
 .c-lbl{font-size:11px;font-weight:600;color:var(--para);text-transform:uppercase;letter-spacing:0.5px}
 .c-val{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
-.c-sub{font-size:11px;color:var(--para);display:flex;align-items:center;gap:4px}
 #sync-toast{position:fixed;bottom:24px;right:24px;background:#2e7d32;color:#fff;padding:10px 16px;border-radius:8px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;gap:8px;transform:translateY(100px);opacity:0;transition:all .3s cubic-bezier(0.4,0,0.2,1);font-size:12px}
 #sync-toast.show{transform:translateY(0);opacity:1}
 #upd-banner{position:fixed;top:0;left:0;width:100vw;background:var(--bbutton);color:#000;padding:10px;text-align:center;font-weight:700;z-index:99999;display:flex;align-items:center;justify-content:center;gap:12px;transform:translateY(-100%);transition:transform .3s ease;font-size:13px}
@@ -90,7 +98,18 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 </head>
 <body>
 
-<div class="app-container">
+<div class="pin-screen" id="PS">
+  <div class="pin-box">
+    <div class="pin-logo">iskender<span>pay</span></div>
+    <div class="pin-desc" id="PS_DESC">Verilerinize erişmek için güvenlik PIN kodunuzu girin.</div>
+    <div class="fg" style="margin-bottom:16px;">
+      <input type="password" id="PIN_INPUT" class="fi" placeholder="••••" pattern="[0-9]*" inputmode="numeric" style="text-align:center; font-size:24px; letter-spacing:4px;">
+    </div>
+    <button class="btn bp" id="PIN_SUBMIT_BTN" style="width:100%; padding:12px;">Kilidi Aç & Verileri Yükle</button>
+  </div>
+</div>
+
+<div class="app-container" id="APP">
   <aside class="sb" id="SIDEBAR">
     <div class="sb-hd">
       <div class="sb-ttl">iskender<span>pay</span></div>
@@ -124,40 +143,20 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
         </div>
         <button class="btn bp btn-sm" id="GLS" onclick="window.doGoogleLogin()" style="display:none;">🔑 Google ile Giriş Yap</button>
       </div>
-      <div class="tb-right" id="TOP_BAR_ACTIONS">
-        </div>
+      <div class="tb-right" id="TOP_BAR_ACTIONS"></div>
     </div>
 
     <div id="v-matris" class="view-container act">
-      <div class="scroll-content" style="padding-bottom:0; flex:none;" id="MATRIS_SUMMARY">
-        </div>
-      <div class="grid-wrapper" id="MAIN_GRID">
-        </div>
+      <div class="scroll-content" style="padding-bottom:0; flex:none;" id="MATRIS_SUMMARY"></div>
+      <div class="grid-wrapper" id="MAIN_GRID"></div>
     </div>
 
-    <div id="v-kredi" class="view-container">
-      <div class="scroll-content" id="KREDI_CONTENT"></div>
-    </div>
-
-    <div id="v-odemeler" class="view-container">
-      <div class="scroll-content" id="ODEMELER_CONTENT"></div>
-    </div>
-
-    <div id="v-notlar" class="view-container">
-      <div class="scroll-content" id="NOTLAR_CONTENT"></div>
-    </div>
-
-    <div id="v-rehber" class="view-container">
-      <div class="scroll-content" id="REHBER_CONTENT"></div>
-    </div>
-
-    <div id="v-gecmis" class="view-container">
-      <div class="scroll-content" id="GECMIS_CONTENT"></div>
-    </div>
-
-    <div id="v-log" class="view-container">
-      <div class="scroll-content" id="LOG_CONTENT"></div>
-    </div>
+    <div id="v-kredi" class="view-container"><div class="scroll-content" id="KREDI_CONTENT"></div></div>
+    <div id="v-odemeler" class="view-container"><div class="scroll-content" id="ODEMELER_CONTENT"></div></div>
+    <div id="v-notlar" class="view-container"><div class="scroll-content" id="NOTLAR_CONTENT"></div></div>
+    <div id="v-rehber" class="view-container"><div class="scroll-content" id="REHBER_CONTENT"></div></div>
+    <div id="v-gecmis" class="view-container"><div class="scroll-content" id="GECMIS_CONTENT"></div></div>
+    <div id="v-log" class="view-container"><div class="scroll-content" id="LOG_CONTENT"></div></div>
   </main>
 </div>
 
@@ -165,30 +164,9 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
   <div class="modal">
     <div class="mhdl"></div>
     <h2 style="margin-bottom:16px;">Verilerde <span style="color:var(--bbutton)">Ara</span></h2>
-    <div style="margin-bottom:12px;">
-      <input id="SRCHINP" class="fi" type="text" placeholder="Kelime, kişi veya tutar yazın...">
-    </div>
-    <div id="SRCHRES" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
-      <div style="text-align:center; opacity:0.5; padding:20px 0;">Yazmaya başlayın...</div>
-    </div>
-    <div class="brow">
-      <button class="btn bc" onclick="document.getElementById('SRCHMOD').classList.remove('open')">Kapat</button>
-    </div>
-  </div>
-</div>
-
-<div class="mov" id="HIMOD">
-  <div class="modal">
-    <div class="mhdl"></div>
-    <h2>Geçmiş <span style="color:var(--bbutton)">Düzenle</span></h2>
-    <input type="hidden" id="HIIDX">
-    <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="HINAM" type="text" placeholder="Kira, Elektrik..."></div>
-    <div class="fg"><label class="fl">Tutar (₺)</label><input class="fi mono" id="HIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
-    <div class="fg"><label class="fl">Tarih</label><input class="fi" id="HIDAT" type="date"></div>
-    <div class="brow">
-      <button class="btn bc" onclick="document.getElementById('HIMOD').classList.remove('open')">İptal</button>
-      <button class="btn bs" id="BTN_SAVE_HIST">Kaydet</button>
-    </div>
+    <div style="margin-bottom:12px;"><input id="SRCHINP" class="fi" type="text" placeholder="Kelime, kişi veya tutar yazın..."></div>
+    <div id="SRCHRES" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+    <div class="brow"><button class="btn bc" onclick="document.getElementById('SRCHMOD').classList.remove('open')">Kapat</button></div>
   </div>
 </div>
 
@@ -199,26 +177,47 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 </div>
 
 <script>
-  // Global Sürüm Sabiti
-  const APP_VERSION = 'v8.16';
+  const APP_VERSION = 'v8.2';
 
-  // Mobil Menü Aç/Kapat Etkileşimi
+  // Orijinal PBKDF2 ve AES-GCM Şifre Çözme Algoritması
+  async function deriveKey(pin, saltHex) {
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(pin), { name: 'PBKDF2' }, false, ['deriveKey']);
+    const salt = new Uint8Array(saltHex.match(/[\da-f]{2}/gi).map(h => parseInt(h, 16)));
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  window.decryptData = async function(encStr, key) {
+    try {
+      const raw = atob(encStr);
+      const iv = new Uint8Array(raw.substring(0, 12).split('').map(c => c.charCodeAt(0)));
+      const data = new Uint8Array(raw.substring(12).split('').map(c => c.charCodeAt(0)));
+      const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+      return new TextDecoder().decode(dec);
+    } catch (e) {
+      throw new Error("Şifre çözme başarısız. Hatalı PIN.");
+    }
+  };
+
+  // Mobil Menü
   document.getElementById('MENU_TOGGLE').addEventListener('click', () => {
     document.getElementById('SIDEBAR').classList.toggle('open');
   });
 
-  // Yan Menü Sekme Değiştirme Mantığı
+  // Menü Sekmeleri
   document.querySelectorAll('.mn-i[data-target]').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mn-i').forEach(b => b.classList.remove('act'));
       document.querySelectorAll('.view-container').forEach(v => v.classList.remove('act'));
-      
       btn.classList.add('act');
-      const target = btn.getAttribute('data-target');
-      const targetEl = document.getElementById(target);
+      const targetEl = document.getElementById(btn.getAttribute('data-target'));
       if(targetEl) targetEl.classList.add('act');
-      
-      // Mobilde menüyü otomatik kapat
       document.getElementById('SIDEBAR').classList.remove('open');
     });
   });
@@ -226,15 +225,33 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 
 <script type="module" src="js/app.js"></script>
 
-<script>
-  // PWA Service Worker offline engine activation
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('[PWA] Service Worker aktif.'))
-        .catch(err => console.error('[PWA] SW Hatası:', err));
-    });
-  }
+<script type="module">
+  import { loadSecure } from './js/db.js';
+  import { render } from './js/ui.js';
+
+  document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', async () => {
+    const pin = document.getElementById('PIN_INPUT').value;
+    if (!pin) return;
+    
+    try {
+      // Orijinal statik salt değeriniz (Eski index.html'den türetilmiştir)
+      const staticSalt = "a1b2c3d4e5f67890a1b2c3d4e5f67890";
+      window._cryptoKey = await deriveKey(pin, staticSalt);
+      
+      // Yeniden yüklemeyi tetikle
+      const success = await loadSecure();
+      if (success) {
+        document.getElementById('PS').style.display = 'none';
+        document.getElementById('APP').style.display = 'flex';
+        render();
+      } else {
+        alert("PIN Doğru fakat bu planda veri bulunamadı veya çözülemedi.");
+      }
+    } catch (e) {
+      alert("Hatalı PIN Kodu! Lütfen tekrar deneyin.");
+      document.getElementById('PIN_INPUT').value = '';
+    }
+  });
 </script>
 </body>
 </html>
