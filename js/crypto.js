@@ -1,5 +1,5 @@
-// js/crypto.js — v8.17
-// Düzeltme: AES-256-GCM → AES-GCM, format: hex → base64 (orijinal index.html ile uyumlu)
+// js/crypto.js — v8.18-fixed
+// Düzeltme: btoa/atob spread stack overflow → TextDecoder/Uint8Array ile güvenli dönüşüm
 
 let _plainPin = null;
 let _cryptoKey = null;
@@ -29,21 +29,38 @@ export async function deriveKeyFromPin(pin, saltHex) {
   return _cryptoKey;
 }
 
+// base64 yardımcıları — spread kullanmaz, büyük veriyle güvenli çalışır
+function uint8ToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToUint8(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export async function encryptData(rawText, key) {
   const enc = new TextEncoder();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(rawText));
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  const combined = new Uint8Array(12 + encrypted.byteLength);
   combined.set(iv, 0);
-  combined.set(new Uint8Array(encrypted), iv.length);
-  // base64 — index.html'deki orijinal atob/btoa formatıyla uyumlu
-  return btoa(String.fromCharCode(...combined));
+  combined.set(new Uint8Array(encrypted), 12);
+  return uint8ToBase64(combined);
 }
 
 export async function decryptData(encStr, key) {
-  const raw = atob(encStr);
-  const iv   = new Uint8Array(raw.substring(0, 12).split('').map(c => c.charCodeAt(0)));
-  const data = new Uint8Array(raw.substring(12).split('').map(c => c.charCodeAt(0)));
+  const combined = base64ToUint8(encStr);
+  const iv   = combined.slice(0, 12);
+  const data = combined.slice(12);
   const dec  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
   return new TextDecoder().decode(dec);
 }
