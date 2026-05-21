@@ -1,11 +1,14 @@
 // js/db.js
-// iskenderpay — Eksiksiz ve Kesin Çözüm Veritabanı Modülü (v8.30)
+// iskenderpay — Kesin ve Kalıcı Çözüm Veritabanı Modülü (v8.40)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { updateState } from './state.js';
 import { render } from './ui.js';
+
+// Senin orijinal şifreleme modülündeki fonksiyonları doğrudan bağlıyoruz
+import { deriveKeyFromPin, encryptData, decryptData, setCryptoKey } from './crypto.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
@@ -23,7 +26,7 @@ export const db = getFirestore(app);
 
 window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
-// app.js'in dışarıdan erişmek istediği döküman referans fonksiyonları (Eksiksiz Tanımlandı)
+// app.js'in dışarıdan beklediği döküman referans fonksiyonları
 export function _planDoc() {
   return doc(db, 'users', window._fbUid + '_' + window._planId);
 }
@@ -38,39 +41,7 @@ window._fbSave = async function(encData) {
   await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
-// Kripto ve Şifreleme Fonksiyonları
-async function deriveKey(pin, saltB64) {
-  const enc = new TextEncoder();
-  const pinKey = await crypto.subtle.importKey("raw", enc.encode(pin), "PBKDF2", false, ["deriveKey"]);
-  const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-    pinKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-window.decryptData = async function(cipherB64, key) {
-  const raw = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0));
-  const iv = raw.slice(0, 12);
-  const data = raw.slice(12);
-  const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, data);
-  return new TextDecoder().decode(dec);
-};
-
-window.encryptData = async function(plainText, key) {
-  const enc = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, enc.encode(plainText));
-  const combined = new Uint8Array(iv.length + cipher.byteLength);
-  combined.set(iv, 0);
-  combined.set(new Uint8Array(cipher), iv.length);
-  return btoa(String.fromCharCode(...combined));
-};
-
-// Google Giriş ve Çıkış Fonksiyonları (Hem window hem export olarak bağlandı)
+// Google Giriş ve Çıkış Fonksiyonları
 export async function loginWithGoogle() {
   try {
     const provider = new GoogleAuthProvider();
@@ -91,7 +62,7 @@ export async function logoutUser() {
 window.doGoogleLogin = loginWithGoogle;
 window.doGoogleSignOut = logoutUser;
 
-// PIN Kontrol ve Onaylama Eylemi
+// PIN Kontrol, Hex Şifre Çözme ve Onaylama Eylemi
 window.submitPin = async function() {
   const pinInp = document.getElementById('PIN_INP') || document.getElementById('PIN_INPUT');
   const pinErr = document.getElementById('PIN_ERR');
@@ -102,26 +73,35 @@ window.submitPin = async function() {
 
   try {
     const snap = await getDoc(_planDoc());
+    
+    // Eğer veritabanında veri yoksa yeni şifreli yapı kur
     if (!snap.exists() || !snap.data().data) {
       const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const saltB64 = btoa(String.fromCharCode(...saltBytes));
-      window._cryptoKey = await deriveKey(pin, saltB64);
+      const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      const key = await deriveKeyFromPin(pin, saltHex);
+      window._cryptoKey = key;
+      setCryptoKey(key);
       
       const initialData = JSON.stringify({ pays: [] });
-      const enc = await window.encryptData(initialData, window._cryptoKey);
-      await setDoc(_planDoc(), { data: enc, salts: { main: saltB64 }, updatedAt: Date.now() }, { merge: true });
+      const enc = await encryptData(initialData, key);
+      await setDoc(_planDoc(), { data: enc, salts: { main: saltHex }, updatedAt: Date.now() }, { merge: true });
       
       completeUnlock();
       return;
     }
 
     const d = snap.data();
-    const saltB64 = (d.salts && d.salts.main) || btoa("iskenderpaySalt123");
+    // Orijinal tuz (salt) verisini al, yoksa varsayılanı kullan
+    const saltHex = (d.salts && d.salts.main) || "a1b2c3d4e5f67890a1b2c3d4e5f67890";
     
-    const key = await deriveKey(pin, saltB64);
-    const decryptedStr = await window.decryptData(d.data, key);
+    // Orijinal algoritmayla anahtarı türet ve şifreyi çöz
+    const key = await deriveKeyFromPin(pin, saltHex);
+    const decryptedStr = await decryptData(d.data, key);
     
     window._cryptoKey = key;
+    setCryptoKey(key);
+    
     const parsed = JSON.parse(decryptedStr);
     if (parsed && typeof parsed === 'object') {
       Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
@@ -160,7 +140,7 @@ export async function loadSecure() {
       const d = snap.data();
       if (window._cryptoKey) {
         try {
-          const decryptedStr = await window.decryptData(d.data, window._cryptoKey);
+          const decryptedStr = await decryptData(d.data, window._cryptoKey);
           const parsed = JSON.parse(decryptedStr);
           Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
           return true;
