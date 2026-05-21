@@ -1293,9 +1293,12 @@ async function migrateToV8(pin, pinSalt) {
       const data   = await decryptData(encOld, _cryptoKey); // eski key ile çöz
       const encNew = await encryptData(data, newCryptoKey); // yeni key ile şifrele
       localStorage.setItem('v5-data-' + planId, encNew);
-      // Firebase: sadece aktif planı güncelle (diğer plan login'de güncellenir)
-      if (window._fbSave && window._planId === planId) {
-        try { await window._fbSave(encNew); } catch(e) {}
+      // Firebase: her iki planı da güncelle — tutarlılık garantisi
+      if (window._fbSave) {
+        const origPlan = window._planId;
+        window._planId = planId;
+        try { await window._fbSave(encNew); } catch(e) { console.warn('v8 migrasyon Firebase yazma hatası ' + planId + ':', e); }
+        window._planId = origPlan;
       }
     } catch(e) { console.warn('v8 migrasyon plan ' + planId + ' atlandı:', e); }
   }
@@ -1329,6 +1332,19 @@ let _plainPin = ''; // Sadece oturum boyunca bellekte, localStorage'a yazılmaz
 async function doLogin() {
   const val = document.getElementById('PI').value;
   if (!val) return;
+
+  // Plan değişimi: _cryptoKey zaten var ve PIN aynıysa direkt yükle
+  if (_cryptoKey && _plainPin && _plainPin === val) {
+    try {
+      await loadSecure();
+      await migrateToV7();
+      await migrateToV7b();
+      enterApp();
+      return;
+    } catch(e) {
+      // Devam et — normal login akışına düş
+    }
+  }
 
   // pinSalt: PIN hash doğrulama + wrappedKey için
   const pinSalt = await getSaltAsync('v5-pin-salt');
@@ -1472,10 +1488,8 @@ function renderPlanNames() {
 function selectPlan(planId) {
   window._planId = planId;
   localStorage.setItem('v6-active-plan', planId);
-  // Sıfırla
-  pays=[]; creds=[]; hist=[]; persons=[]; notes=[]; paidItems=[];
-  _cryptoKey = null;
-  _plainPin = '';
+  // Veri dizilerini sıfırla ama _cryptoKey ve _dataKeyRaw'u KORUMA — wrappedKey hesap genelinde tek
+  pays=[]; creds=[]; hist=[]; persons=[]; notes=[]; paidItems=[]; rehber=[]; actLog=[];
   // Plan seçim ekranını kapat, PIN ekranını aç
   document.getElementById('PLS').style.display = 'none';
   const psEl = document.getElementById('PS');
@@ -2403,7 +2417,7 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.14';
+const APP_VERSION = 'v8.15';
 const APP_BUILD   = '20260520-03';
 
 function renderAI(){
