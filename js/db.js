@@ -1,144 +1,86 @@
 // js/db.js
-// iskenderpay — Veritabanı ve Senkronizasyon Modülü (v8.16)
+// iskenderpay — Firebase Modüler Katmanı (v8.16)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { state, updateState } from './state.js';
-import { encryptData, decryptData, getCryptoKey } from './crypto.js';
 
-// ⚠️ NOT: index.html dosyanızın en tepesinde yer alan 
-// kendi Firebase config nesnenizi bu alana birebir yapıştırın.
+// Orijinal index.html içerisindeki canlı Firebase konfigürasyonunuz
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
+  apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
+  authDomain: "iskenderpay-a23d1.firebaseapp.com",
+  projectId: "iskenderpay-a23d1",
+  storageBucket: "iskenderpay-a23d1.firebasestorage.app",
+  messagingSenderId: "916658036032",
+  appId: "1:916658036032:web:ad44e5d591e1adfc49aea5",
+  measurementId: "G-SPPX7F1BDY"
 };
 
-// Firebase Servislerini Başlat
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const provider = new GoogleAuthProvider();
 
-/**
- * Bellekteki (state) tüm verileri AES-256-GCM ile şifreler, 
- * hem Firestore bulutuna hem de yerel localStorage yedeğine yazar.
- */
-export async function saveSecure() {
-  const key = getCryptoKey();
-  if (!key || !window._fbUid) {
-    console.warn("[DB] Şifreleme anahtarı veya UID eksik. Kayıt iptal edildi.");
-    return;
-  }
+window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
-  try {
-    const payload = {
-      pays: await encryptData(JSON.stringify(state.pays), key),
-      creds: await encryptData(JSON.stringify(state.creds), key),
-      paidItems: await encryptData(JSON.stringify(state.paidItems), key),
-      hist: await encryptData(JSON.stringify(state.hist), key),
-      persons: await encryptData(JSON.stringify(state.persons), key),
-      notes: await encryptData(JSON.stringify(state.notes), key),
-      rehber: await encryptData(JSON.stringify(state.rehber), key),
-      actLog: await encryptData(JSON.stringify(state.actLog), key)
-    };
-
-    // 1. Bulut Senkronizasyonu (Firestore)
-    const docRef = doc(db, `users/${window._fbUid}/plans/${window._planId}`);
-    await setDoc(docRef, payload);
-
-    // 2. Lokal Şifreli Yedekleme (Fallback / Off-line için)
-    localStorage.setItem(`v5-data-${window._planId}`, JSON.stringify(payload));
-    
-    // UI üzerinde küçük bildirim tetiklemesi
-    showSyncToast();
-  } catch (err) {
-    console.error("[DB] Güvenli kayıt esnasında hata oluştu:", err);
-    throw err;
-  }
+function _planDoc() {
+  return doc(db, 'users', window._fbUid + '_' + window._planId);
 }
 
-/**
- * Firestore'dan (veya internet yoksa localStorage'dan) şifreli verileri çeker,
- * AES-256-GCM ile çözer ve merkezi state nesnesini günceller.
- * @returns {Promise<boolean>} İşlem başarısı
- */
-export async function loadSecure() {
-  const key = getCryptoKey();
-  if (!key || !window._fbUid) return false;
-
-  try {
-    // Önce Firestore'dan çekmeyi dene
-    const docRef = doc(db, `users/${window._fbUid}/plans/${window._planId}`);
-    const docSnap = await getDoc(docRef);
-    let encryptedPayload = null;
-
-    if (docSnap.exists()) {
-      encryptedPayload = docSnap.data();
-    } else {
-      // Bulutta bulunamadıysa lokal şifreli yedeği dene
-      const localData = localStorage.getItem(`v5-data-${window._planId}`);
-      if (localData) encryptedPayload = JSON.parse(localData);
-    }
-
-    if (encryptedPayload) {
-      // Her bir veri katmanını sırayla çöz ve state'e işle
-      if (encryptedPayload.pays) updateState('pays', JSON.parse(await decryptData(encryptedPayload.pays, key)));
-      if (encryptedPayload.creds) updateState('creds', JSON.parse(await decryptData(encryptedPayload.creds, key)));
-      if (encryptedPayload.paidItems) updateState('paidItems', JSON.parse(await decryptData(encryptedPayload.paidItems, key)));
-      if (encryptedPayload.hist) updateState('hist', JSON.parse(await decryptData(encryptedPayload.hist, key)));
-      if (encryptedPayload.persons) updateState('persons', JSON.parse(await decryptData(encryptedPayload.persons, key)));
-      if (encryptedPayload.notes) updateState('notes', JSON.parse(await decryptData(encryptedPayload.notes, key)));
-      if (encryptedPayload.rehber) updateState('rehber', JSON.parse(await decryptData(encryptedPayload.rehber, key)));
-      if (encryptedPayload.actLog) updateState('actLog', JSON.parse(await decryptData(encryptedPayload.actLog, key)));
-      
-      console.log(`[DB] ${window._planId} verileri başarıyla çözüldü ve yüklendi.`);
-      return true;
-    }
-    
-    console.log("[DB] Çözülecek şifreli veri bulunamadı, temiz profil açılıyor.");
-    return false;
-  } catch (err) {
-    console.error("[DB] Veri yükleme ve şifre çözme hatası:", err);
-    return false;
-  }
+function _metaDoc() {
+  return doc(db, 'users', window._fbUid + '_meta');
 }
 
-/**
- * Google ile Pop-up Giriş Penceresini Açar
- */
 export async function loginWithGoogle() {
   try {
-    const result = await signInWithPopup(auth, provider);
-    window._fbUid = result.user.uid;
-    return result.user;
-  } catch (err) {
-    console.error("[DB] Giriş hatası:", err);
-    throw err;
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+      await signInWithRedirect(auth, new GoogleAuthProvider());
+    } else {
+      alert('Giriş başarısız: ' + e.message);
+    }
   }
 }
 
-/**
- * Oturum Kapatma Süreci
- */
 export async function logoutUser() {
-  try {
-    await signOut(auth);
-    window._fbUid = null;
-  } catch (err) {
-    console.error("[DB] Çıkış hatası:", err);
-  }
+  await signOut(auth);
 }
 
-// Arayüzdeki "Senkronize Edildi" Toast Mesajı
-function showSyncToast() {
-  const t = document.getElementById('sync-toast');
-  if (t) {
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
+// ── VERİ GÜVENLİĞİ VE YÜKLEME ────────────────────────────────────────────────
+export async function loadSecure() {
+  if (!window._fbUid) return false;
+  try {
+    const snap = await getDoc(_planDoc());
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.data) {
+        // Şifreli veriyi localStorage'a eşitle ve belleğe almayı tetikle
+        localStorage.setItem(`v5-data-${window._planId}`, d.data);
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error("[DB] Veri yükleme hatası:", e);
   }
+  return false;
+}
+
+export async function saveSecure(encData) {
+  if (!window._fbUid) return;
+  await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
+}
+
+// ── METADATA / SALT VE PIN YÖNETİMİ ──────────────────────────────────────────
+export async function loadWrappedKey() {
+  if (!window._fbUid) return null;
+  try {
+    const snap = await getDoc(_metaDoc());
+    return snap.exists() ? (snap.data().wrappedKey || null) : null;
+  } catch { return null; }
+}
+
+export async function saveWrappedKey(wrappedB64) {
+  if (!window._fbUid) return;
+  await setDoc(_metaDoc(), { wrappedKey: wrappedB64 }, { merge: true });
 }
