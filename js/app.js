@@ -1,5 +1,5 @@
 // js/app.js
-// iskenderpay — Ana Giriş ve Yaşam Döngüsü (v8.17-fixed)
+// iskenderpay — Ana Giriş ve Yaşam Döngüsü (v8.18-fixed)
 
 import { auth, loadSecure, logoutUser, loginWithGoogle } from './db.js';
 import { render, renderAI, renderPlanNames } from './ui.js';
@@ -29,7 +29,6 @@ function checkVersionPolling() {
   }, 60000);
 }
 
-// Global Buton Eylemleri — tek yetkili tanım burası
 window.updApply = function() { window.location.reload(); };
 window.doGoogleLogin = loginWithGoogle;
 window.doGoogleSignOut = async function() {
@@ -41,22 +40,12 @@ window.doGoogleSignOut = async function() {
   }
 };
 
-// Plan Değiştirme
 window.selectPlan = async function(planId) {
   window._planId = planId;
   localStorage.setItem('v6-active-plan', planId);
   console.log(`[Plan] ${planId} seçildi, veriler yükleniyor...`);
-
   renderPlanNames();
   renderAI();
-
-  if (window._fbUid) {
-    const success = await loadSecure();
-    if (success) {
-      render();
-    }
-    // success=false → loadSecure PIN ekranını gösterdi, render yapma
-  }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -69,30 +58,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (p1) p1.addEventListener('click', () => window.selectPlan('plan1'));
   if (p2) p2.addEventListener('click', () => window.selectPlan('plan2'));
 
-  // Firebase Auth Durum Takibi — tek yetkili onAuthStateChanged
   auth.onAuthStateChanged(async (user) => {
-    const glsEl = document.getElementById('GLS');
-    const plsEl = document.getElementById('PLS');
+    const glsEl   = document.getElementById('GLS');
+    const plsEl   = document.getElementById('PLS');
     const plsUser = document.getElementById('PLS_USER');
+    const psEl    = document.getElementById('PS');
+    const appEl   = document.getElementById('APP');
 
     if (user) {
+      // Giriş yapıldı — PIN ekranını göster
       window._fbUid = user.uid;
-      if (glsEl) glsEl.style.display = 'none';
+      if (glsEl)   glsEl.style.display = 'none';
       if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
-      if (plsEl) plsEl.style.display = 'flex';
-
-      // PIN ekranını göster — kullanıcı PIN girince submitPin → loadSecure çağırır
-      const psEl  = document.getElementById('PS');
-      const appEl = document.getElementById('APP');
-      if (psEl)  { psEl.style.display = 'flex'; psEl.classList.add('active'); }
-      if (appEl) { appEl.style.display = 'none'; }
-
+      if (plsEl)   plsEl.style.display = 'flex';
+      if (appEl)   appEl.style.display = 'flex';
+      if (psEl)    { psEl.style.display = 'flex'; psEl.classList.add('active'); }
       renderPlanNames();
       renderAI();
     } else {
+      // Oturum yok — login butonunu göster
       window._fbUid = null;
-      if (glsEl) glsEl.style.display = 'flex';
-      if (plsEl) plsEl.style.display = 'none';
+      if (appEl)  appEl.style.display = 'flex';
+      if (psEl)   { psEl.style.display = 'none'; psEl.classList.remove('active'); }
+      if (glsEl)  glsEl.style.display = 'flex';
+      if (plsEl)  plsEl.style.display = 'none';
       clearState();
     }
   });
