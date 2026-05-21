@@ -1,72 +1,121 @@
-// js/crypto.js — v8.18-fixed
-// Düzeltme: btoa/atob spread stack overflow → TextDecoder/Uint8Array ile güvenli dönüşüm
+// js/crypto.js — v8.19-fixed
+// Eski index.html v8 mimarisiyle birebir uyumlu:
+// AES-KW ile wrap edilmiş dataKey + PBKDF2 pinSalt (UID'den türetilir)
 
-let _plainPin = null;
-let _cryptoKey = null;
-let _dataKeyRaw = null;
+let _plainPin    = null;
+let _cryptoKey   = null;
+let _dataKeyRaw  = null;
 
-export function getPlainPin()       { return _plainPin; }
-export function setPlainPin(pin)    { _plainPin = pin; }
-export function getCryptoKey()      { return _cryptoKey; }
-export function setCryptoKey(key)   { _cryptoKey = key; }
-export function getDataKeyRaw()     { return _dataKeyRaw; }
-export function setDataKeyRaw(raw)  { _dataKeyRaw = raw; }
+export function getPlainPin()      { return _plainPin; }
+export function setPlainPin(pin)   { _plainPin = pin; }
+export function getCryptoKey()     { return _cryptoKey; }
+export function setCryptoKey(key)  { _cryptoKey = key; }
+export function getDataKeyRaw()    { return _dataKeyRaw; }
+export function setDataKeyRaw(raw) { _dataKeyRaw = raw; }
 
-export async function deriveKeyFromPin(pin, saltHex) {
+// UID + key'den deterministik salt üret (eski getSaltAsync ile aynı)
+export async function getSaltFromUid(uid, saltKey) {
   const enc = new TextEncoder();
-  const baseKey = await crypto.subtle.importKey(
-    'raw', enc.encode(pin), { name: 'PBKDF2' }, false, ['deriveKey']
+  const keyMat = await crypto.subtle.importKey(
+    'raw', enc.encode(uid + saltKey), 'PBKDF2', false, ['deriveBits']
   );
-  const salt = new Uint8Array(saltHex.match(/[\da-f]{2}/gi).map(h => parseInt(h, 16)));
-  _cryptoKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    baseKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode('iskenderpay-v6'), iterations: 10000, hash: 'SHA-256' },
+    keyMat, 128
   );
-  _plainPin = pin;
-  return _cryptoKey;
+  return new Uint8Array(bits);
 }
 
-// base64 yardımcıları — spread kullanmaz, büyük veriyle güvenli çalışır
-function uint8ToBase64(bytes) {
+// dataKey import et
+export async function importDataKey(rawBytes) {
+  return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+// dataKey'i PIN ile wrap et (AES-KW)
+export async function wrapDataKey(dataKeyRaw, pin, pinSalt) {
+  const enc = new TextEncoder();
+  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const kwKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
+    kwMat, { name: 'AES-KW', length: 256 }, false, ['wrapKey']
+  );
+  const keyToWrap = await crypto.subtle.importKey('raw', dataKeyRaw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+  const wrapped = await crypto.subtle.wrapKey('raw', keyToWrap, kwKey, 'AES-KW');
   let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const buf = new Uint8Array(wrapped);
+  for (let i = 0; i < buf.length; i++) binary += String.fromCharCode(buf[i]);
+  return btoa(binary);
+}
+
+// wrap'lı dataKey'i PIN ile unwrap et
+export async function unwrapDataKey(wrappedB64, pin, pinSalt) {
+  const enc = new TextEncoder();
+  const binary = atob(wrappedB64);
+  const wrapped = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) wrapped[i] = binary.charCodeAt(i);
+  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const kwKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
+    kwMat, { name: 'AES-KW', length: 256 }, false, ['unwrapKey']
+  );
+  const unwrapped = await crypto.subtle.unwrapKey(
+    'raw', wrapped, kwKey, 'AES-KW',
+    { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
+  );
+  const exportedRaw = await crypto.subtle.exportKey('raw', unwrapped);
+  return { cryptoKey: unwrapped, rawBytes: new Uint8Array(exportedRaw) };
+}
+
+// v5 fallback: direkt PBKDF2 → AES-GCM (migrateToV8 için)
+export async function deriveKeyLegacy(password, salt) {
+  const enc = new TextEncoder();
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMat, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+
+// PIN hash (doğrulama için)
+export async function hashPin(pin, salt) {
+  const enc = new TextEncoder();
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMat, 256
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+
+// Şifreleme — chunk'lı btoa (stack overflow önlemi)
+export async function encryptData(rawData, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const plaintext = typeof rawData === 'string' ? rawData : JSON.stringify(rawData);
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const buf = new Uint8Array(iv.byteLength + cipher.byteLength);
+  buf.set(iv, 0);
+  buf.set(new Uint8Array(cipher), iv.byteLength);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < buf.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, buf.subarray(i, i + chunkSize));
   }
   return btoa(binary);
 }
 
-function base64ToUint8(b64) {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
-export async function encryptData(rawText, key) {
-  const enc = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(rawText));
-  const combined = new Uint8Array(12 + encrypted.byteLength);
-  combined.set(iv, 0);
-  combined.set(new Uint8Array(encrypted), 12);
-  return uint8ToBase64(combined);
-}
-
+// Şifre çözme
 export async function decryptData(encStr, key) {
-  const combined = base64ToUint8(encStr);
-  const iv   = combined.slice(0, 12);
-  const data = combined.slice(12);
+  const binary = atob(encStr);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const iv   = bytes.slice(0, 12);
+  const data = bytes.slice(12);
   const dec  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
   return new TextDecoder().decode(dec);
 }
 
 export function clearCryptoSession() {
-  _plainPin    = null;
-  _cryptoKey   = null;
-  _dataKeyRaw  = null;
+  _plainPin   = null;
+  _cryptoKey  = null;
+  _dataKeyRaw = null;
 }

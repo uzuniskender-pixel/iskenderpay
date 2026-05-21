@@ -1,12 +1,17 @@
-// js/db.js
-// iskenderpay — Kilitlenme Karşıtı ve Esnek Veri Dağıtım Motoru (v8.46-fixed)
+// js/db.js — v8.47-fixed
+// Eski index.html v8 doLogin() akışıyla birebir uyumlu
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { updateState } from './state.js';
 import { render } from './ui.js';
-import { deriveKeyFromPin, encryptData, decryptData, setCryptoKey, getCryptoKey } from './crypto.js';
+import {
+  getSaltFromUid, importDataKey, wrapDataKey, unwrapDataKey,
+  deriveKeyLegacy, hashPin, encryptData, decryptData,
+  setCryptoKey, getCryptoKey, setPlainPin, getPlainPin,
+  setDataKeyRaw, getDataKeyRaw, clearCryptoSession
+} from './crypto.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
@@ -22,20 +27,60 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// NOT: window._planId yalnızca state.js'de başlatılıyor. Burada tekrar atama YOK.
+// _planId tek yetkili tanımı state.js'de — burada yok
 
 export function _planDoc() {
   return doc(db, 'users', window._fbUid + '_' + window._planId);
 }
-
 export function _metaDoc() {
   return doc(db, 'users', window._fbUid + '_meta');
+}
+
+// ── Firebase yardımcıları ──────────────────────────────────────────────────
+
+async function fbLoad() {
+  if (!window._fbUid) return null;
+  const snap = await getDoc(_planDoc());
+  return snap.exists() ? snap.data().data : null;
+}
+
+async function fbLoadPinHash() {
+  if (!window._fbUid) return null;
+  const snap = await getDoc(_planDoc());
+  return snap.exists() ? (snap.data().pinHash || null) : null;
+}
+
+async function fbSavePinHash(hash) {
+  if (!window._fbUid) return;
+  await setDoc(_planDoc(), { pinHash: hash }, { merge: true });
+}
+
+async function fbLoadWrappedKey() {
+  if (!window._fbUid) return null;
+  try {
+    const snap = await getDoc(_metaDoc());
+    return snap.exists() ? (snap.data().wrappedKey || null) : null;
+  } catch(e) { return null; }
+}
+
+async function fbSaveWrappedKey(wrappedB64) {
+  if (!window._fbUid) return;
+  await setDoc(_metaDoc(), { wrappedKey: wrappedB64 }, { merge: true });
 }
 
 window._fbSave = async function(encData) {
   if (!window._fbUid) return;
   await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
+
+function getWrappedKeyLocal() {
+  return localStorage.getItem('v8-wrapped-key');
+}
+function saveWrappedKeyLocal(wrappedB64) {
+  localStorage.setItem('v8-wrapped-key', wrappedB64);
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
 
 export async function loginWithGoogle() {
   try {
@@ -54,135 +99,203 @@ export async function logoutUser() {
   await signOut(auth);
 }
 
-// PIN Kontrol ve Esnek Çözümleme Eylemi
-// Bu tek, yetkili PIN handler'dır. index.html bu fonksiyonu doğrudan çağırır.
+// ── v8 migrasyon ───────────────────────────────────────────────────────────
+
+async function migrateToV8(pin, pinSalt) {
+  const migKey = 'v8-migrated-' + (window._fbUid || 'local');
+  if (localStorage.getItem(migKey)) return;
+
+  const dataKeyRaw   = crypto.getRandomValues(new Uint8Array(32));
+  const newCryptoKey = await importDataKey(dataKeyRaw);
+
+  for (const planId of ['plan1', 'plan2']) {
+    let encOld = null;
+    if (window._planId === planId) {
+      try { encOld = await fbLoad(); } catch(e) {}
+    }
+    if (!encOld) encOld = localStorage.getItem('v5-data-' + planId);
+    if (!encOld) continue;
+    try {
+      const dataStr = await decryptData(encOld, getCryptoKey());
+      const encNew  = await encryptData(dataStr, newCryptoKey);
+      localStorage.setItem('v5-data-' + planId, encNew);
+      const origPlan = window._planId;
+      window._planId = planId;
+      try { await window._fbSave(encNew); } catch(e) {}
+      window._planId = origPlan;
+    } catch(e) {}
+  }
+
+  const wrappedB64 = await wrapDataKey(dataKeyRaw, pin, pinSalt);
+  saveWrappedKeyLocal(wrappedB64);
+  await fbSaveWrappedKey(wrappedB64);
+
+  setDataKeyRaw(dataKeyRaw);
+  setCryptoKey(newCryptoKey);
+  window._cryptoKey = newCryptoKey;
+
+  localStorage.setItem(migKey, '1');
+  console.log('[DB] v8 migrasyon tamamlandı');
+}
+
+// ── Ana PIN handler — eski doLogin() ile birebir aynı mantık ──────────────
+
 window.submitPin = async function() {
   const pinInp = document.getElementById('PIN_INPUT');
   const pinErr = document.getElementById('PIN_ERR');
   if (!pinInp) return;
-
   const pin = pinInp.value.trim();
   if (!pin) return;
 
+  const showErr = (msg) => {
+    if (pinErr) pinErr.textContent = msg;
+    if (pinInp) {
+      pinInp.classList.add('err');
+      setTimeout(() => { pinInp.classList.remove('err'); }, 1400);
+    }
+  };
+
   try {
-    const snap = await getDoc(_planDoc());
+    // Zaten key var ve pin aynıysa direkt yükle
+    const currentKey = getCryptoKey();
+    const currentPin = getPlainPin();
+    if (currentKey && currentPin && currentPin === pin) {
+      try {
+        await loadSecure();
+        completeUnlock();
+        return;
+      } catch(e) {}
+    }
 
-    // 1. Durum: Veritabanında hiç veri yoksa sıfırdan oluştur
-    if (!snap.exists() || !snap.data().data) {
-      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    const pinSalt = await getSaltFromUid(window._fbUid, 'v5-pin-salt');
 
-      const key = await deriveKeyFromPin(pin, saltHex);
+    // PIN hash kontrol
+    let storedHash = null;
+    try { storedHash = await fbLoadPinHash(); } catch(e) {}
+
+    if (!storedHash) {
+      // İlk kullanım
+      if (pin.length < 4) { showErr('En az 4 karakter girmelisiniz!'); return; }
+      const hash = await hashPin(pin, pinSalt);
+      try { await fbSavePinHash(hash); } catch(e) {}
+
+      const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
+      const wrappedB64 = await wrapDataKey(dataKeyRaw, pin, pinSalt);
+      saveWrappedKeyLocal(wrappedB64);
+      await fbSaveWrappedKey(wrappedB64);
+
+      setDataKeyRaw(dataKeyRaw);
+      setPlainPin(pin);
+      const key = await importDataKey(dataKeyRaw);
       setCryptoKey(key);
       window._cryptoKey = key;
 
-      const initialData = JSON.stringify({ pays: [] });
-      const enc = await encryptData(initialData, key);
-      await setDoc(_planDoc(), { data: enc, salts: { main: saltHex }, updatedAt: Date.now() }, { merge: true });
-
-      completeUnlock([]);
+      await loadSecure();
+      completeUnlock();
       return;
     }
 
-    const d = snap.data();
-    const saltHex = (d.salts && d.salts.main) || "a1b2c3d4e5f67890a1b2c3d4e5f67890";
-
-    // Anahtarı türet ve ham veriyi çözmeye çalış
-    const key = await deriveKeyFromPin(pin, saltHex);
-    let decryptedStr = "";
-
-    try {
-      decryptedStr = await decryptData(d.data, key);
-    } catch (decryptFail) {
-      throw new Error("Şifre Çözme Hatası");
+    // PIN hash doğrula
+    const hash = await hashPin(pin, pinSalt);
+    if (hash !== storedHash) {
+      showErr('Hatalı PIN kodu!');
+      setTimeout(() => { if (pinInp) pinInp.value = ''; }, 1400);
+      return;
     }
 
-    // Başarılı — anahtarı her iki yerde de kaydet
-    setCryptoKey(key);
-    window._cryptoKey = key;
+    // wrapped key al
+    let wrappedB64 = await fbLoadWrappedKey() || getWrappedKeyLocal();
 
-    // Veriyi işle ve state'e aktar
-    let parsedData = [];
-    if (decryptedStr) {
+    if (!wrappedB64) {
+      // v5'ten gelen kullanıcı — eski deriveKey ile yükle, sonra v8'e migrate et
+      const dataSalt = await getSaltFromUid(window._fbUid, 'v5-data-salt');
+      const legacyKey = await deriveKeyLegacy(pin, dataSalt);
+      setCryptoKey(legacyKey);
+      window._cryptoKey = legacyKey;
+      setPlainPin(pin);
       try {
-        const parsed = JSON.parse(decryptedStr);
-        if (parsed && typeof parsed === 'object') {
-          if (Array.isArray(parsed.pays)) {
-            parsedData = parsed.pays;
-          } else if (Array.isArray(parsed)) {
-            parsedData = parsed;
-          }
-          Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
-        }
-      } catch (jsonErr) {
-        console.warn("[DB] Veri çözüldü fakat JSON parse edilemedi, boş liste ile açılıyor.");
+        await loadSecure();
+        await migrateToV8(pin, pinSalt);
+      } catch(e) {
+        showErr('Veri çözülemedi — şifre eşleşmiyor.');
+        return;
+      }
+      completeUnlock();
+      return;
+    }
+
+    // wrapped key unwrap et
+    let unwrapped;
+    try {
+      unwrapped = await unwrapDataKey(wrappedB64, pin, pinSalt);
+    } catch(e) {
+      showErr('Veri çözülemedi — şifre eşleşmiyor.');
+      return;
+    }
+
+    setDataKeyRaw(unwrapped.rawBytes);
+    setPlainPin(pin);
+    setCryptoKey(unwrapped.cryptoKey);
+    window._cryptoKey = unwrapped.cryptoKey;
+    saveWrappedKeyLocal(wrappedB64);
+
+    try {
+      await loadSecure();
+    } catch(e) {
+      // Diğer planı dene
+      const otherPlan = window._planId === 'plan1' ? 'plan2' : 'plan1';
+      const origPlan  = window._planId;
+      window._planId  = otherPlan;
+      try {
+        await loadSecure();
+        localStorage.setItem('v6-active-plan', otherPlan);
+      } catch(e2) {
+        window._planId = origPlan;
+        showErr('Veri çözülemedi. Lütfen tekrar deneyin.');
+        return;
       }
     }
 
-    completeUnlock(parsedData);
-  } catch (err) {
-    console.error("PIN doğrulama hatası:", err);
-    if (pinErr) pinErr.textContent = "Hatalı PIN kodu veya çözülemeyen veri yapısı!";
-    const pinInpEl = document.getElementById('PIN_INPUT');
-    if (pinInpEl) {
-      pinInpEl.classList.add('err');
-      setTimeout(() => pinInpEl.classList.remove('err'), 400);
-    }
+    completeUnlock();
+
+  } catch(err) {
+    console.error('[DB] PIN doğrulama hatası:', err);
+    showErr('Beklenmeyen hata: ' + err.message);
   }
 };
 
-function completeUnlock(paysList) {
-  const psEl = document.getElementById('PS');
-  const appEl = document.getElementById('APP');
-
-  if (psEl) {
-    psEl.style.display = 'none';
-    psEl.classList.remove('active');
-  }
-  if (appEl) {
-    appEl.style.display = 'flex';
-  }
-
-  // Her plan değişiminde state'i temiz yaz (eski veri kalmasın)
-  updateState('pays', paysList || []);
-  window.pays = paysList || [];
-
-  setTimeout(() => { render(); }, 50);
-}
+// ── loadSecure ─────────────────────────────────────────────────────────────
 
 export async function loadSecure() {
   if (!window._fbUid) return false;
   try {
-    const snap = await getDoc(_planDoc());
-    if (snap.exists() && snap.data().data) {
-      const d = snap.data();
-      const currentKey = getCryptoKey();
-      if (currentKey) {
-        try {
-          const decryptedStr = await decryptData(d.data, currentKey);
-          const parsed = JSON.parse(decryptedStr);
-          Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
-          return true;
-        } catch(e) {
-          // Anahtar geçersiz — PIN ekranına düş
-        }
-      }
-
-      // Anahtar yok veya geçersiz: PIN ekranını göster
-      const psEl = document.getElementById('PS');
-      const appEl = document.getElementById('APP');
-      if (psEl) {
-        psEl.style.display = 'flex';
-        psEl.classList.add('active');
-      }
-      if (appEl) appEl.style.display = 'none';
-      return false;
-    } else {
-      completeUnlock([]);
+    const enc = await fbLoad();
+    if (!enc) {
+      // Veri yok — boş state ile aç
+      updateState('pays', []);
+      window.pays = [];
       return true;
     }
-  } catch (e) {
-    console.error("[DB] loadSecure hatası:", e);
+    const key = getCryptoKey();
+    if (!key) throw new Error('crypto key yok');
+    const dataStr = await decryptData(enc, key);
+    const parsed  = JSON.parse(dataStr);
+    if (parsed && typeof parsed === 'object') {
+      Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
+    }
+    return true;
+  } catch(e) {
+    console.error('[DB] loadSecure hatası:', e);
+    throw e;
   }
-  return false;
+}
+
+// ── completeUnlock ─────────────────────────────────────────────────────────
+
+function completeUnlock() {
+  const psEl  = document.getElementById('PS');
+  const appEl = document.getElementById('APP');
+  if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
+  if (appEl) { appEl.style.display = 'flex'; }
+  setTimeout(() => { render(); }, 50);
 }
