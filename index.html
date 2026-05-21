@@ -1158,6 +1158,9 @@ async function loadSecure() {
 }
 
 // ── V7 MİGRASYON: Recurring → Bağımsız, PaidItems Ayrıştırma ─────────────
+// Migrasyon kilidi — aynı anda birden fazla çalışmasını engeller
+let _migrationRunning = false;
+
 async function migrateToV7() {
   const migKey = 'v7-migrated-' + (window._fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
@@ -1405,8 +1408,11 @@ function enterApp() {
   document.getElementById('PS').style.display = 'none';
   document.getElementById('APP').style.display = '';
   rhbNormalizeCompanies();
-  // Migrasyon buradan tek çağrılır — doLogin'de kaç kez akış olursa olsun
-  migrateToV7().then(() => migrateToV7b()).catch(e => console.warn('Migrasyon hatası:', e));
+  // Migrasyon buradan tek çağrılır — aynı anda birden fazla çalışmasını engelle
+  if (!_migrationRunning) {
+    _migrationRunning = true;
+    migrateToV7().then(() => migrateToV7b()).catch(e => console.warn('Migrasyon hatası:', e)).finally(() => { _migrationRunning = false; });
+  }
   initApp();
   startRealtimeSync();
 }
@@ -2315,8 +2321,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.19';
-const APP_BUILD   = '20260521-03';
+const APP_VERSION = 'v8.20';
+const APP_BUILD   = '20260521-04';
 
 function renderAI(){
   const el = document.getElementById('AI');
