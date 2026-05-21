@@ -1,5 +1,5 @@
 // js/db.js
-// iskenderpay — Firebase ve Şifreli Veri Senkronizasyonu (v8.17)
+// iskenderpay — Firebase ve Şifreli Veri Senkronizasyonu (v8.2)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -45,7 +45,7 @@ export async function logoutUser() {
 
 /**
  * Firebase'den gelen şifreli verileri kontrol eder. 
- * Kripto anahtarı eksikse index.html'deki PIN giriş ekranını aktif hale getirir.
+ * Kripto anahtarı eksikse HTML'deki diğer katmanları gizler ve PIN arayüzünü zorla açar.
  */
 export async function loadSecure() {
   if (!window._fbUid) return false;
@@ -64,7 +64,7 @@ export async function loadSecure() {
     }
 
     if (rawEncryptedData) {
-      // Senaryo 1: Veri düz JSON (Geliştirme veya geçiş aşaması verisi)
+      // Senaryo 1: Veri düz JSON ise (Geliştirme / test verisi)
       try {
         let parsed = JSON.parse(rawEncryptedData);
         if (parsed && typeof parsed === 'object') {
@@ -87,18 +87,23 @@ export async function loadSecure() {
             console.error("[DB] Anahtar mevcut ama şifre çözülemedi (Hatalı PIN).");
           }
         } else {
-          console.warn("[DB] Veri kriptolu. Kilit açma ekranı (PIN) tetikleniyor...");
+          console.warn("[DB] Veri kriptolu. Kilit açma ekranı (PIN) zorla tetikleniyor...");
           
-          // Orijinal index.html'deki PIN ekranını görünür kıl ve uygulamanın yüklenmesini bekleterek akışı devret
-          const psEl = document.getElementById('PS');
-          const appEl = document.getElementById('APP');
-          if (psEl) {
-            psEl.style.display = 'flex';
-            psEl.classList.add('active');
-          }
-          if (appEl) {
-            appEl.style.display = 'none';
-          }
+          // onAuthStateChanged'in kapatma ihtimaline karşı setTimeout ile DOM manipülasyonunu garantiye alıyoruz
+          setTimeout(() => {
+            const psEl = document.getElementById('PS');
+            const appEl = document.getElementById('APP');
+            const plsEl = document.getElementById('PLS');
+            const glsEl = document.getElementById('GLS');
+
+            if (psEl) {
+              psEl.style.setProperty('display', 'flex', 'important');
+              psEl.classList.add('active');
+            }
+            if (appEl) appEl.style.display = 'none';
+            if (plsEl) plsEl.style.display = 'none'; // Plan seçim ekranını gizle ki arkada kalmasın
+            if (glsEl) glsEl.style.display = 'none';
+          }, 50);
         }
       }
     }
