@@ -1,5 +1,5 @@
 // js/ui.js
-// iskenderpay — Arayüz ve Matris Render Motoru (v8.16)
+// iskenderpay — Arayüz ve Matris Render Motoru (v8.21)
 
 import { state } from './state.js';
 
@@ -9,11 +9,10 @@ export function renderAI() {
   const buildStr = window._knownBuild || '20260521-02'; 
   
   let h = '';
-  h += `<div style="margin-bottom: 6px;"><strong>Sürüm:</strong> <span class="mono">v8.16</span></div>`;
+  h += `<div style="margin-bottom: 6px;"><strong>Sürüm:</strong> <span class="mono">v8.21</span></div>`;
   h += `<div style="margin-bottom: 6px;"><strong>Build:</strong> <span class="mono">${buildStr}</span></div>`;
   h += `<div style="margin-bottom: 6px;"><strong>Aktif Plan:</strong> <span class="mono">${window._planId || 'plan1'}</span></div>`;
   h += `<div style="margin-bottom: 6px;"><strong>Ödeme (pays):</strong> <span class="mono">${state.pays ? state.pays.length : 0} kayıt</span></div>`;
-  h += `<div style="margin-bottom: 6px;"><strong>Kredi/Taksit:</strong> <span class="mono">${state.creds ? state.creds.length : 0} adet</span></div>`;
   
   aiEl.innerHTML = h;
 }
@@ -47,6 +46,15 @@ window.editPlanName = function(planId) {
 
 export function render() {
   console.log("[UI] Ana render döngüsü çalışıyor...");
+  
+  // EĞER BULUTTA KRİPTOLU VERİ VARSA VE ANAHTAR HENÜZ YOKSA RENDER'I DURDUR
+  // Böylece PIN ekranının üstünü kapatmaz!
+  const psEl = document.getElementById('PS');
+  if (psEl && (psEl.style.display === 'flex' || psEl.classList.contains('active'))) {
+    console.log("[UI] PIN Ekranı aktif olduğundan ana render döngüsü askıya alındı.");
+    return;
+  }
+
   renderAI();
   renderPlanNames();
 
@@ -54,34 +62,26 @@ export function render() {
   const matrisSummary = document.getElementById('MATRIS_SUMMARY');
   
   if (mainGrid) {
-    // Veri yoksa veya şifre çözülmediyse kullanıcı dostu uyarı ve test verisi oluşturma butonu sun
     if (!state.pays || state.pays.length === 0) {
       mainGrid.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; color: var(--para);">
           <div style="font-size: 40px; margin-bottom: 12px;">🔒</div>
-          <h3>Şifreli Veri Bulunmamaktadır veya PIN Girişi Bekleniyor</h3>
-          <p style="margin-top: 6px; font-size:12px; opacity:0.7; margin-bottom:15px;">Eğer bu planı ilk kez açıyorsanız aşağıdan test verisi yükleyerek matrisi başlatabilirsiniz.</p>
-          <button class="btn bp btn-sm" id="LOAD_DEMO_BTN">⚡ İlk Veri Girişini / Profilini Oluştur</button>
+          <h3>Veri Bulunmamaktadır</h3>
+          <p style="margin-top: 6px; font-size:12px; opacity:0.7; margin-bottom:15px;">Bu plan henüz boş veya PIN girişi bekleniyor.</p>
+          <button class="btn bp btn-sm" id="LOAD_DEMO_BTN">⚡ İlk Veri Girişini Oluştur</button>
         </div>
       `;
       
-      // İlk veri oluşturma butonu tetikleyicisi
       setTimeout(() => {
         const demoBtn = document.getElementById('LOAD_DEMO_BTN');
         if (demoBtn) {
           demoBtn.addEventListener('click', () => {
             const initialPays = [
-              { name: "Kira Ödemesi", amt: 15000, date: "2026-05-01", isPaid: false, groupId: "g_kira" },
-              { name: "Kira Ödemesi", amt: 15000, date: "2026-06-01", isPaid: false, groupId: "g_kira" },
-              { name: "Elektrik Faturası", amt: 1200, date: "2026-05-15", isPaid: true, groupId: "g_elek" }
-            ];
-            const initialCreds = [
-              { name: "Araba Kredisi", aylikTutar: 8500, taksitSayisi: 12 }
+              { name: "Örnek Kira", amt: 15000, date: "2026-05-01", isPaid: false, groupId: "g_kira" },
+              { name: "Örnek Fatura", amt: 1200, date: "2026-05-15", isPaid: true, groupId: "g_elek" }
             ];
             state.pays = initialPays;
-            state.creds = initialCreds;
             window.pays = initialPays;
-            window.creds = initialCreds;
             render();
           });
         }
@@ -91,7 +91,6 @@ export function render() {
       return;
     }
 
-    // Aylar dizisini oluştur
     let months = [];
     state.pays.forEach(p => {
       if (p.date) {
@@ -102,7 +101,6 @@ export function render() {
     months.sort();
     if (months.length === 0) months.push(new Date().toISOString().substring(0, 7));
 
-    // Satırları eşleştir
     let rowsMap = {};
     state.pays.forEach(p => {
       let gid = p.groupId || ('g_' + p.name);
@@ -124,7 +122,7 @@ export function render() {
         if (match) {
           let isPaid = match.isPaid ? 'line-through; opacity: 0.5;' : '';
           let color = match.isPaid ? '#2e7d32' : 'var(--bbutton)';
-          h += `<td class="mono" style="${isPaid} color: ${color}; font-weight:600; cursor:pointer;">${Number(match.amt).toLocaleString('tr-TR', {minimumFractionDigits:2})} ₺</td>`;
+          h += `<td class="mono" style="${isPaid} color: ${color}; font-weight:600;">${Number(match.amt).toLocaleString('tr-TR', {minimumFractionDigits:2})} ₺</td>`;
         } else {
           h += `<td style="opacity:0.15; text-align:center;">-</td>`;
         }
@@ -135,7 +133,6 @@ export function render() {
     h += `</tbody></table>`;
     mainGrid.innerHTML = h;
 
-    // Özet alanını render et
     if (matrisSummary) {
       let unpaid = 0, paid = 0;
       state.pays.forEach(p => { p.isPaid ? paid += Number(p.amt||0) : unpaid += Number(p.amt||0); });
@@ -146,22 +143,6 @@ export function render() {
           <div class="c-card"><span class="c-lbl">Toplam Plan Boyutu</span><span class="c-val mono">${(unpaid+paid).toLocaleString('tr-TR')} ₺</span></div>
         </div>
       `;
-    }
-  }
-  _renderSubTabs();
-}
-
-function _renderSubTabs() {
-  const krediContent = document.getElementById('KREDI_CONTENT');
-  if (krediContent && state.creds) {
-    if (state.creds.length === 0) {
-      krediContent.innerHTML = `<p style="opacity:0.4; padding:20px;">Kayıtlı aktif kredi/taksit bulunamadı.</p>`;
-    } else {
-      let kh = `<div style="display:flex; flex-direction:column; gap:10px;">`;
-      state.creds.forEach(c => {
-        kh += `<div class="c-card"><div style="display:flex; justify-content:space-between;"><strong>${c.name}</strong><span class="mono">${c.taksitSayisi || 0} Taksit</span></div><div style="font-size:16px; margin-top:4px;" class="mono">Aylık: <strong>${Number(c.aylikTutar||0).toLocaleString('tr-TR')} ₺</strong></div></div>`;
-      });
-      krediContent.innerHTML = kh + `</div>`;
     }
   }
 }
