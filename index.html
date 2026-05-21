@@ -984,15 +984,6 @@ async function unwrapDataKey(wrappedB64, pin, pinSalt) {
   return { cryptoKey: unwrapped, rawBytes: new Uint8Array(exportedRaw) };
 }
 
-async function deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const keyMat = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    keyMat, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
-  );
-}
-
 async function encryptData(data, key) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const enc = new TextEncoder();
@@ -1144,10 +1135,7 @@ async function loadSecure() {
   }
   // Firebase'de yoksa localStorage'a bak (plan'a özel key, eski key'e fallback)
   if (!enc) enc = localStorage.getItem('v5-data-' + window._planId) || localStorage.getItem('v5-data');
-  if (!enc) {
-    await migrateFromV4();
-    return;
-  }
+  if (!enc) return; // Veri yok — yeni hesap
   try {
     const data = await decryptData(enc, _cryptoKey);
     pays    = data.pays    || [];
@@ -1167,30 +1155,6 @@ async function loadSecure() {
   }
   const r = localStorage.getItem('v5-rates-' + window._planId) || localStorage.getItem('v5-rates');
   if (r) try { Object.assign(rates, JSON.parse(r)); } catch(e) {}
-}
-
-// Eski v4 şifresiz veriden v5 şifreli formata geçiş
-async function migrateFromV4() {
-  const p  = localStorage.getItem('v4-pays');
-  const cr = localStorage.getItem('v4-creds');
-  const h  = localStorage.getItem('v4-hist');
-  const pr = localStorage.getItem('v4-persons');
-  const r  = localStorage.getItem('v4-rates');
-  if (!p && !cr) return; // Hiç v4 verisi yok
-  pays    = JSON.parse(p  || '[]');
-  creds   = JSON.parse(cr || '[]');
-  hist    = JSON.parse(h  || '[]');
-  persons = JSON.parse(pr || '[]');
-  // v4 notlar xor şifreli — pin ile çöz
-  const pin = _plainPin;
-  const encNotes = localStorage.getItem('v4-notes');
-  if (encNotes) { const dec = xDec(encNotes, pin); if(dec) try{ notes=JSON.parse(dec); }catch(e){} }
-  if (r) try { Object.assign(rates, JSON.parse(r)); } catch(e) {}
-  await saveSecureNow();
-  // Eski anahtarları temizle
-  ['v4-pays','v4-creds','v4-hist','v4-persons','v4-notes','v4-pin','v4-rates',
-   'v4-ahead','v4-pin-salt'].forEach(k => localStorage.removeItem(k));
-  console.log('v4 → v5 migrasyon tamamlandı');
 }
 
 // ── V7 MİGRASYON: Recurring → Bağımsız, PaidItems Ayrıştırma ─────────────
@@ -1269,54 +1233,7 @@ async function migrateToV7b() {
   console.log('v7b migrasyon tamamlandı — groupId ay-çakışma algoritması ile düzeltildi');
 }
 
-// ── V8 MİGRASYON: deriveKey(PIN) → wrapDataKey(dataKey, PIN) ─────────────────
-async function migrateToV8(pin, pinSalt) {
-  const migKey = 'v8-migrated-' + (_fbUid || 'local');
-  if (localStorage.getItem(migKey)) return;
-
-  // Bu noktada _cryptoKey v5 yöntemiyle (deriveKey) türetilmiş, veri yüklü
-  // 1. Yeni rastgele dataKey üret
-  const dataKeyRaw   = crypto.getRandomValues(new Uint8Array(32));
-  const newCryptoKey = await importDataKey(dataKeyRaw);
-
-  // 2. Tüm plan verilerini yeni key ile yeniden şifrele
-  const planIds = ['plan1', 'plan2'];
-  for (const planId of planIds) {
-    const encOld = await (async () => {
-      if (window._fbLoad && window._planId === planId) {
-        try { return await window._fbLoad(); } catch(e) {}
-      }
-      return localStorage.getItem('v5-data-' + planId) || null;
-    })();
-    if (!encOld) continue;
-    try {
-      const data   = await decryptData(encOld, _cryptoKey); // eski key ile çöz
-      const encNew = await encryptData(data, newCryptoKey); // yeni key ile şifrele
-      localStorage.setItem('v5-data-' + planId, encNew);
-      // Firebase: her iki planı da güncelle — tutarlılık garantisi
-      if (window._fbSave) {
-        const origPlan = window._planId;
-        window._planId = planId;
-        try { await window._fbSave(encNew); } catch(e) { console.warn('v8 migrasyon Firebase yazma hatası ' + planId + ':', e); }
-        window._planId = origPlan;
-      }
-    } catch(e) { console.warn('v8 migrasyon plan ' + planId + ' atlandı:', e); }
-  }
-
-  // 3. dataKey'i PIN ile wrap et, kaydet
-  const wrappedB64 = await wrapDataKey(dataKeyRaw, pin, pinSalt);
-  _saveWrappedKeyLocal(wrappedB64);
-  await _saveWrappedKeyFirebase(wrappedB64);
-
-  // 4. Oturumdaki key'leri güncelle
-  _dataKeyRaw = dataKeyRaw;
-  _cryptoKey  = newCryptoKey;
-
-  localStorage.setItem(migKey, '1');
-  console.log('v8 migrasyon tamamlandı — dataKey mimarisine geçildi');
-}
-
-// compat: xDec eski v4 notlar için hâlâ gerekli
+// compat: xDec/xEnc backup dosyası şifreleme için kullanılıyor
 function xDec(e,p){try{const t=decodeURIComponent(escape(atob(e)));let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return r;}catch(e){return null;}}
 function xEnc(t,p){let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return btoa(unescape(encodeURIComponent(r)));}
 
@@ -1393,21 +1310,8 @@ async function doLogin() {
   // v8: wrapped key'i al ve unwrap et
   let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
   if (!wrappedB64) {
-    // v5'ten gelen kullanıcı — migrateToV8 çalışacak
-    // Geçici olarak eski yöntemle key türet, migrasyon içinde wrap edilecek
-    const dataSalt = await getSaltAsync('v5-data-salt');
-    _cryptoKey = await deriveKey(val, dataSalt);
-    _plainPin  = val;
-    try {
-      await loadSecure();
-      await migrateToV7();
-      await migrateToV7b();
-      await migrateToV8(val, pinSalt); // ← v8'e yükselt
-    } catch(e) {
-      showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
-    }
-    enterApp();
-    return;
+    // wrappedKey yok — veri bozuk veya hesap sıfırlandı
+    showPinErr('Şifreleme anahtarı bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'); return;
   }
   let unwrapped;
   try {
@@ -2417,8 +2321,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.15';
-const APP_BUILD   = '20260520-03';
+const APP_VERSION = 'v8.17';
+const APP_BUILD   = '20260521-01';
 
 function renderAI(){
   const el = document.getElementById('AI');

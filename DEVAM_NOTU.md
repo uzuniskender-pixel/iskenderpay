@@ -1,81 +1,110 @@
-# iskenderpay — DEVAM NOTU
+# iskenderpay — Modüler Yapıya Geçiş Devam Notu
 
-## Proje Özeti
-Kişisel ödeme takip PWA'sı. **Tek dosya mimarisi:** tüm uygulama `index.html` içinde.
-GitHub Pages'de yayında, PWA (manifest + service worker), Firebase auth + Firestore, AES-256-GCM lokal şifreleme.
+## Mevcut Durum (21 Mayıs 2026)
 
----
+Sistem şu an **tek dosya mimarisinde** çalışıyor:
+- `index.html` — tüm JS, CSS, HTML tek dosyada (3538 satır)
+- `fix_groupids.js` — konsola yapıştırılarak çalıştırılan yardımcı script
+- `manifest.json`, `sw.js`, `version.json`, ikonlar
 
-## Mevcut Versiyon
-- **APP_VERSION:** `v8.13`
-- **Build:** `20260520-04`
-- **index.html satır sayısı:** ~3.510
+`js/` klasörü **kaldırıldı** — modüler yapıya geçiş girişimi başarısız oldu.
 
 ---
 
-## Mimari Özet
+## Neden Başarısız Oldu
 
-### Veri Katmanları
-| Dizi | İçerik | Kalıcılık |
-|---|---|---|
-| `pays[]` | Ana ödeme planı | Firebase + localStorage (şifreli) |
-| `creds[]` | Kredi/taksit kayıtları | Firebase + localStorage (şifreli) |
-| `paidItems[]` | Yapılan ödemeler (plan bağımsız) | Firebase + localStorage (şifreli) |
-| `hist[]` | Silinen ödemeler geçmişi | Firebase + localStorage (şifreli) |
-| `persons[]` | Kişi/firma listesi | Firebase + localStorage (şifreli) |
-| `notes[]` | Şifreli notlar | Firebase + localStorage (şifreli) |
-| `rehber[]` | Rehber (kişi detayları) | Firebase + localStorage (şifreli) |
-| `actLog[]` | Aktivite logu | Firebase + localStorage (şifreli) |
+### Asıl Sorun: Crypto Mimarisi Yanlış Okundu
+Eski sistem basit `PBKDF2 → AES-GCM` değil, **3 katmanlı** bir yapı kullanıyor:
 
-### Temel Sistemler
-- **saveSecure / loadSecure:** AES-256-GCM + PBKDF2 (yerel kripto).
-- **Sync Motoru:** 30sn polling (`_fbPoll`), `updatedAt` kontrolü.
-- **UI Render:** Saf JS, dinamik tablo matrisi, CSS Değişkenleri.
-
----
-
-## Yapılacaklar (Todo List)
-
-- [x] **Global Arama Modalı (Search Modal)** — Tüm veri katmanlarında (`pays`, `paidItems`, `creds`, `notes`, `rehber`) lokal çözülmüş veriler üzerinden anlık arama desteği eklendi (v8.8).
-- [x] **Kur API hata yönetimi** — `fetchRates` sessiz hata yutma giderildi, `_fetchedAt` timestamp eklendi, eski kur ⚠ ile gösteriliyor (v8.11).
-- [x] **Sync race condition** — `_fbPoll` debounce aktifken atlanıyor, `_doSave` sonrası `_lastUpdated` güncelleniyor (v8.12).
-- [x] **Arama tutar sıfır sorunu** — `p.amt` → `p.amount` düzeltildi (v8.13).
-- [x] **Debounce kaldırıldı** — `saveSecure()` anında kaydediyor, race window tamamen kapandı (v8.13).
-- [ ] **Geçmiş Detay Modalı (History Detail)** — Silinen geçmiş satırlarının (`hist[]`) detaylı görünümü ve tek tıkla geri yükleme altyapısı (HIMOD/PIMOD benzeri bir yapı taşınabilir).
-- [ ] **editPlanName prompt** — Plan adlarının `prompt()` veya şık bir inline input ile ("Ev", "İş" vb.) özelleştirilebilmesi ve `localStorage` / Firebase üzerinde tutulması.
-
----
-
-## ⚠️ VERSİYON GÜNCELLEME KURALI
-Her `APP_VERSION` değişikliğinde **iki dosya birlikte** güncellenmeli:
-1. `index.html` → `const APP_VERSION = 'vX.XX';`
-2. `version.json` → `{"v": "X.XX", "build": "YYYYMMDD-NN"}`
-
-`version.json` güncellenmezse uygulama "Güncel sürümdesiniz" der ama yanlış versiyon çalışır.
-
----
-
-## Önemli Teknik Notlar
-- `nid` formatı: `'n' + Date.now() + '_' + Math.random().toString(36).slice(2,7)` → alfanümerik, tek tırnak safe
-- `paidId` formatı: `'pi_' + Date.now() + '_' + Math.random()` → alfanümerik, tek tırnak safe
-- `id` (pays): numeric artışlı string → onclick'te direkt sayı olarak kullanılabilir
-- `groupId`: `'g' + timestamp` formatı
-- Firebase doc path: `users/{uid}/plans/{planId}`
-- localStorage key pattern: `v5-data-{planId}`, `v5-rates`, `v6-active-plan`, `v6-name-{planId}`
-- Şifreleme salt: `'iskenderpay-v6'` sabit string + PBKDF2
-- Plan sayısı: 2 (plan1, plan2), `_planId` global
-
----
-
-## Dosya Yapısı
 ```
-iskenderpay-main/
-├── index.html          ← Tek kaynak dosya (Arama sistemi eklendi)
-├── manifest.json
-├── sw.js               ← Service worker (PWA)
-├── version.json        ← {"v":"8.13","build":"20260520-04"}
-├── icon-192.png
-├── icon-512.png
-├── CHANGELOG_v7.md
-└── fix_groupids.js
+PIN
+ └→ PBKDF2 (pinSalt) → AES-KW anahtarı
+      └→ AES-KW ile wrap edilmiş dataKey (Firebase _meta'da saklanır)
+           └→ dataKey ile AES-GCM şifreleme (plan verisi)
 ```
+
+**pinSalt** deterministik — `UID + 'v5-pin-salt'` stringinden PBKDF2 ile türetiliyor, localStorage veya Firestore'da saklanmıyor.
+
+**wrappedKey** Firebase'de `users/{uid}_meta` belgesinde `wrappedKey` alanında tutuluyor.
+
+**Veri** Firebase'de `users/{uid}_{planId}` belgesinde `data` alanında tutuluyor.
+
+### Diğer Hatalar
+- `window._planId` hem `db.js` hem `state.js`'de tanımlandı → yarış koşulu
+- `window.doGoogleLogin/SignOut` hem `db.js` hem `app.js`'de tanımlandı → çakışma
+- `onAuthStateChanged` içinden direkt `loadSecure` çağrıldı → PIN girilmeden key yok hatası
+- `index.html`'deki PIN handler `setCryptoKey()` çağırmadan `loadSecure` tetikledi
+- `encryptData`'da `...spread` ile `String.fromCharCode` → büyük veride stack overflow (sonradan düzeltildi)
+
+---
+
+## Modüler Yapıya Geçiş İçin Doğru Sıra
+
+### Adım 1 — state.js (Güvenli, crypto yok)
+```js
+export const state = { pays, creds, hist, persons, notes, paidItems, rehber, actLog };
+export function updateState(key, val) { state[key] = val; window[key] = val; }
+export function clearState() { ... }
+```
+- `window._planId` sadece burada tanımlanmalı
+
+### Adım 2 — ui.js (Güvenli, sadece render)
+- Tüm render fonksiyonları buraya: `render()`, `renderAI()`, `renderPlanNames()`
+- `state` import edilerek kullanılmalı
+- **Dikkat:** eski sistemde alan adları `amount` (pays için), `amt` (creds için)
+- **Dikkat:** ödeme durumu `status === 'paid'` veya `isPaid === true`
+
+### Adım 3 — crypto.js (Kritik — olduğu gibi taşı)
+Şu fonksiyonlar birebir aynı kalmalı:
+```js
+getSaltFromUid(uid, saltKey)   // UID + key → deterministik Uint8Array
+importDataKey(rawBytes)         // AES-GCM key import
+wrapDataKey(dataKeyRaw, pin, pinSalt)    // AES-KW wrap
+unwrapDataKey(wrappedB64, pin, pinSalt) // AES-KW unwrap
+deriveKeyLegacy(password, salt) // v5 fallback
+hashPin(pin, salt)              // PIN doğrulama hash
+encryptData(data, key)          // chunk'lı btoa — stack overflow önlemi
+decryptData(encStr, key)        // for döngüsü ile — spread kullanma
+```
+
+### Adım 4 — db.js (Kritik — Firebase + PIN akışı)
+`doLogin()` akışı birebir korunmalı:
+1. Zaten key var + pin aynı → direkt `loadSecure()`
+2. `pinSalt = getSaltFromUid(uid, 'v5-pin-salt')`
+3. `storedHash = fbLoadPinHash()` → yoksa ilk kullanım
+4. İlk kullanım: yeni dataKey üret, wrap et, kaydet
+5. Hash doğrula → yanlışsa hata göster
+6. `wrappedB64 = fbLoadWrappedKey() || localStorage('v8-wrapped-key')`
+7. wrappedB64 yoksa: v5 legacy (`deriveKeyLegacy`) + `migrateToV8()`
+8. `unwrapDataKey(wrappedB64, pin, pinSalt)` → cryptoKey
+9. `loadSecure()` → başarısız olursa diğer planı dene
+
+### Adım 5 — app.js (En son)
+- `onAuthStateChanged`: user varsa PIN ekranını göster, `loadSecure` çağırma
+- `window.submitPin` db.js'de tanımlanmalı, app.js çağırmamalı
+- `selectPlan`: sadece `_planId` güncelle + UI render, `loadSecure` çağırma
+- Oturum yoksa: `APP` görünür, `PS` gizli, `GLS` butonu görünür
+
+---
+
+## Firebase Veri Yapısı
+
+```
+users/{uid}_meta
+  wrappedKey: string (base64, AES-KW ile wrap edilmiş 32 byte dataKey)
+
+users/{uid}_{planId}   (örn: hTvBT4ab3GZQRtikksQygWxlssw1_plan1)
+  data: string (base64, AES-GCM şifreli JSON)
+  pinHash: string (base64, PBKDF2 hash)
+  updatedAt: number
+```
+
+---
+
+## Önemli Notlar
+
+- `fix_groupids.js` root'ta kalmalı — `js/` klasörüne taşınmaz, konsola yapıştırılarak çalıştırılır
+- Service worker (`sw.js`) cache'i agresif — deploy sonrası gizli sekme ile test et
+- `Cross-Origin-Opener-Policy` hataları Google popup'tan geliyor, işlevselliği etkilemiyor
+- Mevcut kullanıcının UID'si: `hTvBT4ab3GZQRtikksQygWxlssw1`
+- Plan 1'de 158 kayıt mevcut, veriler sağlıklı

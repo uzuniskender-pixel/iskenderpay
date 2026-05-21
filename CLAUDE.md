@@ -33,6 +33,16 @@ _Son güncelleme: 2026-05-20_
 - `_fbPoll`: `_saveTimer !== null` iken poll callback atlanıyor
 - `_doSave`: Firebase yazımı sonrası `window._lastUpdated = Date.now()` — poll kendi verisini tekrar yüklemiyor
 
+### v8.17 → Crypto temizliği — legacy migration kaldırıldı (`20260521-01`)
+- `deriveKey()` (v5 PIN→AES-GCM) fonksiyonu kaldırıldı
+- `migrateFromV4()` (XOR→AES şifresiz geçiş) fonksiyonu kaldırıldı
+- `migrateToV8()` (PIN-key→dataKey-wrap geçişi) fonksiyonu kaldırıldı
+- `doLogin()`'deki v5 legacy dalı (`wrappedB64` yoksa `deriveKey` + `migrateToV8`) kaldırıldı
+- `doLogin()` artık düz, tek akış: pinSalt → hash doğrula → unwrapDataKey → loadSecure
+- `xEnc/xDec` korundu — backup dosyası şifreleme için hâlâ kullanılıyor
+- `_dataKeyRaw` global'i korundu — `chPass()` PIN değişiminde wrap için kullanıyor
+- Mevcut tüm kullanıcılar v8'de, legacy kol artık tetiklenemiyordu
+
 ### v8.13 → Arama tutarı + debounce (`20260520-04`)
 - Arama: `p.amt` → `p.amount`, `pi.amt` → `pi.amount`, `c.amt` → kredi taksit toplamı
 - `saveSecure()` debounce kaldırıldı — anında `_doSave()` çağrısı, race window tamamen kapandı
