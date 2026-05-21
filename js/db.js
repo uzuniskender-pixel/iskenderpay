@@ -1,5 +1,5 @@
 // js/db.js
-// iskenderpay — Firebase ve Şifreli Veri Senkronizasyonu (v8.16)
+// iskenderpay — Firebase ve Şifreli Veri Senkronizasyonu (v8.17)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -44,7 +44,8 @@ export async function logoutUser() {
 }
 
 /**
- * Firebase'den gelen şifreli paketi okur ve çözülmesi için Crypto katmanına gönderir.
+ * Firebase'den gelen şifreli verileri kontrol eder. 
+ * Kripto anahtarı eksikse index.html'deki PIN giriş ekranını aktif hale getirir.
  */
 export async function loadSecure() {
   if (!window._fbUid) return false;
@@ -59,15 +60,12 @@ export async function loadSecure() {
         localStorage.setItem(`v5-data-${window._planId}`, rawEncryptedData);
       }
     } else {
-      // Bulutta yoksa yerel yedeği oku
       rawEncryptedData = localStorage.getItem(`v5-data-${window._planId}`);
     }
 
     if (rawEncryptedData) {
-      // Orijinal index.html şifre çözme entegrasyonu
-      // Eğer bir ara şifre çözme motoru varsa ham veriyi doğrudan çözmeyi dener
+      // Senaryo 1: Veri düz JSON (Geliştirme veya geçiş aşaması verisi)
       try {
-        // Eğer veri şifreli bir JSON string ise parse et ve state'e dağıt
         let parsed = JSON.parse(rawEncryptedData);
         if (parsed && typeof parsed === 'object') {
           Object.keys(parsed).forEach(key => {
@@ -78,15 +76,29 @@ export async function loadSecure() {
           return true;
         }
       } catch (e) {
-        // Veri şifreli düz metin (AES) ise ve window._cryptoKey mevcutsa çözmeyi dene
-        if (window.decryptData && window._cryptoKey) {
-          let decryptedStr = await window.decryptData(rawEncryptedData, window._cryptoKey);
-          let parsed = JSON.parse(decryptedStr);
-          Object.keys(parsed).forEach(key => updateState(key, parsed[key]));
-          return true;
+        // Senaryo 2: Veri gerçek AES şifreli metin
+        if (window._cryptoKey && window.decryptData) {
+          try {
+            let decryptedStr = await window.decryptData(rawEncryptedData, window._cryptoKey);
+            let parsed = JSON.parse(decryptedStr);
+            Object.keys(parsed).forEach(key => updateState(key, parsed[key]));
+            return true;
+          } catch (decryptErr) {
+            console.error("[DB] Anahtar mevcut ama şifre çözülemedi (Hatalı PIN).");
+          }
         } else {
-          // Geliştirme/Geçiş aşaması için şifresiz test verisi fallback'i
-          console.warn("[DB] Veri kriptolu ancak çözücü anahtar henüz hazır değil.");
+          console.warn("[DB] Veri kriptolu. Kilit açma ekranı (PIN) tetikleniyor...");
+          
+          // Orijinal index.html'deki PIN ekranını görünür kıl ve uygulamanın yüklenmesini bekleterek akışı devret
+          const psEl = document.getElementById('PS');
+          const appEl = document.getElementById('APP');
+          if (psEl) {
+            psEl.style.display = 'flex';
+            psEl.classList.add('active');
+          }
+          if (appEl) {
+            appEl.style.display = 'none';
+          }
         }
       }
     }
