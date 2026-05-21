@@ -105,15 +105,12 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
     <div class="fg" style="margin-bottom:16px;">
       <input type="password" id="PIN_INPUT" class="fi" placeholder="••••" pattern="[0-9]*" inputmode="numeric" style="text-align:center; font-size:24px; letter-spacing:4px;">
     </div>
+    <div id="PIN_ERR" style="color:#f25f4c;font-size:12px;margin-bottom:8px;min-height:16px;"></div>
     <button class="btn bp" id="PIN_SUBMIT_BTN" style="width:100%; padding:12px;">Kilidi Aç & Verileri Yükle</button>
   </div>
 </div>
 
-<<<<<<< HEAD
 <div class="app-container" id="APP" style="display:none;">
-=======
-<div class="app-container" id="APP">
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
   <aside class="sb" id="SIDEBAR">
     <div class="sb-hd">
       <div class="sb-ttl">iskender<span>pay</span></div>
@@ -230,47 +227,9 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 <script type="module" src="js/app.js"></script>
 
 <script type="module">
-<<<<<<< HEAD
-  // PIN butonu → db.js'deki merkezi submitPin fonksiyonuna yönlendir
-  // staticSalt kullanımı KALDIRILDI — salt artık Firestore'dan alınıyor
-  document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', () => {
-    if (typeof window.submitPin === 'function') {
-      window.submitPin();
-    }
-  });
-
-  // Enter tuşu desteği
-  document.getElementById('PIN_INPUT').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && typeof window.submitPin === 'function') {
-      window.submitPin();
-=======
-  import { loadSecure } from './js/db.js';
-  import { render } from './js/ui.js';
-
-  document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', async () => {
-    const pin = document.getElementById('PIN_INPUT').value;
-    if (!pin) return;
-    
-    try {
-      // Orijinal statik salt değeriniz (Eski index.html'den türetilmiştir)
-      const staticSalt = "a1b2c3d4e5f67890a1b2c3d4e5f67890";
-      window._cryptoKey = await deriveKey(pin, staticSalt);
-      
-      // Yeniden yüklemeyi tetikle
-      const success = await loadSecure();
-      if (success) {
-        document.getElementById('PS').style.display = 'none';
-        document.getElementById('APP').style.display = 'flex';
-        render();
-      } else {
-        alert("PIN Doğru fakat bu planda veri bulunamadı veya çözülemedi.");
-      }
-    } catch (e) {
-      alert("Hatalı PIN Kodu! Lütfen tekrar deneyin.");
-      document.getElementById('PIN_INPUT').value = '';
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
-    }
-  });
+  // PIN butonu — merkezi yönetim db.js'de (staticSalt kaldırıldı)
+  document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', () => window.submitPin?.());
+  document.getElementById('PIN_INPUT').addEventListener('keydown', e => { if (e.key === 'Enter') window.submitPin?.(); });
 </script>
 </body>
 </html>

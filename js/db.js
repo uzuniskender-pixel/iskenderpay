@@ -1,16 +1,11 @@
-// js/db.js
-<<<<<<< HEAD
-// iskenderpay — Kilitlenme Karşıtı ve Esnek Veri Dağıtım Motoru (v8.46 - fixed)
-=======
-// iskenderpay — Kilitlenme Karşıtı ve Esnek Veri Dağıtım Motoru (v8.45)
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
+// js/db.js — v8.50 (tek onAuthStateChanged, merkezi PIN yönetimi)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { updateState } from './state.js';
 import { render } from './ui.js';
-import { deriveKeyFromPin, encryptData, decryptData, setCryptoKey } from './crypto.js';
+import { deriveKeyFromPin, encryptData, decryptData, setCryptoKey, clearCryptoSession } from './crypto.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
@@ -26,25 +21,155 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
-
-export function _planDoc() {
+// ─── YARDIMCI ────────────────────────────────────────────────────────────────
+function planDoc() {
   return doc(db, 'users', window._fbUid + '_' + window._planId);
 }
 
-export function _metaDoc() {
-  return doc(db, 'users', window._fbUid + '_meta');
+function showLogin() {
+  document.getElementById('GLS').style.display = 'flex';
+  document.getElementById('PLS').style.display = 'none';
+  document.getElementById('PS').style.display  = 'none';
+  document.getElementById('APP').style.display = 'none';
 }
 
-window._fbSave = async function(encData) {
-  if (!window._fbUid) return;
-  await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
+function showPin(desc) {
+  const psEl = document.getElementById('PS');
+  if (desc) {
+    const d = document.getElementById('PS_DESC');
+    if (d) d.textContent = desc;
+  }
+  psEl.style.display = 'flex';
+  psEl.classList.add('active');
+  document.getElementById('APP').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('PS').style.display  = 'none';
+  document.getElementById('PS').classList.remove('active');
+  document.getElementById('APP').style.display = 'flex';
+  document.getElementById('GLS').style.display = 'none';
+}
+
+// ─── VERİ YÜKLE ──────────────────────────────────────────────────────────────
+export async function loadSecure() {
+  if (!window._fbUid) return false;
+
+  try {
+    const snap = await getDoc(planDoc());
+
+    if (!snap.exists() || !snap.data().data) {
+      // Hiç veri yok → boş aç
+      _unlock([]);
+      return true;
+    }
+
+    const d = snap.data();
+
+    if (window._cryptoKey) {
+      // Anahtar bellekte var → direkt çöz
+      try {
+        const str = await decryptData(d.data, window._cryptoKey);
+        _applyData(str);
+        showApp();
+        render();
+        return true;
+      } catch(e) {
+        console.warn('[DB] Mevcut anahtar işe yaramadı, PIN isteniyor.');
+      }
+    }
+
+    // Anahtar yok → PIN iste
+    showPin('Verilerinize erişmek için PIN kodunuzu girin.');
+    return false;
+
+  } catch(e) {
+    console.error('[DB] loadSecure hatası:', e);
+    return false;
+  }
+}
+
+function _applyData(jsonStr) {
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed === 'object') {
+      Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
+    }
+  } catch(e) {
+    console.warn('[DB] JSON parse hatası, boş veri ile açılıyor.');
+  }
+}
+
+function _unlock(paysList) {
+  updateState('pays', paysList || []);
+  window.pays = paysList || [];
+  showApp();
+  setTimeout(() => render(), 50);
+}
+
+// ─── PIN SUBMIT ───────────────────────────────────────────────────────────────
+window.submitPin = async function() {
+  const pinInp = document.getElementById('PIN_INPUT');
+  const pinErr = document.getElementById('PIN_ERR');
+  if (!pinInp) return;
+
+  const pin = pinInp.value.trim();
+  if (!pin) return;
+
+  try {
+    const snap = await getDoc(planDoc());
+
+    if (!snap.exists() || !snap.data().data) {
+      // İlk kullanım: yeni salt + şifreli boş veri oluştur
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      const key = await deriveKeyFromPin(pin, saltHex);
+      window._cryptoKey = key;
+      setCryptoKey(key);
+      const enc = await encryptData(JSON.stringify({ pays: [] }), key);
+      await setDoc(planDoc(), { data: enc, salts: { main: saltHex }, updatedAt: Date.now() }, { merge: true });
+      _unlock([]);
+      return;
+    }
+
+    const d = snap.data();
+    // Salt MUTLAKA Firestore'dan alınır — index.html'deki staticSalt artık kullanılmıyor
+    const saltHex = (d.salts && d.salts.main) || 'a1b2c3d4e5f67890a1b2c3d4e5f67890';
+    const key = await deriveKeyFromPin(pin, saltHex);
+
+    let decStr;
+    try {
+      decStr = await decryptData(d.data, key);
+    } catch(e) {
+      throw new Error('WRONG_PIN');
+    }
+
+    window._cryptoKey = key;
+    setCryptoKey(key);
+    _applyData(decStr);
+
+    const parsedForList = (() => { try { const p = JSON.parse(decStr); return Array.isArray(p.pays) ? p.pays : []; } catch(e) { return []; } })();
+    _unlock(parsedForList);
+
+  } catch(err) {
+    const msg = err.message === 'WRONG_PIN'
+      ? 'Hatalı PIN kodu!'
+      : 'Veri çözülemedi veya bağlantı hatası.';
+    if (pinErr) pinErr.textContent = msg;
+    if (pinInp) { pinInp.classList.add('err'); setTimeout(() => pinInp.classList.remove('err'), 400); }
+  }
 };
 
+// ─── KAYDET ──────────────────────────────────────────────────────────────────
+window._fbSave = async function(encData) {
+  if (!window._fbUid) return;
+  await setDoc(planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
+};
+
+// ─── GİRİŞ / ÇIKIŞ ───────────────────────────────────────────────────────────
 export async function loginWithGoogle() {
   try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signInWithPopup(auth, new GoogleAuthProvider());
   } catch(e) {
     if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
       await signInWithRedirect(auth, new GoogleAuthProvider());
@@ -58,307 +183,33 @@ export async function logoutUser() {
   await signOut(auth);
 }
 
-window.doGoogleLogin = loginWithGoogle;
-window.doGoogleSignOut = logoutUser;
-
-<<<<<<< HEAD
-// ─── PIN EKRANINI GÖSTER ──────────────────────────────────────────────────────
-function showPinScreen(desc) {
-  const psEl = document.getElementById('PS');
-  const appEl = document.getElementById('APP');
-  if (psEl) {
-    if (desc) {
-      const descEl = document.getElementById('PS_DESC');
-      if (descEl) descEl.textContent = desc;
-    }
-    psEl.style.display = 'flex';
-    psEl.classList.add('active');
-  }
-  if (appEl) appEl.style.display = 'none';
-  console.log('[DB] PIN ekranı gösterildi.');
-}
-
-// ─── PIN SUBMIT — TEK MERKEZİ NOKTADAN YÖNETİLİR ────────────────────────────
-window.submitPin = async function() {
-  const pinInp = document.getElementById('PIN_INPUT');
-  const pinErr = document.getElementById('PIN_ERR');
-  if (!pinInp) return;
-
-  const pin = pinInp.value.trim();
-  if (!pin) return;
-
-  try {
-    const snap = await getDoc(_planDoc());
-
-    // 1. Durum: Veritabanında hiç veri yok → yeni şifreli veri oluştur
-    if (!snap.exists() || !snap.data().data) {
-      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-
-      const key = await deriveKeyFromPin(pin, saltHex);
-      window._cryptoKey = key;
-      setCryptoKey(key);
-
-      const initialData = JSON.stringify({ pays: [] });
-      const enc = await encryptData(initialData, key);
-      await setDoc(_planDoc(), { data: enc, salts: { main: saltHex }, updatedAt: Date.now() }, { merge: true });
-
-      completeUnlock([]);
-      return;
-    }
-
-    // 2. Durum: Veri var → salt'ı Firestore'dan al, anahtar türet, çöz
-    const d = snap.data();
-    const saltHex = (d.salts && d.salts.main) || "a1b2c3d4e5f67890a1b2c3d4e5f67890";
-
-    const key = await deriveKeyFromPin(pin, saltHex);
-    let decryptedStr = "";
-
-    try {
-      decryptedStr = await decryptData(d.data, key);
-    } catch (decryptFail) {
-      throw new Error("Şifre Çözme Hatası");
-    }
-
-    window._cryptoKey = key;
-    setCryptoKey(key);
-
-    let parsedData = [];
-    if (decryptedStr) {
-      try {
-        const parsed = JSON.parse(decryptedStr);
-        if (parsed && typeof parsed === 'object') {
-          if (Array.isArray(parsed.pays)) {
-            parsedData = parsed.pays;
-          } else if (Array.isArray(parsed)) {
-            parsedData = parsed;
-          }
-          Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
-        }
-      } catch (jsonErr) {
-        console.warn("[DB] Veri çözüldü fakat JSON parse edilemedi, boş liste ile açılıyor.");
-      }
-    }
-
-    completeUnlock(parsedData);
-
-  } catch (err) {
-    console.error("PIN doğrulama hatası:", err);
-    if (pinErr) pinErr.textContent = "Hatalı PIN kodu veya çözülemeyen veri yapısı!";
-    if (pinInp) {
-      pinInp.classList.add('err');
-      setTimeout(() => pinInp.classList.remove('err'), 400);
-    }
-  }
-};
-
-// ─── KİLİT AÇMA TAMAMLANDI ───────────────────────────────────────────────────
-function completeUnlock(paysList) {
-  const psEl = document.getElementById('PS');
-  const appEl = document.getElementById('APP');
-
-=======
-// PIN Kontrol ve Esnek Çözümleme Eylemi
-window.submitPin = async function() {
-  const pinInp = document.getElementById('PIN_INP') || document.getElementById('PIN_INPUT');
-  const pinErr = document.getElementById('PIN_ERR');
-  if (!pinInp) return;
-  
-  const pin = pinInp.value.trim();
-  if (!pin) return;
-
-  try {
-    const snap = await getDoc(_planDoc());
-    
-    // 1. Durum: Veritabanında hiç veri yoksa sıfırdan oluştur
-    if (!snap.exists() || !snap.data().data) {
-      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      const key = await deriveKeyFromPin(pin, saltHex);
-      window._cryptoKey = key;
-      setCryptoKey(key);
-      
-      const initialData = JSON.stringify({ pays: [] });
-      const enc = await encryptData(initialData, key);
-      await setDoc(_planDoc(), { data: enc, salts: { main: saltHex }, updatedAt: Date.now() }, { merge: true });
-      
-      completeUnlock([]);
-      return;
-    }
-
-    const d = snap.data();
-    const saltHex = (d.salts && d.salts.main) || "a1b2c3d4e5f67890a1b2c3d4e5f67890";
-    
-    // Anahtarı türet ve ham veriyi çözmeye çalış
-    const key = await deriveKeyFromPin(pin, saltHex);
-    let decryptedStr = "";
-    
-    try {
-      decryptedStr = await decryptData(d.data, key);
-    } catch (decryptFail) {
-      // Eğer şifre çözme doğrudan başarısız oluyorsa PIN kesinlikle yanlıştır
-      throw new Error("Şifre Çözme Hatası");
-    }
-    
-    window._cryptoKey = key;
-    setCryptoKey(key);
-    
-    // Veriyi işle ve state'e aktar
-    let parsedData = [];
-    if (decryptedStr) {
-      try {
-        const parsed = JSON.parse(decryptedStr);
-        if (parsed && typeof parsed === 'object') {
-          if (Array.isArray(parsed.pays)) {
-            parsedData = parsed.pays;
-          } else if (Array.isArray(parsed)) {
-            parsedData = parsed;
-          }
-          
-          // Ekrana yansıtmak üzere state'i güncelle
-          Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
-        }
-      } catch (jsonErr) {
-        console.warn("[DB] Veri çözüldü fakat JSON parse edilemedi, boş liste ile açılıyor.");
-      }
-    }
-    
-    completeUnlock(parsedData);
-  } catch (err) {
-    console.error("PIN doğrulama hatası:", err);
-    if (pinErr) pinErr.textContent = "Hatalı PIN kodu veya çözülemeyen veri yapısı!";
-    if (pinInp) {
-      pinInp.classList.add('err');
-      setTimeout(() => pinInp.classList.remove('err'), 400);
-    }
-  }
-};
-
-function completeUnlock(paysList) {
-  const psEl = document.getElementById('PS');
-  const appEl = document.getElementById('APP');
-  
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
-  if (psEl) {
-    psEl.style.display = 'none';
-    psEl.classList.remove('active');
-  }
-  if (appEl) {
-<<<<<<< HEAD
-    appEl.style.display = 'flex';  // flex: app-container flex kullanıyor
-  }
-
-=======
-    appEl.style.display = 'block';
-  }
-
-  // Eğer veritabanından gelen liste boşsa veya tanımsızsa, render motorunun çökmesini önlemek için doğrudan global atama yapıyoruz
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
-  if (!window.pays || window.pays.length === 0) {
-    window.pays = paysList || [];
-    updateState('pays', window.pays);
-  }
-
-<<<<<<< HEAD
-  setTimeout(() => render(), 50);
-}
-
-// ─── GÜVENLİ VERİ YÜKLE ──────────────────────────────────────────────────────
-=======
-  // UI render döngüsünü zorla tetikle
-  setTimeout(() => {
-    render();
-  }, 50);
-}
-
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
-export async function loadSecure() {
-  if (!window._fbUid) return false;
-  try {
-    const snap = await getDoc(_planDoc());
-    if (snap.exists() && snap.data().data) {
-      const d = snap.data();
-      if (window._cryptoKey) {
-        try {
-          const decryptedStr = await decryptData(d.data, window._cryptoKey);
-          const parsed = JSON.parse(decryptedStr);
-          Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
-          return true;
-        } catch(e) {
-<<<<<<< HEAD
-          console.warn("[DB] Mevcut anahtar ile çözülemedi, PIN isteniyor.");
-        }
-      }
-      // Anahtar yok ya da çözülemedi → PIN iste
-      showPinScreen("Verilerinize erişmek için güvenlik PIN kodunuzu girin.");
-      return false;
-    } else {
-      // Hiç veri yok → boş başlat
-=======
-          // Başarısızlık durumunda PIN ekranına düşür
-        }
-      }
-      
-      const psEl = document.getElementById('PS');
-      const appEl = document.getElementById('APP');
-      if (psEl) {
-        psEl.style.setProperty('display', 'flex', 'important');
-        psEl.classList.add('active');
-      }
-      if (appEl) appEl.style.setProperty('display', 'none', 'important');
-      return false;
-    } else {
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
-      completeUnlock([]);
-      return true;
-    }
-  } catch (e) {
-    console.error("[DB] loadSecure hatası:", e);
-  }
-  return false;
-}
-
-<<<<<<< HEAD
-// ─── AUTH DURUM TAKİBİ ────────────────────────────────────────────────────────
-onAuthStateChanged(auth, (user) => {
-  const glsEl = document.getElementById('GLS');
-  const plsEl = document.getElementById('PLS');
-  const plsUser = document.getElementById('PLS_USER');
-  if (user) {
-    window._fbUid = user.uid;
-    if (glsEl) glsEl.style.display = 'none';
-    if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
-=======
-onAuthStateChanged(auth, (user) => {
-  const glsEl = document.getElementById('GLS');
-  const plsEl = document.getElementById('PLS');
-  if (user) {
-    window._fbUid = user.uid;
-    if (glsEl) glsEl.style.display = 'none';
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
-    if (plsEl) plsEl.style.display = 'flex';
-    loadSecure();
-  } else {
-    window._fbUid = null;
+window.doGoogleLogin    = loginWithGoogle;
+window.doGoogleSignOut  = async function() {
+  if (confirm('Çıkış yapmak istiyor musunuz? Bellek temizlenecektir.')) {
+    await logoutUser();
+    clearCryptoSession();
     window._cryptoKey = null;
-    if (glsEl) glsEl.style.display = 'flex';
-    if (plsEl) plsEl.style.display = 'none';
-<<<<<<< HEAD
-    // Kullanıcı yoksa login ekranı görünsün, APP gizlensin
-    const appEl = document.getElementById('APP');
-    const psEl = document.getElementById('PS');
-    if (appEl) appEl.style.display = 'none';
-    if (psEl) { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-=======
+    window._fbUid = null;
+    window.location.reload();
   }
-});
-// ACİL DURUM: Eğer uygulama açıldı ama PIN ekranı DOM'da sıkışıp kaldıysa
-window.addEventListener('load', () => {
-  const psEl = document.getElementById('PS');
-  if (psEl && psEl.classList.contains('active')) {
-    psEl.style.setProperty('display', 'flex', 'important');
-    console.warn("[DEBUG] PIN ekranı CSS ile zorla görünür kılındı.");
->>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
+};
+
+// ─── TEK AUTH LISTENER (app.js'deki kaldırıldı) ──────────────────────────────
+auth.onAuthStateChanged(async (user) => {
+  const plsUser = document.getElementById('PLS_USER');
+
+  if (user) {
+    window._fbUid = user.uid;
+    if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
+
+    // Aktif planı başlat
+    window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
+    await loadSecure();
+
+  } else {
+    window._fbUid    = null;
+    window._cryptoKey = null;
+    clearCryptoSession();
+    showLogin();
   }
 });
