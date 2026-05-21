@@ -1,5 +1,5 @@
 // js/db.js
-// iskenderpay — Firebase ve Şifreli Veri Senkronizasyonu (v8.2)
+// iskenderpay — Firebase ve Şifreli Veri Senkronizasyonu (v8.21)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -43,10 +43,6 @@ export async function logoutUser() {
   await signOut(auth);
 }
 
-/**
- * Firebase'den gelen şifreli verileri kontrol eder. 
- * Kripto anahtarı eksikse HTML'deki diğer katmanları gizler ve PIN arayüzünü zorla açar.
- */
 export async function loadSecure() {
   if (!window._fbUid) return false;
   try {
@@ -64,19 +60,15 @@ export async function loadSecure() {
     }
 
     if (rawEncryptedData) {
-      // Senaryo 1: Veri düz JSON ise (Geliştirme / test verisi)
       try {
         let parsed = JSON.parse(rawEncryptedData);
         if (parsed && typeof parsed === 'object') {
           Object.keys(parsed).forEach(key => {
-            if (Array.isArray(parsed[key])) {
-              updateState(key, parsed[key]);
-            }
+            if (Array.isArray(parsed[key])) updateState(key, parsed[key]);
           });
           return true;
         }
       } catch (e) {
-        // Senaryo 2: Veri gerçek AES şifreli metin
         if (window._cryptoKey && window.decryptData) {
           try {
             let decryptedStr = await window.decryptData(rawEncryptedData, window._cryptoKey);
@@ -84,26 +76,19 @@ export async function loadSecure() {
             Object.keys(parsed).forEach(key => updateState(key, parsed[key]));
             return true;
           } catch (decryptErr) {
-            console.error("[DB] Anahtar mevcut ama şifre çözülemedi (Hatalı PIN).");
+            console.error("[DB] Şifre çözme başarısız (Hatalı PIN).");
           }
         } else {
           console.warn("[DB] Veri kriptolu. Kilit açma ekranı (PIN) zorla tetikleniyor...");
           
-          // onAuthStateChanged'in kapatma ihtimaline karşı setTimeout ile DOM manipülasyonunu garantiye alıyoruz
-          setTimeout(() => {
-            const psEl = document.getElementById('PS');
-            const appEl = document.getElementById('APP');
-            const plsEl = document.getElementById('PLS');
-            const glsEl = document.getElementById('GLS');
-
-            if (psEl) {
-              psEl.style.setProperty('display', 'flex', 'important');
-              psEl.classList.add('active');
-            }
-            if (appEl) appEl.style.display = 'none';
-            if (plsEl) plsEl.style.display = 'none'; // Plan seçim ekranını gizle ki arkada kalmasın
-            if (glsEl) glsEl.style.display = 'none';
-          }, 50);
+          // Ekranda kilit ekranını kilitle, uygulamayı gizle
+          const psEl = document.getElementById('PS');
+          const appEl = document.getElementById('APP');
+          if (psEl) {
+            psEl.style.setProperty('display', 'flex', 'important');
+            psEl.classList.add('active');
+          }
+          if (appEl) appEl.style.setProperty('display', 'none', 'important');
         }
       }
     }
