@@ -230,9 +230,7 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
   import { loadSecure } from './js/db.js';
   import { render } from './js/ui.js';
 
-  document.getElementById('PIN_INPUT').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('PIN_SUBMIT_BTN').click();
-  });
+  document.getElementById('PIN_INPUT').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('PIN_SUBMIT_BTN').click(); });
 
   document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', async () => {
     const pin = document.getElementById('PIN_INPUT').value;

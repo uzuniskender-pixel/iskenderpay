@@ -178,10 +178,10 @@ export async function loadSecure() {
       const psEl = document.getElementById('PS');
       const appEl = document.getElementById('APP');
       if (psEl) {
-        psEl.style.setProperty('display', 'flex', 'important');
+        psEl.style.display = 'flex';
         psEl.classList.add('active');
       }
-      if (appEl) appEl.style.setProperty('display', 'none', 'important');
+      if (appEl) appEl.style.display = 'none';
       return false;
     } else {
       completeUnlock([]);
@@ -193,4 +193,4 @@ export async function loadSecure() {
   return false;
 }
 
-// onAuthStateChanged app.js'de yönetiliyor — çift listener kaldırıldı
+// onAuthStateChanged buradan kaldırıldı — yalnızca app.js yönetiyor

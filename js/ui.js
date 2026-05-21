@@ -50,7 +50,7 @@ export function render() {
   // EĞER BULUTTA KRİPTOLU VERİ VARSA VE ANAHTAR HENÜZ YOKSA RENDER'I DURDUR
   // Böylece PIN ekranının üstünü kapatmaz!
   const psEl = document.getElementById('PS');
-  if (psEl && (psEl.style.display === 'flex' || psEl.classList.contains('active'))) {
+  if (psEl && psEl.classList.contains('active')) {
     console.log("[UI] PIN Ekranı aktif olduğundan ana render döngüsü askıya alındı.");
     return;
   }

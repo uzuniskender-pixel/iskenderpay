@@ -55,7 +55,7 @@ window.selectPlan = async function(planId) {
     if (success) {
       render();
     }
-    // success=false → loadSecure zaten PIN ekranını gösterdi, render yapma
+    // success=false → loadSecure PIN ekranını gösterdi, render yapma
   }
 };
 

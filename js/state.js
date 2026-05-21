@@ -25,9 +25,10 @@ window.actLog = state.actLog;
 window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
 export function updateState(key, newData) {
-  if (state[key] !== undefined && Array.isArray(newData)) {
+  if (state[key] !== undefined) {
+    // Array veya herhangi bir veri tipini kabul et
     state[key] = newData;
-    window[key] = newData; // Global senkronizasyon
+    window[key] = newData;
   }
 }
 
