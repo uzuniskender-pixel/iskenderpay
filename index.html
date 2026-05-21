@@ -1159,7 +1159,7 @@ async function loadSecure() {
 
 // ── V7 MİGRASYON: Recurring → Bağımsız, PaidItems Ayrıştırma ─────────────
 async function migrateToV7() {
-  const migKey = 'v7-migrated-' + (_fbUid||'local') + '-' + window._planId;
+  const migKey = 'v7-migrated-' + (window._fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
 
   _suppressSave = true; // batch işlem — ara kayıtları engelle
@@ -1196,7 +1196,7 @@ async function migrateToV7() {
 
 // ── V7b MİGRASYON: rp olmadan groupId düzeltme (ay çakışması algoritması) ──
 async function migrateToV7b() {
-  const migKey = 'v7b-migrated-' + (_fbUid||'local') + '-' + window._planId;
+  const migKey = 'v7b-migrated-' + (window._fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
 
   _suppressSave = true;
@@ -2315,8 +2315,8 @@ function delHist(i){hist.splice(i,1);save().then(()=>renderHist());}
 function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then(()=>renderHist());}
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v8.18';
-const APP_BUILD   = '20260521-02';
+const APP_VERSION = 'v8.19';
+const APP_BUILD   = '20260521-03';
 
 function renderAI(){
   const el = document.getElementById('AI');
