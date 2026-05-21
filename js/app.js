@@ -81,7 +81,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
       if (plsEl) plsEl.style.display = 'flex';
 
-      await window.selectPlan(window._planId);
+      // PIN ekranını göster — kullanıcı PIN girince submitPin → loadSecure çağırır
+      const psEl  = document.getElementById('PS');
+      const appEl = document.getElementById('APP');
+      if (psEl)  { psEl.style.display = 'flex'; psEl.classList.add('active'); }
+      if (appEl) { appEl.style.display = 'none'; }
+
+      renderPlanNames();
+      renderAI();
     } else {
       window._fbUid = null;
       if (glsEl) glsEl.style.display = 'flex';
