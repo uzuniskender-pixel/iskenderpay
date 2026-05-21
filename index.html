@@ -178,48 +178,22 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 </div>
 
 <script>
-  const APP_VERSION = 'v8.2';
-
-  // Orijinal PBKDF2 ve AES-GCM Şifre Çözme Algoritması
-  async function deriveKey(pin, saltHex) {
-    const enc = new TextEncoder();
-    const baseKey = await crypto.subtle.importKey('raw', enc.encode(pin), { name: 'PBKDF2' }, false, ['deriveKey']);
-    const salt = new Uint8Array(saltHex.match(/[\da-f]{2}/gi).map(h => parseInt(h, 16)));
-    return crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-      baseKey,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt']
-    );
-  }
-
-  window.decryptData = async function(encStr, key) {
-    try {
-      const raw = atob(encStr);
-      const iv = new Uint8Array(raw.substring(0, 12).split('').map(c => c.charCodeAt(0)));
-      const data = new Uint8Array(raw.substring(12).split('').map(c => c.charCodeAt(0)));
-      const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
-      return new TextDecoder().decode(dec);
-    } catch (e) {
-      throw new Error("Şifre çözme başarısız. Hatalı PIN.");
-    }
-  };
-
   // Mobil Menü
-  document.getElementById('MENU_TOGGLE').addEventListener('click', () => {
-    document.getElementById('SIDEBAR').classList.toggle('open');
-  });
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('MENU_TOGGLE').addEventListener('click', () => {
+      document.getElementById('SIDEBAR').classList.toggle('open');
+    });
 
-  // Menü Sekmeleri
-  document.querySelectorAll('.mn-i[data-target]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.mn-i').forEach(b => b.classList.remove('act'));
-      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('act'));
-      btn.classList.add('act');
-      const targetEl = document.getElementById(btn.getAttribute('data-target'));
-      if(targetEl) targetEl.classList.add('act');
-      document.getElementById('SIDEBAR').classList.remove('open');
+    // Menü Sekmeleri
+    document.querySelectorAll('.mn-i[data-target]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mn-i').forEach(b => b.classList.remove('act'));
+        document.querySelectorAll('.view-container').forEach(v => v.classList.remove('act'));
+        btn.classList.add('act');
+        const targetEl = document.getElementById(btn.getAttribute('data-target'));
+        if(targetEl) targetEl.classList.add('act');
+        document.getElementById('SIDEBAR').classList.remove('open');
+      });
     });
   });
 </script>
@@ -227,32 +201,16 @@ table.m-tbl tr:nth-child(even) td:first-child{background-color:#1b1926}
 <script type="module" src="js/app.js"></script>
 
 <script type="module">
-  import { loadSecure } from './js/db.js';
-  import { render } from './js/ui.js';
+  // PIN ekranı: window.submitPin db.js tarafından tanımlanır, tek yetkili handler odur.
+  document.getElementById('PIN_INPUT').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('PIN_SUBMIT_BTN').click();
+  });
 
-  document.getElementById('PIN_INPUT').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('PIN_SUBMIT_BTN').click(); });
-
-  document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', async () => {
-    const pin = document.getElementById('PIN_INPUT').value;
-    if (!pin) return;
-    
-    try {
-      // Orijinal statik salt değeriniz (Eski index.html'den türetilmiştir)
-      const staticSalt = "a1b2c3d4e5f67890a1b2c3d4e5f67890";
-      window._cryptoKey = await deriveKey(pin, staticSalt);
-      
-      // Yeniden yüklemeyi tetikle
-      const success = await loadSecure();
-      if (success) {
-        document.getElementById('PS').style.display = 'none';
-        document.getElementById('APP').style.display = 'flex';
-        render();
-      } else {
-        alert("PIN Doğru fakat bu planda veri bulunamadı veya çözülemedi.");
-      }
-    } catch (e) {
-      alert("Hatalı PIN Kodu! Lütfen tekrar deneyin.");
-      document.getElementById('PIN_INPUT').value = '';
+  document.getElementById('PIN_SUBMIT_BTN').addEventListener('click', () => {
+    if (typeof window.submitPin === 'function') {
+      window.submitPin();
+    } else {
+      console.error('[PIN] window.submitPin henüz yüklenmedi.');
     }
   });
 </script>

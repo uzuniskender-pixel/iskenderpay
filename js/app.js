@@ -1,5 +1,5 @@
 // js/app.js
-// iskenderpay — Ana Giriş ve Yaşam Döngüsü (v8.16)
+// iskenderpay — Ana Giriş ve Yaşam Döngüsü (v8.17-fixed)
 
 import { auth, loadSecure, logoutUser, loginWithGoogle } from './db.js';
 import { render, renderAI, renderPlanNames } from './ui.js';
@@ -29,7 +29,7 @@ function checkVersionPolling() {
   }, 60000);
 }
 
-// Global Buton Eylemleri
+// Global Buton Eylemleri — tek yetkili tanım burası
 window.updApply = function() { window.location.reload(); };
 window.doGoogleLogin = loginWithGoogle;
 window.doGoogleSignOut = async function() {
@@ -41,15 +41,15 @@ window.doGoogleSignOut = async function() {
   }
 };
 
-// Plan Değiştirme Butonlarının Tetikleyicileri
+// Plan Değiştirme
 window.selectPlan = async function(planId) {
   window._planId = planId;
   localStorage.setItem('v6-active-plan', planId);
   console.log(`[Plan] ${planId} seçildi, veriler yükleniyor...`);
-  
+
   renderPlanNames();
   renderAI();
-  
+
   if (window._fbUid) {
     const success = await loadSecure();
     if (success) {
@@ -64,13 +64,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAI();
   renderPlanNames();
 
-  // Butonlara tıklama dinleyicilerini doğrudan bağlıyoruz
   const p1 = document.getElementById('PLAN1_BTN');
   const p2 = document.getElementById('PLAN2_BTN');
   if (p1) p1.addEventListener('click', () => window.selectPlan('plan1'));
   if (p2) p2.addEventListener('click', () => window.selectPlan('plan2'));
 
-  // Firebase Auth Durum Takibi
+  // Firebase Auth Durum Takibi — tek yetkili onAuthStateChanged
   auth.onAuthStateChanged(async (user) => {
     const glsEl = document.getElementById('GLS');
     const plsEl = document.getElementById('PLS');
@@ -81,9 +80,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (glsEl) glsEl.style.display = 'none';
       if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
       if (plsEl) plsEl.style.display = 'flex';
-      
-      // Aktif planı yükle
-      window.selectPlan(window._planId);
+
+      await window.selectPlan(window._planId);
     } else {
       window._fbUid = null;
       if (glsEl) glsEl.style.display = 'flex';

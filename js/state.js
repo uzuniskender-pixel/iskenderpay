@@ -1,5 +1,5 @@
 // js/state.js
-// iskenderpay — Merkezi Durum Yönetimi Modülü (v8.16)
+// iskenderpay — Merkezi Durum Yönetimi Modülü (v8.17-fixed)
 
 export const state = {
   pays: [],
@@ -12,7 +12,7 @@ export const state = {
   actLog: []
 };
 
-// Global scope uyumluluğu için window seviyesine de çıkarıyoruz
+// Global scope uyumluluğu için window seviyesine çıkar
 window.pays = state.pays;
 window.creds = state.creds;
 window.paidItems = state.paidItems;
@@ -22,11 +22,11 @@ window.notes = state.notes;
 window.rehber = state.rehber;
 window.actLog = state.actLog;
 
+// window._planId tek yetkili tanımı burada — db.js'de tekrar atanmıyor
 window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
 export function updateState(key, newData) {
   if (state[key] !== undefined) {
-    // Array veya herhangi bir veri tipini kabul et
     state[key] = newData;
     window[key] = newData;
   }
@@ -40,5 +40,4 @@ export function clearState() {
   console.log("[State] Bellek tamamen temizlendi.");
 }
 
-// Global butonlar ve fonksiyonların kırılmaması için window'a bağlıyoruz
 window.clearState = clearState;
