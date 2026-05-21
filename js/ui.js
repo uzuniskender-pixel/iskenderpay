@@ -1,11 +1,16 @@
 // js/ui.js
+<<<<<<< HEAD
 // iskenderpay — Arayüz ve Matris Render Motoru (v8.22 - fixed)
+=======
+// iskenderpay — Arayüz ve Matris Render Motoru (v8.21)
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
 
 import { state } from './state.js';
 
 export function renderAI() {
   const aiEl = document.getElementById('AI');
   if (!aiEl) return;
+<<<<<<< HEAD
   const buildStr = window._knownBuild || '20260521-02';
 
   let h = '';
@@ -14,6 +19,16 @@ export function renderAI() {
   h += `<div style="margin-bottom: 6px;"><strong>Aktif Plan:</strong> <span class="mono">${window._planId || 'plan1'}</span></div>`;
   h += `<div style="margin-bottom: 6px;"><strong>Ödeme (pays):</strong> <span class="mono">${state.pays ? state.pays.length : 0} kayıt</span></div>`;
 
+=======
+  const buildStr = window._knownBuild || '20260521-02'; 
+  
+  let h = '';
+  h += `<div style="margin-bottom: 6px;"><strong>Sürüm:</strong> <span class="mono">v8.21</span></div>`;
+  h += `<div style="margin-bottom: 6px;"><strong>Build:</strong> <span class="mono">${buildStr}</span></div>`;
+  h += `<div style="margin-bottom: 6px;"><strong>Aktif Plan:</strong> <span class="mono">${window._planId || 'plan1'}</span></div>`;
+  h += `<div style="margin-bottom: 6px;"><strong>Ödeme (pays):</strong> <span class="mono">${state.pays ? state.pays.length : 0} kayıt</span></div>`;
+  
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
   aiEl.innerHTML = h;
 }
 
@@ -46,6 +61,7 @@ window.editPlanName = function(planId) {
 
 export function render() {
   console.log("[UI] Ana render döngüsü çalışıyor...");
+<<<<<<< HEAD
 
   // PIN ekranı hâlâ görünürse render yapma
   // NOT: db.js'deki completeUnlock PIN'i gizledikten SONRA render'ı çağırır,
@@ -53,6 +69,14 @@ export function render() {
   const psEl = document.getElementById('PS');
   if (psEl && psEl.classList.contains('active')) {
     console.log("[UI] PIN ekranı hâlâ aktif, render bekleniyor.");
+=======
+  
+  // EĞER BULUTTA KRİPTOLU VERİ VARSA VE ANAHTAR HENÜZ YOKSA RENDER'I DURDUR
+  // Böylece PIN ekranının üstünü kapatmaz!
+  const psEl = document.getElementById('PS');
+  if (psEl && (psEl.style.display === 'flex' || psEl.classList.contains('active'))) {
+    console.log("[UI] PIN Ekranı aktif olduğundan ana render döngüsü askıya alındı.");
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
     return;
   }
 
@@ -61,7 +85,11 @@ export function render() {
 
   const mainGrid = document.getElementById('MAIN_GRID');
   const matrisSummary = document.getElementById('MATRIS_SUMMARY');
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
   if (mainGrid) {
     if (!state.pays || state.pays.length === 0) {
       mainGrid.innerHTML = `
@@ -72,7 +100,11 @@ export function render() {
           <button class="btn bp btn-sm" id="LOAD_DEMO_BTN">⚡ İlk Veri Girişini Oluştur</button>
         </div>
       `;
+<<<<<<< HEAD
 
+=======
+      
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
       setTimeout(() => {
         const demoBtn = document.getElementById('LOAD_DEMO_BTN');
         if (demoBtn) {

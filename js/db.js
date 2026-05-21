@@ -1,5 +1,9 @@
 // js/db.js
+<<<<<<< HEAD
 // iskenderpay — Kilitlenme Karşıtı ve Esnek Veri Dağıtım Motoru (v8.46 - fixed)
+=======
+// iskenderpay — Kilitlenme Karşıtı ve Esnek Veri Dağıtım Motoru (v8.45)
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -57,6 +61,7 @@ export async function logoutUser() {
 window.doGoogleLogin = loginWithGoogle;
 window.doGoogleSignOut = logoutUser;
 
+<<<<<<< HEAD
 // ─── PIN EKRANINI GÖSTER ──────────────────────────────────────────────────────
 function showPinScreen(desc) {
   const psEl = document.getElementById('PS');
@@ -152,23 +157,122 @@ function completeUnlock(paysList) {
   const psEl = document.getElementById('PS');
   const appEl = document.getElementById('APP');
 
+=======
+// PIN Kontrol ve Esnek Çözümleme Eylemi
+window.submitPin = async function() {
+  const pinInp = document.getElementById('PIN_INP') || document.getElementById('PIN_INPUT');
+  const pinErr = document.getElementById('PIN_ERR');
+  if (!pinInp) return;
+  
+  const pin = pinInp.value.trim();
+  if (!pin) return;
+
+  try {
+    const snap = await getDoc(_planDoc());
+    
+    // 1. Durum: Veritabanında hiç veri yoksa sıfırdan oluştur
+    if (!snap.exists() || !snap.data().data) {
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      const key = await deriveKeyFromPin(pin, saltHex);
+      window._cryptoKey = key;
+      setCryptoKey(key);
+      
+      const initialData = JSON.stringify({ pays: [] });
+      const enc = await encryptData(initialData, key);
+      await setDoc(_planDoc(), { data: enc, salts: { main: saltHex }, updatedAt: Date.now() }, { merge: true });
+      
+      completeUnlock([]);
+      return;
+    }
+
+    const d = snap.data();
+    const saltHex = (d.salts && d.salts.main) || "a1b2c3d4e5f67890a1b2c3d4e5f67890";
+    
+    // Anahtarı türet ve ham veriyi çözmeye çalış
+    const key = await deriveKeyFromPin(pin, saltHex);
+    let decryptedStr = "";
+    
+    try {
+      decryptedStr = await decryptData(d.data, key);
+    } catch (decryptFail) {
+      // Eğer şifre çözme doğrudan başarısız oluyorsa PIN kesinlikle yanlıştır
+      throw new Error("Şifre Çözme Hatası");
+    }
+    
+    window._cryptoKey = key;
+    setCryptoKey(key);
+    
+    // Veriyi işle ve state'e aktar
+    let parsedData = [];
+    if (decryptedStr) {
+      try {
+        const parsed = JSON.parse(decryptedStr);
+        if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.pays)) {
+            parsedData = parsed.pays;
+          } else if (Array.isArray(parsed)) {
+            parsedData = parsed;
+          }
+          
+          // Ekrana yansıtmak üzere state'i güncelle
+          Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
+        }
+      } catch (jsonErr) {
+        console.warn("[DB] Veri çözüldü fakat JSON parse edilemedi, boş liste ile açılıyor.");
+      }
+    }
+    
+    completeUnlock(parsedData);
+  } catch (err) {
+    console.error("PIN doğrulama hatası:", err);
+    if (pinErr) pinErr.textContent = "Hatalı PIN kodu veya çözülemeyen veri yapısı!";
+    if (pinInp) {
+      pinInp.classList.add('err');
+      setTimeout(() => pinInp.classList.remove('err'), 400);
+    }
+  }
+};
+
+function completeUnlock(paysList) {
+  const psEl = document.getElementById('PS');
+  const appEl = document.getElementById('APP');
+  
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
   if (psEl) {
     psEl.style.display = 'none';
     psEl.classList.remove('active');
   }
   if (appEl) {
+<<<<<<< HEAD
     appEl.style.display = 'flex';  // flex: app-container flex kullanıyor
   }
 
+=======
+    appEl.style.display = 'block';
+  }
+
+  // Eğer veritabanından gelen liste boşsa veya tanımsızsa, render motorunun çökmesini önlemek için doğrudan global atama yapıyoruz
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
   if (!window.pays || window.pays.length === 0) {
     window.pays = paysList || [];
     updateState('pays', window.pays);
   }
 
+<<<<<<< HEAD
   setTimeout(() => render(), 50);
 }
 
 // ─── GÜVENLİ VERİ YÜKLE ──────────────────────────────────────────────────────
+=======
+  // UI render döngüsünü zorla tetikle
+  setTimeout(() => {
+    render();
+  }, 50);
+}
+
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
 export async function loadSecure() {
   if (!window._fbUid) return false;
   try {
@@ -182,6 +286,7 @@ export async function loadSecure() {
           Object.keys(parsed).forEach(k => updateState(k, parsed[k]));
           return true;
         } catch(e) {
+<<<<<<< HEAD
           console.warn("[DB] Mevcut anahtar ile çözülemedi, PIN isteniyor.");
         }
       }
@@ -190,6 +295,21 @@ export async function loadSecure() {
       return false;
     } else {
       // Hiç veri yok → boş başlat
+=======
+          // Başarısızlık durumunda PIN ekranına düşür
+        }
+      }
+      
+      const psEl = document.getElementById('PS');
+      const appEl = document.getElementById('APP');
+      if (psEl) {
+        psEl.style.setProperty('display', 'flex', 'important');
+        psEl.classList.add('active');
+      }
+      if (appEl) appEl.style.setProperty('display', 'none', 'important');
+      return false;
+    } else {
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
       completeUnlock([]);
       return true;
     }
@@ -199,6 +319,7 @@ export async function loadSecure() {
   return false;
 }
 
+<<<<<<< HEAD
 // ─── AUTH DURUM TAKİBİ ────────────────────────────────────────────────────────
 onAuthStateChanged(auth, (user) => {
   const glsEl = document.getElementById('GLS');
@@ -208,6 +329,14 @@ onAuthStateChanged(auth, (user) => {
     window._fbUid = user.uid;
     if (glsEl) glsEl.style.display = 'none';
     if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
+=======
+onAuthStateChanged(auth, (user) => {
+  const glsEl = document.getElementById('GLS');
+  const plsEl = document.getElementById('PLS');
+  if (user) {
+    window._fbUid = user.uid;
+    if (glsEl) glsEl.style.display = 'none';
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
     if (plsEl) plsEl.style.display = 'flex';
     loadSecure();
   } else {
@@ -215,10 +344,21 @@ onAuthStateChanged(auth, (user) => {
     window._cryptoKey = null;
     if (glsEl) glsEl.style.display = 'flex';
     if (plsEl) plsEl.style.display = 'none';
+<<<<<<< HEAD
     // Kullanıcı yoksa login ekranı görünsün, APP gizlensin
     const appEl = document.getElementById('APP');
     const psEl = document.getElementById('PS');
     if (appEl) appEl.style.display = 'none';
     if (psEl) { psEl.style.display = 'none'; psEl.classList.remove('active'); }
+=======
+  }
+});
+// ACİL DURUM: Eğer uygulama açıldı ama PIN ekranı DOM'da sıkışıp kaldıysa
+window.addEventListener('load', () => {
+  const psEl = document.getElementById('PS');
+  if (psEl && psEl.classList.contains('active')) {
+    psEl.style.setProperty('display', 'flex', 'important');
+    console.warn("[DEBUG] PIN ekranı CSS ile zorla görünür kılındı.");
+>>>>>>> 67d170131db3056aacd7db97a216aa319b8e9d5e
   }
 });
