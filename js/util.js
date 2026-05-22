@@ -95,20 +95,3 @@ export function sLbl(s, over) {
   return s === 'paid' ? 'Ödendi' : s === 'partial' ? 'Kısmi' : over ? 'Gecikmiş' : 'Bekliyor';
 }
 
-// ── Global compat — index.html inline kodlar bu fonksiyonları global scope'ta bekler
-// Modüler yapı tamamlanana kadar window'a da bağla
-window.esc         = esc;
-window.fmt         = fmt;
-window.fmtA        = fmtA;
-window.fmtAmt      = fmtAmt;
-window.fmtD        = fmtD;
-window.fmtDS       = fmtDS;
-window.fmtLogTime  = fmtLogTime;
-window.dd          = dd;
-window.todayMidnight = todayMidnight;
-window.isOD        = isOD;
-window.sCls        = sCls;
-window.sLbl        = sLbl;
-window.toLocalISO  = toLocalISO;
-window.parseLocalDate  = parseLocalDate;
-window.parseLocalDate2 = parseLocalDate2;
