@@ -1,87 +1,75 @@
 # iskenderpay — Devam Notu
 
-_Son güncelleme: 2026-05-20_
+_Son güncelleme: 2026-05-22_
 
 ---
 
-## Çalışma kuralları
+## Çalışma Kuralları
 
 - **Her iş bitiminde versiyon güncellenir — İKİ DOSYA BİRLİKTE:**
-  1. `index.html` → `const APP_VERSION = 'vX.XX';`
+  1. `index.html` → `const APP_VERSION = 'vX.XX';` ve `const APP_BUILD = '...';`
   2. `version.json` → `{"v": "X.XX", "build": "YYYYMMDD-NN"}`
-  - ⚠️ Sadece biri güncellenirse uygulama yanlış versiyon gösterir
-  - Patch (bug fix, refactor): üçüncü hane — `v8.13` → `v8.14`
+  - Patch (bug fix, refactor): üçüncü hane — `v8.21` → `v8.22`
   - Minor (yeni özellik): ikinci hane — `v8.x` → `v9.0`
-  - Build formatı: `YYYYMMDD-NN` (aynı günde sıralı) — örn. `20260520-04`
+  - Build formatı: `YYYYMMDD-NN` (aynı günde sıralı)
 - **İş bitmeden CLAUDE.md güncellenmez** — biten iş kayıt altına alınır, sıradaki planlanır
+- `fix_groupids.js` root'ta kalır — konsola yapıştırılarak çalıştırılır, `js/`'ye taşınmaz
+- Service worker cache'i agresif — deploy sonrası gizli sekme ile test et
+- `Cross-Origin-Opener-Policy` hataları Google popup'tan geliyor, işlevselliği etkilemiyor
 
 ---
 
-## Tamamlananlar
+## Mevcut Durum (22 Mayıs 2026) — v8.22 / 20260522-03
 
-### v8.8 → `version.json` single source of truth (`20260520-01`)
-- `_knownBuild` artık `APP_BUILD` sabitiyle değil `initBuild()` ile `version.json`'dan initialize ediliyor
-- `initBuild()` sayfa açılışında bir kez çalışıyor; polling ve `manualCheckUpdate` bu baseline'a güveniyor
-- `APP_BUILD` sabiti sadece `renderAI()` UI fallback'i olarak kaldı — fonksiyonel mantık yok
+Modüler yapıya **kademeli geçiş** devam ediyor.
+`index.html` hâlâ çalışıyor, `js/` klasörü adım adım ekleniyor.
 
-### v8.11 → Kur API hata yönetimi (`20260520-03`)
-- `fetchRates` sessiz `catch(e){}` kaldırıldı, `console.warn` eklendi
-- `rates._fetchedAt` ISO timestamp — `renderKur` artık gerçek fetch zamanını gösteriyor
-- 1 saatten eski kur ⚠ kırmızı gösteriyor, `localStorage.setItem` sadece başarılı fetch'te çağrılıyor
+### Tamamlanan modüller
 
-### v8.12 → Sync race condition düzeltme (`20260520-03`)
-- `_fbPoll`: `_saveTimer !== null` iken poll callback atlanıyor
-- `_doSave`: Firebase yazımı sonrası `window._lastUpdated = Date.now()` — poll kendi verisini tekrar yüklemiyor
+| Dosya | İçerik | Durum |
+|---|---|---|
+| `js/state.js` | Tüm global değişkenler, `clearState()` | ✅ Deploy edildi, hata yok |
+| `js/util.js` | 18 pure fonksiyon: `esc`, `fmt`, `fmtA`, `dd`, `sCls`… | ✅ Deploy edildi, hata yok |
+| `js/crypto.js` | `wrapDataKey`, `unwrapDataKey`, `encryptData`, `decryptData`, `hashPin`, `getSaltAsync`… | ✅ Deploy edildi, PIN testi OK |
 
-### v8.18 → Migrasyon tek noktadan çalışma (`20260521-02`)
-- `migrateToV7/V7b` çağrıları `doLogin`'den tamamen çıkarıldı
-- `enterApp()` içinde tek noktadan çağrılıyor — kaç login dalı olursa olsun bir kez çalışır
-- Önceki davranış: doLogin'deki her dal (plan-switch, ilk kullanım, normal, fallback) ayrı ayrı tetikliyordu → konsolda 3 kez log görünüyordu
+### Sıradaki adımlar (öncelik sırası)
 
-### v8.17 → Crypto temizliği — legacy migration kaldırıldı (`20260521-01`)
-- `deriveKey()` (v5 PIN→AES-GCM) fonksiyonu kaldırıldı
-- `migrateFromV4()` (XOR→AES şifresiz geçiş) fonksiyonu kaldırıldı
-- `migrateToV8()` (PIN-key→dataKey-wrap geçişi) fonksiyonu kaldırıldı
-- `doLogin()`'deki v5 legacy dalı (`wrappedB64` yoksa `deriveKey` + `migrateToV8`) kaldırıldı
-- `doLogin()` artık düz, tek akış: pinSalt → hash doğrula → unwrapDataKey → loadSecure
-- `xEnc/xDec` korundu — backup dosyası şifreleme için hâlâ kullanılıyor
-- `_dataKeyRaw` global'i korundu — `chPass()` PIN değişiminde wrap için kullanıyor
-- Mevcut tüm kullanıcılar v8'de, legacy kol artık tetiklenemiyordu
-
-### v8.13 → Arama tutarı + debounce (`20260520-04`)
-- Arama: `p.amt` → `p.amount`, `pi.amt` → `pi.amount`, `c.amt` → kredi taksit toplamı
-- `saveSecure()` debounce kaldırıldı — anında `_doSave()` çağrısı, race window tamamen kapandı
-- `version.json` v8.13'e güncellendi
-
-### v8.9 → PIN/dataKey mimarisi (`20260520-02`)
-- **Sorun:** `_cryptoKey` doğrudan PIN'den türetiliyordu. PIN değişince veri yeniden şifreleniyor, sync başarısızsa kalıcı veri kaybı riski vardı.
-- **Çözüm:** Rastgele `dataKey` (32 byte) üretilir, PIN ile AES-KW wrap edilir. PIN değişince sadece wrap yenilenir, veri dokunulmaz.
-- Yeni fonksiyonlar: `importDataKey`, `wrapDataKey`, `unwrapDataKey`
-- Yeni storage key: `v8-wrapped-key` (localStorage + Firebase `users/{uid}_meta`)
-- `migrateToV8()`: v5 deriveKey mimarisinden tek seferlik geçiş — her iki planı çözüp yeni key ile yeniden şifreler
-- `chPass`: `saveSecureNow()` çağrısı kaldırıldı — veri değişmiyor artık
-- Yeni global: `_dataKeyRaw` (Uint8Array, oturumda bellekte — PIN değişiminde wrap için)
+1. **`js/db.js`** — Firebase bağlantısı, `doLogin()`, `loadSecure()`, `saveSecure()` (kritik)
+2. **`js/ui.js`** — tüm render fonksiyonları
+3. **`js/app.js`** — `onAuthStateChanged`, `selectPlan`, init (en son)
 
 ---
 
-## Sıradaki: bilinen sorunlar (öncelik sırası)
-
-1. **Firebase compat mode v10.12.0** — deprecated yol. Acil değil ama modular API geçişi planlanmalı.
-2. **Tek dosya büyümesi** — ~3.510 satır. Bir sonraki büyük özellik öncesi fonksiyon gruplarını `<script>` tag'lerine ayırmak düşünülebilir (build tool olmadan).
-
----
-
-## Dosya yapısı referansı
+## Crypto Mimarisi (kritik — değiştirme)
 
 ```
-index.html        Ana uygulama — tek dosya, 3457 satır
-version.json      {"v": "8.13", "build": "20260520-04"}
-sw.js             Service Worker — network-first index.html, cache-first assets
-manifest.json     PWA manifest
-fix_groupids.js   Grup ID migrasyon yardımcısı
+PIN
+ └→ PBKDF2 (pinSalt) → AES-KW anahtarı
+      └→ AES-KW ile wrap edilmiş dataKey (Firebase _meta'da + localStorage'da)
+           └→ dataKey ile AES-GCM şifreleme (plan verisi)
 ```
 
-## Kritik global değişkenler
+- **pinSalt** deterministik — `getSaltAsync('v5-pin-salt')` → UID + key stringinden PBKDF2 ile türetilir, hiçbir yere kaydedilmez
+- **wrappedKey** → Firebase `users/{uid}_meta` belgesi + `localStorage('v8-wrapped-key')`
+- **Veri** → Firebase `users/{uid}_{planId}` belgesi, `data` alanı
+
+---
+
+## Firebase Veri Yapısı
+
+```
+users/{uid}_meta
+  wrappedKey: string  (base64, AES-KW wrap edilmiş 32 byte dataKey)
+
+users/{uid}_{planId}
+  data:      string  (base64, AES-GCM şifreli JSON)
+  pinHash:   string  (base64, PBKDF2 hash — doğrulama için)
+  updatedAt: number
+```
+
+---
+
+## Kritik Global Değişkenler
 
 | Değişken | Açıklama |
 |---|---|
@@ -89,16 +77,51 @@ fix_groupids.js   Grup ID migrasyon yardımcısı
 | `_cryptoKey` | AES-256-GCM CryptoKey — dataKey'den import edilmiş |
 | `_dataKeyRaw` | Ham 32 byte dataKey — PIN değişiminde wrap için tutulur |
 | `_knownBuild` | Aktif build — `initBuild()` ile version.json'dan set edilir |
-| `window._planId` | Aktif plan (`plan1` / `plan2`) |
-| `window._fbDb` | Firebase Firestore referansı |
+| `window._planId` | Aktif plan (`plan1` / `plan2`) — sadece `state.js`'de tanımlanır |
 | `window._fbUid` | Firebase Auth UID |
 
-## Storage key haritası
+## Storage Key Haritası
 
 | Key | Nerede | Açıklama |
 |---|---|---|
-| `v5-pin-salt` | localStorage + Firebase | PIN hash salt — değişmiyor |
-| `v5-data-salt` | localStorage | Artık kullanılmıyor (v8 sonrası) |
+| `v5-pin-salt` | localStorage | Eski fallback — `getSaltAsync` UID varsa kullanmaz |
 | `v8-wrapped-key` | localStorage + Firebase `_meta` | AES-KW wrap edilmiş dataKey |
-| `v5-data-{planId}` | localStorage + Firebase | Şifreli veri |
-| `v8-migrated-{uid}` | localStorage | Migrasyon flag |
+| `v6-active-plan` | localStorage | Aktif plan ID |
+| `v8-migrated-{uid}` | localStorage | v8 migrasyon flag |
+| `v7-migrated-{uid}-{planId}` | localStorage | v7 migrasyon flag |
+| `v7b-migrated-{uid}-{planId}` | localStorage | v7b groupId fix flag |
+
+---
+
+## Dosya Yapısı
+
+```
+index.html          Ana uygulama (3442 satır) — modüller tamamlanana kadar çalışmaya devam eder
+js/state.js         Global state, clearState()
+js/util.js          Pure yardımcı fonksiyonlar
+js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
+js/db.js            (henüz yok)
+js/ui.js            (henüz yok)
+js/app.js           (henüz yok)
+version.json        {"v": "8.22", "build": "20260522-03"}
+sw.js               Service Worker
+manifest.json       PWA manifest
+fix_groupids.js     Konsol fix scripti (tek seferlik, root'ta kalır)
+```
+
+---
+
+## Versiyon Geçmişi (özet)
+
+| Versiyon | Build | Değişiklik |
+|---|---|---|
+| v8.22 | 20260522-03 | `js/db.js` modüle taşındı |
+| v8.22 | 20260522-01 | `js/state.js` + `js/util.js` modüle taşındı |
+| v8.21 | 20260521-05 | Mevcut kararlı tek-dosya baseline |
+| v8.18 | 20260521-02 | `migrateToV7/V7b` tek noktadan çalışma |
+| v8.17 | 20260521-01 | Legacy crypto kaldırıldı |
+| v8.13 | 20260520-04 | Arama tutarı + debounce fix |
+| v8.12 | 20260520-03 | Sync race condition fix |
+| v8.11 | 20260520-03 | Kur API hata yönetimi |
+| v8.9  | 20260520-02 | PIN/dataKey AES-KW mimarisi |
+| v8.8  | 20260520-01 | version.json single source of truth |

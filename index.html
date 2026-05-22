@@ -15,7 +15,9 @@
 <title>Ödeme Takvimi</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script type="module">
-// ── FİREBASE MODULAR v10 ─────────────────────────────────────────────────────
+// ── FİREBASE [db.js'e taşındı — js/db.js] ────────────────────────────────────
+// Aşağıdaki blok devre dışı — db.js üzerinden çalışıyor
+/*
 import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider,
          signInWithPopup, signInWithRedirect,
@@ -206,6 +208,7 @@ window.doGoogleSignOut = async function() {
   if (!confirm('Çıkış yapmak istiyor musunuz?')) return;
   await signOut(_auth);
 };
+*/
 </script>
 <script>
 
@@ -595,6 +598,7 @@ select.fi{appearance:none}
     import './js/state.js';
     import './js/util.js';
     import './js/crypto.js';
+    import './js/db.js';
   </script>
 </head>
 <body>
@@ -1097,7 +1101,8 @@ function findPayById(id) { rebuildLookups(); return _mapPaysById.get(String(id))
 function findPaysByGroup(gid) { rebuildLookups(); return _mapPaysByGroup.get(gid) || []; }
 function findCredById(id) { rebuildLookups(); return _mapCredsById.get(String(id)) || null; }
 
-// ── SECURE STORAGE (debounced + suppressable) ──────────────────────────────
+// ── SECURE STORAGE [db.js'e taşındı] ──────────────────────────────────────
+/*
 async function saveSecure() {
   if (_suppressSave) return;
   if (!_cryptoKey) return;
@@ -1243,6 +1248,7 @@ async function migrateToV7b() {
   console.log('v7b migrasyon tamamlandı — groupId ay-çakışma algoritması ile düzeltildi');
 }
 
+*/
 // compat: xDec/xEnc backup dosyası şifreleme için kullanılıyor
 function xDec(e,p){try{const t=decodeURIComponent(escape(atob(e)));let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return r;}catch(e){return null;}}
 function xEnc(t,p){let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return btoa(unescape(encodeURIComponent(r)));}
@@ -1253,9 +1259,9 @@ function savePersons(){ return saveSecure(); }
 function saveNotes(){ return saveSecure(); }
 function loadNotes(){} // loadSecure içinde yapılıyor
 
-// ── PIN ─────────────────────────────────────────────────────────────────────
-let _plainPin = ''; // Sadece oturum boyunca bellekte, localStorage'a yazılmaz
-
+// ── PIN [db.js'e taşındı] ───────────────────────────────────────────────────
+let _plainPin = '';
+/*
 async function doLogin() {
   const val = document.getElementById('PI').value;
   if (!val) return;
@@ -1348,6 +1354,7 @@ async function doLogin() {
   enterApp();
 }
 
+*/
 function showPinErr(msg) {
   const inp = document.getElementById('PI');
   inp.classList.add('err');
@@ -2330,7 +2337,7 @@ function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v8.22';
-const APP_BUILD   = '20260522-02';
+const APP_BUILD   = '20260522-03';
 
 function renderAI(){
   const el = document.getElementById('AI');
