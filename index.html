@@ -2332,7 +2332,7 @@ function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v8.22';
-const APP_BUILD   = '20260522-07';
+const APP_BUILD   = '20260522-08';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -3425,7 +3425,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     
     <div class="brow" style="margin-top: 15px;">
-      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeModal('SRCHMOD')">Kapat</button>
+      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeMov('SRCHMOD')">Kapat</button>
     </div>
   </div>
 </div>
