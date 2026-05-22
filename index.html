@@ -40,6 +40,7 @@ let   _fbUid  = null;
 window._fbUid = null;
 
 // Aktif plan (plan1 veya plan2)
+// [state.js'e taşındı]
 window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
 // ── FIRESTORE YARDIMCI ────────────────────────────────────────────────────────
@@ -590,6 +591,10 @@ select.fi{appearance:none}
 .empty .ico{font-size:36px;margin-bottom:9px}
 .empty p{font-size:13px;line-height:1.6}
 </style>
+  <script type="module">
+    import './js/state.js';
+    import './js/util.js';
+  </script>
 </head>
 <body>
 
@@ -1052,10 +1057,11 @@ async function _loadWrappedKeyFirebase() {
 }
 
 // ── STATE ───────────────────────────────────────────────────────────────────
+// [state.js'e taşındı — js/state.js]
 let pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
 let persons=[], notes=[], paidItems=[], rehber=[], actLog=[];
 let partialCtx=null, curTab=0;
-let sortMode='date'; // 'date' veya 'name'
+let sortMode='date';
 
 // ── YAPISAL İYİLEŞTİRMELER (UYS v3 pattern) ──────────────────────────────
 let _suppressSave = false;   // true iken saveSecure çalışmaz (batch işlemler)
@@ -1582,6 +1588,7 @@ function saveRates(){
 }
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
+// [util.js'e taşındı — js/util.js]
 function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function fmt(n){return'₺'+Number(n).toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0});}
 function fmtA(a,c){
