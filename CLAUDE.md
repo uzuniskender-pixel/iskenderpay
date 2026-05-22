@@ -19,7 +19,7 @@ _Son güncelleme: 2026-05-22_
 
 ---
 
-## Mevcut Durum (22 Mayıs 2026) — v8.22 / 20260522-03
+## Mevcut Durum (22 Mayıs 2026) — v8.22 / 20260522-06
 
 Modüler yapıya **kademeli geçiş** devam ediyor.
 `index.html` hâlâ çalışıyor, `js/` klasörü adım adım ekleniyor.
@@ -31,12 +31,23 @@ Modüler yapıya **kademeli geçiş** devam ediyor.
 | `js/state.js` | Tüm global değişkenler, `clearState()` | ✅ Deploy edildi, hata yok |
 | `js/util.js` | 18 pure fonksiyon: `esc`, `fmt`, `fmtA`, `dd`, `sCls`… | ✅ Deploy edildi, hata yok |
 | `js/crypto.js` | `wrapDataKey`, `unwrapDataKey`, `encryptData`, `decryptData`, `hashPin`, `getSaltAsync`… | ✅ Deploy edildi, PIN testi OK |
+| `js/db.js` | Firebase köprüsü, `doLogin`, `loadSecure`, `saveSecure`, migrasyon | ⚠️ Import eklendi — TEST GEREKLİ |
+
+### db.js entegrasyon notları (kritik)
+
+db.js'in çalışması için index.html'de yapılan değişiklikler:
+
+1. **`var` dönüşümü**: `let pays/creds/hist/...` → `var` yapıldı. `var` top-level inline script'te `window.*` ile alias — db.js `window.pays = [...]` yazdığında render() otomatik yeni veriyi görür.
+2. **`window.*` sync eklendi**: `loadSecure`, `startRealtimeSync`, `selectPlan`, `doRestore`, migrate fonksiyonları, silme fonksiyonları — hepsinde `pays = window.pays = ...` pattern.
+3. **Firebase guard**: db.js `getApps().length ? getApp() : initializeApp(...)` kullanıyor — çift init hatası engellendi.
+4. **Çift listener**: index.html ve db.js ikisi de `onAuthStateChanged` dinliyor — harmless duplication, ikisi de aynı şeyi yapıyor.
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **`js/db.js`** — Firebase bağlantısı, `doLogin()`, `loadSecure()`, `saveSecure()` (kritik)
-2. **`js/ui.js`** — tüm render fonksiyonları
-3. **`js/app.js`** — `onAuthStateChanged`, `selectPlan`, init (en son)
+1. **db.js testi** — Google girişi, PIN, plan değişimi, veri kaybolmaması
+2. **index.html'den doLogin/loadSecure/saveSecure yorum satırına al** — db.js import test geçtikten sonra
+3. **`js/ui.js`** — render fonksiyonları (render, renderPaid, renderHist, renderRhb vb.)
+4. **`js/app.js`** — initApp, selectPlan, init (en son)
 
 ---
 
@@ -96,14 +107,14 @@ users/{uid}_{planId}
 ## Dosya Yapısı
 
 ```
-index.html          Ana uygulama (3442 satır) — modüller tamamlanana kadar çalışmaya devam eder
+index.html          Ana uygulama (~3450 satır) — modüller tamamlanana kadar çalışmaya devam eder
 js/state.js         Global state, clearState()
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
-js/db.js            (henüz yok)
+js/db.js            Firebase köprüsü + doLogin/loadSecure/saveSecure (import edildi, test bekliyor)
 js/ui.js            (henüz yok)
 js/app.js           (henüz yok)
-version.json        {"v": "8.22", "build": "20260522-03"}
+version.json        {"v": "8.22", "build": "20260522-06"}
 sw.js               Service Worker
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (tek seferlik, root'ta kalır)
@@ -115,7 +126,10 @@ fix_groupids.js     Konsol fix scripti (tek seferlik, root'ta kalır)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
-| v8.22 | 20260522-03 | `js/db.js` modüle taşındı |
+| v8.22 | 20260522-06 | db.js import + var dönüşümü + window sync + Firebase guard |
+| v8.22 | 20260522-05 | Syntax fix (yorum bloğu bozulması) |
+| v8.22 | 20260522-04 | db.js import geri alındı (scope sorunu) |
+| v8.22 | 20260522-03 | `js/db.js` modüle taşındı (import denendi) |
 | v8.22 | 20260522-01 | `js/state.js` + `js/util.js` modüle taşındı |
 | v8.21 | 20260521-05 | Mevcut kararlı tek-dosya baseline |
 | v8.18 | 20260521-02 | `migrateToV7/V7b` tek noktadan çalışma |

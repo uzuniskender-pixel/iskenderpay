@@ -595,6 +595,7 @@ select.fi{appearance:none}
     import './js/state.js';
     import './js/util.js';
     import './js/crypto.js';
+    import './js/db.js';
   </script>
 </head>
 <body>
@@ -1059,21 +1060,23 @@ async function _loadWrappedKeyFirebase() {
 
 // ── STATE ───────────────────────────────────────────────────────────────────
 // [state.js'e taşındı — js/state.js]
-let pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
-let persons=[], notes=[], paidItems=[], rehber=[], actLog=[];
+// var kullanımı zorunlu: db.js modülü window.pays = [...] yaptığında
+// render() aynı referansı okuyabilsin diye window.* ile alias olmalı
+var pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
+var persons=[], notes=[], paidItems=[], rehber=[], actLog=[];
 let partialCtx=null, curTab=0;
 let sortMode='date';
 
 // ── YAPISAL İYİLEŞTİRMELER (UYS v3 pattern) ──────────────────────────────
-let _suppressSave = false;   // true iken saveSecure çalışmaz (batch işlemler)
-let _saveTimer = null;       // debounce timer
+var _suppressSave = false;   // true iken saveSecure çalışmaz (batch işlemler)
+var _saveTimer = null;       // debounce timer
 const SAVE_DEBOUNCE_MS = 400;// art arda save'leri birleştir
 
 // Lookup Maps — sık erişilen veriye O(1) erişim
-let _lookupDirty = true;
-let _mapPaysById = new Map();
-let _mapPaysByGroup = new Map();
-let _mapCredsById = new Map();
+var _lookupDirty = true;
+var _mapPaysById = new Map();
+var _mapPaysByGroup = new Map();
+var _mapCredsById = new Map();
 
 function invalidateLookups() { _lookupDirty = true; }
 
@@ -1145,14 +1148,14 @@ async function loadSecure() {
   if (!enc) return; // Veri yok — yeni hesap
   try {
     const data = await decryptData(enc, _cryptoKey);
-    pays    = data.pays    || [];
-    creds   = data.creds   || [];
-    hist    = data.hist    || [];
-    persons = data.persons || [];
-    notes   = data.notes   || [];
-    paidItems = data.paidItems || [];
-    rehber    = data.rehber    || [];
-    actLog    = data.actLog    || [];
+    pays      = window.pays      = data.pays      || [];
+    creds     = window.creds     = data.creds     || [];
+    hist      = window.hist      = data.hist      || [];
+    persons   = window.persons   = data.persons   || [];
+    notes     = window.notes     = data.notes     || [];
+    paidItems = window.paidItems = data.paidItems || [];
+    rehber    = window.rehber    = data.rehber    || [];
+    actLog    = window.actLog    = data.actLog    || [];
     // Firebase'e de kaydet (localStorage'dan geliyorsa senkronize et)
     if (window._fbSave) {
       try { await window._fbSave(enc); } catch(e) {}
@@ -1176,7 +1179,7 @@ async function migrateToV7() {
 
   // 1. Tüm recurring kayıtlarını bağımsız yap + groupId ata
   // groupId: eski rp (parent ID) veya kendi ID'si — aynı akıştaki ödemeler aynı satırda kalır
-  pays = pays.map(p => {
+  pays = window.pays = pays.map(p => {
     const entry = {...p};
     // groupId: eski rp varsa parent'ın ID'si, yoksa kendi ID'si
     if (!entry.groupId) {
@@ -1193,7 +1196,7 @@ async function migrateToV7() {
   if (!paidItems.length) {
     const allItems = [...pays];
     creds.forEach(c => c.pays.forEach(i => allItems.push({...i, name: c.name, currency: 'TRY', _cid: c.id, _ii: i.idx})));
-    paidItems = allItems
+    paidItems = window.paidItems = allItems
       .filter(p => p.status === 'paid' || p.status === 'partial')
       .map(p => ({...p, paidId: 'pi_' + Date.now() + '_' + Math.random()}));
   }
@@ -1394,7 +1397,7 @@ function selectPlan(planId) {
   window._planId = planId;
   localStorage.setItem('v6-active-plan', planId);
   // Veri dizilerini sıfırla ama _cryptoKey ve _dataKeyRaw'u KORUMA — wrappedKey hesap genelinde tek
-  pays=[]; creds=[]; hist=[]; persons=[]; notes=[]; paidItems=[]; rehber=[]; actLog=[];
+  pays=window.pays=[]; creds=window.creds=[]; hist=window.hist=[]; persons=window.persons=[]; notes=window.notes=[]; paidItems=window.paidItems=[]; rehber=window.rehber=[]; actLog=window.actLog=[];
   // Plan seçim ekranını kapat, PIN ekranını aç
   document.getElementById('PLS').style.display = 'none';
   const psEl = document.getElementById('PS');
@@ -1442,13 +1445,13 @@ async function startRealtimeSync() {
     if (!_cryptoKey) return;
     try {
       const d = await decryptData(encData, _cryptoKey);
-      pays      = d.pays      || [];
-      creds     = d.creds     || [];
-      hist      = d.hist      || [];
-      persons   = d.persons   || [];
-      notes     = d.notes     || [];
-      paidItems = d.paidItems || [];
-      rehber    = d.rehber    || [];
+      pays      = window.pays      = d.pays      || [];
+      creds     = window.creds     = d.creds     || [];
+      hist      = window.hist      = d.hist      || [];
+      persons   = window.persons   = d.persons   || [];
+      notes     = window.notes     = d.notes     || [];
+      paidItems = window.paidItems = d.paidItems || [];
+      rehber    = window.rehber    = d.rehber    || [];
       buildLookups();
       render();
       renderHist && renderHist();
@@ -2128,17 +2131,17 @@ function delByKey(keyEnc){
     const credId=key.replace('cred_','');
     const c=findCredById(credId);
     if(c){c.pays.forEach(p=>hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));}
-    creds=creds.filter(x=>String(x.id)!==credId);
+    creds=window.creds=creds.filter(x=>String(x.id)!==credId);
   } else if(key.startsWith('g_')){
     const gid=key.replace('g_','');
     const toDelete=pays.filter(p=>p.groupId===gid);
     toDelete.forEach(p=>hist.unshift({...p,delAt:new Date().toISOString()}));
-    pays=pays.filter(p=>p.groupId!==gid);
+    pays=window.pays=pays.filter(p=>p.groupId!==gid);
   } else {
     const pid=key.replace('pay_','');
     const toDelete=pays.filter(p=>String(Math.floor(Number(p.id)))===pid);
     toDelete.forEach(p=>hist.unshift({...p,delAt:new Date().toISOString()}));
-    pays=pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);
+    pays=window.pays=pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);
   }
   saveSecure();
   closeDV();
@@ -2306,7 +2309,7 @@ function delCellItems(keyEnc,month){
   items.forEach(p=>{
     if(p._cid) return; // kredi taksitini buradan silme
     hist.unshift({...p,delAt:new Date().toISOString()});
-    pays=pays.filter(x=>String(x.id)!==String(p.id));
+    pays=window.pays=pays.filter(x=>String(x.id)!==String(p.id));
   });
   saveSecure();closeDV();render();
 }
@@ -2329,7 +2332,7 @@ function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v8.22';
-const APP_BUILD   = '20260522-05';
+const APP_BUILD   = '20260522-06';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2402,7 +2405,7 @@ function doRestore(){
   if(!st.dataset.d){st.textContent='Önce dosya seç';return;}
   if(!confirm('Mevcut veriler silinecek. Emin misin?'))return;
   const d=JSON.parse(st.dataset.d);
-  pays=d.pays||[];creds=d.creds||[];hist=d.hist||[];persons=d.persons||[];notes=d.notes||[];paidItems=d.paidItems||[];rehber=d.rehber||[];actLog=d.actLog||[];
+  pays=window.pays=d.pays||[];creds=window.creds=d.creds||[];hist=window.hist=d.hist||[];persons=window.persons=d.persons||[];notes=window.notes=d.notes||[];paidItems=window.paidItems=d.paidItems||[];rehber=window.rehber=d.rehber||[];actLog=window.actLog=d.actLog||[];
   invalidateLookups();
   save().then(()=>{migrateCredDates();closeMov('RM');render();});
   alert('Veriler yüklendi!');
@@ -2844,7 +2847,7 @@ function doLogDel() {
   const from = new Date(d1).getTime();
   const to   = new Date(d2 + 'T23:59:59').getTime();
   const before = actLog.length;
-  actLog = actLog.filter(e => {
+  actLog = window.actLog = actLog.filter(e => {
     const t = new Date(e.at).getTime();
     return t < from || t > to;
   });
@@ -2858,11 +2861,7 @@ function doLogDel() {
 
 function doLogDelAll() {
   if (!confirm('Tüm log silinecek. Emin misin?')) return;
-  actLog = [];
-  saveSecure();
-  renderActLog();
-  closeLogDel();
-}
+  actLog = window.actLog = [];
 
 function rhbSave() {
   saveSecure(); // şifreli Firebase'e kaydet
@@ -3232,7 +3231,7 @@ function rhbDel(id) {
   if (!confirm(rhbGetName(p)+' silinecek. Emin misin?')) return;
   const _rdp = rehber.find(x => String(x.id) === String(id));
   addLog('rhb_del','Kişi silindi', rhbGetName(_rdp||{})+(_rdp?.company?' · '+_rdp.company:''), 6);
-  rehber = rehber.filter(x => String(x.id) !== String(id));
+  rehber = window.rehber = rehber.filter(x => String(x.id) !== String(id));
   rhbSave();
   closeRDET();
   renderRhb();

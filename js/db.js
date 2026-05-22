@@ -1,8 +1,8 @@
-// js/db.js — iskenderpay (v1.0)
-// Birebir index.html'den alındı. Hiçbir satır değiştirilmedi.
+// js/db.js — iskenderpay (v1.1)
 // Firebase bağlantısı, auth, doLogin, loadSecure, saveSecure, migrasyon.
+// index.html'deki Firebase init ile çakışmayı önlemek için getApps() guard eklendi.
 
-import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { initializeApp, getApps, getApp }         from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider,
          signInWithPopup, signInWithRedirect,
          getRedirectResult, onAuthStateChanged,
@@ -19,7 +19,7 @@ const firebaseConfig = {
   measurementId: "G-SPPX7F1BDY"
 };
 
-const _app  = initializeApp(firebaseConfig);
+const _app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const _auth = getAuth(_app);
 const _db   = getFirestore(_app);
 let   _fbUid = null;
