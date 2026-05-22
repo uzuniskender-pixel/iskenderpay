@@ -594,6 +594,7 @@ select.fi{appearance:none}
   <script type="module">
     import './js/state.js';
     import './js/util.js';
+    import './js/crypto.js';
   </script>
 </head>
 <body>
@@ -949,9 +950,9 @@ select.fi{appearance:none}
 </div>
 
 <script>
-// ── CRYPTO (Web Crypto API — AES-256-GCM + PBKDF2) ────────────────────────
-let _cryptoKey  = null; // Oturum boyunca bellekte tutulan AES-GCM anahtarı
-let _dataKeyRaw = null; // Ham 32 byte dataKey — PIN değişiminde wrap için tutulur
+// ── CRYPTO [crypto.js'e taşındı — js/crypto.js] ──────────────────────────
+let _cryptoKey  = null;
+let _dataKeyRaw = null;
 
 // dataKey'i import et (AES-GCM için)
 async function importDataKey(rawBytes) {
@@ -2329,7 +2330,7 @@ function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v8.22';
-const APP_BUILD   = '20260522-01';
+const APP_BUILD   = '20260522-02';
 
 function renderAI(){
   const el = document.getElementById('AI');
