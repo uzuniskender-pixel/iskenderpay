@@ -56,7 +56,7 @@ window._fbPoll = async function() {
   if (typeof _saveTimer !== 'undefined' && _saveTimer !== null) return;
   try {
     const snap = await getDoc(_planDoc());
-    if (!snap.exists()) { setSyncDot('active'); return; }
+    if (!snap.exists()) { window.setSyncDot && window.setSyncDot('active'); return; }
     const d = snap.data();
     const ts = d.updatedAt || 0;
     if (ts > window._lastUpdated && window._lastUpdated > 0) {
@@ -65,7 +65,7 @@ window._fbPoll = async function() {
     } else if (window._lastUpdated === 0) {
       window._lastUpdated = ts;
     }
-    setSyncDot('active');
+    window.setSyncDot && window.setSyncDot('active');
   } catch(e) {
     console.warn('Sync poll hatası:', e.message || e);
   }
@@ -146,7 +146,7 @@ onAuthStateChanged(_auth, (user) => {
     if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
     if (plsEl) plsEl.style.display = 'flex';
     if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-    renderPlanNames();
+    if (typeof window.renderPlanNames === 'function') window.renderPlanNames();
   } else {
     _fbUid = null;
     window._fbUid = null;
@@ -309,7 +309,7 @@ async function doLogin() {
   if (!val) return;
 
   if (window._cryptoKey && window._plainPin && window._plainPin === val) {
-    try { await loadSecure(); enterApp(); return; } catch(e) {}
+    try { await loadSecure(); window.enterApp && window.enterApp(); return; } catch(e) {}
   }
 
   const pinSalt = await getSaltAsync('v5-pin-salt');
@@ -320,7 +320,7 @@ async function doLogin() {
   }
 
   if (!storedHash) {
-    if (val.length < 4) { showPinErr('En az 4 karakter girmelisiniz!'); return; }
+    if (val.length < 4) { window.showPinErr && window.showPinErr('En az 4 karakter girmelisiniz!'); return; }
     const hash = await hashPin(val, pinSalt);
     if (window._fbSavePinHash) { try { await window._fbSavePinHash(hash); } catch(e) {} }
     const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
@@ -331,7 +331,7 @@ async function doLogin() {
     window._plainPin   = val;
     window._cryptoKey  = await importDataKey(dataKeyRaw);
     await loadSecure();
-    enterApp();
+    window.enterApp && window.enterApp();
     return;
   }
 
@@ -345,11 +345,11 @@ async function doLogin() {
   }
 
   let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
-  if (!wrappedB64) { showPinErr('Şifreleme anahtarı bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'); return; }
+  if (!wrappedB64) { window.showPinErr && window.showPinErr('Şifreleme anahtarı bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'); return; }
 
   let unwrapped;
   try { unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt); }
-  catch(e) { showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return; }
+  catch(e) { window.showPinErr && window.showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return; }
 
   window._dataKeyRaw = unwrapped.rawBytes;
   window._plainPin   = val;
@@ -367,10 +367,10 @@ async function doLogin() {
       localStorage.setItem('v6-active-plan', otherPlan);
     } catch(e2) {
       window._planId = origPlan;
-      showPinErr('Veri çözülemedi. Lütfen tekrar deneyin.'); return;
+      window.showPinErr && window.showPinErr('Veri çözülemedi. Lütfen tekrar deneyin.'); return;
     }
   }
-  enterApp();
+  window.enterApp && window.enterApp();
 }
 
 // ── Global compat ─────────────────────────────────────────────────────────────

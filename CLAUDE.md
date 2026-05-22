@@ -19,7 +19,7 @@ _Son güncelleme: 2026-05-22_
 
 ---
 
-## Mevcut Durum (22 Mayıs 2026) — v8.22 / 20260522-06
+## Mevcut Durum (22 Mayıs 2026) — v8.22 / 20260522-07
 
 Modüler yapıya **kademeli geçiş** devam ediyor.
 `index.html` hâlâ çalışıyor, `js/` klasörü adım adım ekleniyor.
@@ -114,7 +114,7 @@ js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
 js/db.js            Firebase köprüsü + doLogin/loadSecure/saveSecure (import edildi, test bekliyor)
 js/ui.js            (henüz yok)
 js/app.js           (henüz yok)
-version.json        {"v": "8.22", "build": "20260522-06"}
+version.json        {"v": "8.22", "build": "20260522-07"}
 sw.js               Service Worker
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (tek seferlik, root'ta kalır)
@@ -126,7 +126,7 @@ fix_groupids.js     Konsol fix scripti (tek seferlik, root'ta kalır)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
-| v8.22 | 20260522-06 | db.js import + var dönüşümü + window sync + Firebase guard |
+| v8.22 | 20260522-07 | db.js import + var dönüşümü + window sync + Firebase guard |
 | v8.22 | 20260522-05 | Syntax fix (yorum bloğu bozulması) |
 | v8.22 | 20260522-04 | db.js import geri alındı (scope sorunu) |
 | v8.22 | 20260522-03 | `js/db.js` modüle taşındı (import denendi) |

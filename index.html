@@ -2332,7 +2332,7 @@ function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v8.22';
-const APP_BUILD   = '20260522-06';
+const APP_BUILD   = '20260522-07';
 
 function renderAI(){
   const el = document.getElementById('AI');
@@ -2862,6 +2862,10 @@ function doLogDel() {
 function doLogDelAll() {
   if (!confirm('Tüm log silinecek. Emin misin?')) return;
   actLog = window.actLog = [];
+  saveSecure();
+  renderActLog();
+  closeLogDel();
+}
 
 function rhbSave() {
   saveSecure(); // şifreli Firebase'e kaydet
