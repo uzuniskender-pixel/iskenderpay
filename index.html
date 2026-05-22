@@ -1243,9 +1243,6 @@ async function migrateToV7b() {
   console.log('v7b migrasyon tamamlandı — groupId ay-çakışma algoritması ile düzeltildi');
 }
 
-*/
-*/
-// [DEAD CODE — db.js'de duplicate var, index.html versiyonu aktif]
 // compat: xDec/xEnc backup dosyası şifreleme için kullanılıyor
 function xDec(e,p){try{const t=decodeURIComponent(escape(atob(e)));let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return r;}catch(e){return null;}}
 function xEnc(t,p){let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return btoa(unescape(encodeURIComponent(r)));}
@@ -2332,7 +2329,7 @@ function clrHist(){if(!confirm('Tüm geçmişi sil?'))return;hist=[];save().then
 
 // ── AYARLAR ───────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v8.22';
-const APP_BUILD   = '20260522-04';
+const APP_BUILD   = '20260522-05';
 
 function renderAI(){
   const el = document.getElementById('AI');
