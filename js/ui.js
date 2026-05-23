@@ -117,12 +117,6 @@ function buildMx(all) {
     if (!mx[rawKey][mk]) mx[rawKey][mk] = {items:[], status:'pending', try:0};
     mx[rawKey][mk].items.push(p);
     mx[rawKey][mk].try += toTRY(p.amount, p.currency||'TRY');
-    // Durum: tümü paid → paid, herhangi partial → partial, herhangi overdue → overdue
-    const statuses = mx[rawKey][mk].items.map(x => x.status||'pending');
-    if (statuses.every(s => s==='paid')) mx[rawKey][mk].status = 'paid';
-    else if (statuses.some(s => s==='partial')) mx[rawKey][mk].status = 'partial';
-    else if (statuses.some(s => s!=='paid' && isOD(x => x.date === (x=p,x.date) ? p : x) || isOD(p))) mx[rawKey][mk].status = 'overdue';
-    else mx[rawKey][mk].status = 'pending';
   });
   // Durum hesabı düzeltme (item bazlı)
   Object.keys(mx).forEach(rk => {
