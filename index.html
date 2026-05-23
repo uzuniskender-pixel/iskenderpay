@@ -597,6 +597,7 @@ select.fi{appearance:none}
     import './js/compat.js';
     import './js/crypto.js';
     import './js/db.js';
+    import './js/modal.js';
   </script>
 </head>
 <body>
@@ -976,109 +977,6 @@ select.fi{appearance:none}
 // ── CRYPTO [crypto.js'e taşındı — js/crypto.js] ──────────────────────────
 let _cryptoKey  = null;
 let _dataKeyRaw = null;
-
-// dataKey'i import et (AES-GCM için)
-async function importDataKey(rawBytes) {
-  return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-}
-
-// dataKey'i PIN'den türetilen AES-KW anahtarıyla wrap et
-async function wrapDataKey(dataKeyRaw, pin, pinSalt) {
-  const enc = new TextEncoder();
-  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
-  const kwKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
-    kwMat, { name: 'AES-KW', length: 256 }, false, ['wrapKey']
-  );
-  const keyToWrap = await crypto.subtle.importKey('raw', dataKeyRaw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
-  const wrapped = await crypto.subtle.wrapKey('raw', keyToWrap, kwKey, 'AES-KW');
-  return btoa(String.fromCharCode(...new Uint8Array(wrapped)));
-}
-
-// wrap'lı dataKey'i PIN ile unwrap et, ham byte dizisi olarak döndür
-async function unwrapDataKey(wrappedB64, pin, pinSalt) {
-  const enc = new TextEncoder();
-  const wrapped = Uint8Array.from(atob(wrappedB64), c => c.charCodeAt(0));
-  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
-  const kwKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
-    kwMat, { name: 'AES-KW', length: 256 }, false, ['unwrapKey']
-  );
-  const unwrapped = await crypto.subtle.unwrapKey(
-    'raw', wrapped, kwKey, 'AES-KW',
-    { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
-  );
-  // Ham byte'ları da sakla (PIN değişiminde yeniden wrap için)
-  const exportedRaw = await crypto.subtle.exportKey('raw', unwrapped);
-  return { cryptoKey: unwrapped, rawBytes: new Uint8Array(exportedRaw) };
-}
-
-async function encryptData(data, key) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const enc = new TextEncoder();
-  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
-  const buf = new Uint8Array(iv.byteLength + cipher.byteLength);
-  buf.set(iv, 0); buf.set(new Uint8Array(cipher), iv.byteLength);
-  // Büyük veri için chunk'lı btoa (spread operator stack overflow önlemi)
-  let binary = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < buf.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, buf.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-async function decryptData(b64, key) {
-  const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  const iv = buf.slice(0, 12), cipher = buf.slice(12);
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
-  return JSON.parse(new TextDecoder().decode(plain));
-}
-
-async function hashPin(pin, salt) {
-  const enc = new TextEncoder();
-  const keyMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMat, 256);
-  return btoa(String.fromCharCode(...new Uint8Array(bits)));
-}
-
-async function getSaltAsync(key) {
-  const uid = _fbUid || '';
-  if (uid) {
-    // UID'yi salt olarak kullan — her cihazda aynı sonucu verir
-    const enc = new TextEncoder();
-    const keyMat = await crypto.subtle.importKey('raw', enc.encode(uid + key), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('iskenderpay-v6'), iterations: 10000, hash: 'SHA-256' }, keyMat, 128);
-    return new Uint8Array(bits);
-  }
-  // UID yoksa localStorage'a düş
-  return getSalt(key);
-}
-
-function getSalt(key) {
-  let s = localStorage.getItem(key);
-  if (!s) { const arr = crypto.getRandomValues(new Uint8Array(16)); s = btoa(String.fromCharCode(...arr)); localStorage.setItem(key, s); }
-  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
-}
-
-// v8 wrapped key — localStorage + Firebase
-function _getWrappedKey() {
-  return localStorage.getItem('v8-wrapped-key');
-}
-function _saveWrappedKeyLocal(wrappedB64) {
-  localStorage.setItem('v8-wrapped-key', wrappedB64);
-}
-async function _saveWrappedKeyFirebase(wrappedB64) {
-  if (window._fbSaveWrappedKey) {
-    try { await window._fbSaveWrappedKey(wrappedB64); } catch(e) { console.warn('wrappedKey Firebase kayıt hatası:', e); }
-  }
-}
-async function _loadWrappedKeyFirebase() {
-  if (window._fbLoadWrappedKey) {
-    return await window._fbLoadWrappedKey();
-  }
-  return null;
-}
 
 // ── STATE ───────────────────────────────────────────────────────────────────
 // [state.js'e taşındı — js/state.js]
@@ -1614,27 +1512,6 @@ function saveRates(){
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
 // [util.js'e taşındı — js/util.js]
-function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
-function fmt(n){return'₺'+Number(n).toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0});}
-function fmtA(a,c){
-  if(c==='EUR') return'€'+Number(a).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  if(c==='GOLD') return Number(a).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'gr';
-  return fmt(a);
-}
-function toTRY(a,c){
-  if(c==='EUR'&&rates.EUR) return a*rates.EUR;
-  if(c==='GOLD'&&rates.GOLD) return a*rates.GOLD;
-  return Number(a);
-}
-function parseLocalDate(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
-function toLocalISO(yr,mo,day){return yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
-function fmtD(s){return parseLocalDate(s).toLocaleDateString('tr-TR',{day:'numeric',month:'long'});}
-function fmtDS(s){return parseLocalDate(s).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});}
-function dd(s){const t=new Date();t.setHours(0,0,0,0);const d=parseLocalDate(s);return Math.round((d-t)/864e5);}
-function todayMidnight(){const t=new Date();t.setHours(0,0,0,0);return t;}
-function isOD(p){return(p.status||'pending')!=='paid'&&parseLocalDate(p.date)<todayMidnight();}
-function sCls(s,over){return s==='paid'?'cp':s==='partial'?'ck':over?'cg':'cb';}
-function sLbl(s,over){return s==='paid'?'Ödendi':s==='partial'?'Kısmi':over?'Gecikmiş':'Bekliyor';}
 
 // ── TAB ──────────────────────────────────────────────────────────────────────
 function go(n){
@@ -1672,7 +1549,6 @@ async function migrateCredDates(){
 }
 
 // ── RECURRING (kaldırıldı — artık tüm ödemeler bağımsız) ────────────────────
-function parseLocalDate2(s){const[y,m,d]=s.split('-').map(Number);return{y,m,d};}
 function genRec(){} // v7: artık kullanılmıyor, compat için boş bırakıldı
 function chSort(v){ sortMode=v; render(); }
 async function chAhead(v){
@@ -2438,52 +2314,6 @@ function doRestore(){
   alert('Veriler yüklendi!');
 }
 
-// ── MODAL MANAGER ─────────────────────────────────────────────────────────────
-const ModalManager = (() => {
-  const _open = new Set();
-
-  function open(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.add('open');
-    _open.add(id);
-    document.body.style.overflow = 'hidden';
-  }
-
-  function close(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.remove('open');
-    _open.delete(id);
-    if (_open.size === 0) document.body.style.overflow = '';
-  }
-
-  function closeAll() {
-    _open.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('open'); });
-    _open.clear();
-    document.body.style.overflow = '';
-  }
-
-  document.addEventListener('click', e => {
-    // Click-outside-to-close (.mov ve .dov backdrop)
-    if ((e.target.classList.contains('mov') || e.target.classList.contains('dov')) && e.target.id) { close(e.target.id); return; }
-    // data-modal-open
-    const openBtn = e.target.closest('[data-modal-open]');
-    if (openBtn) { open(openBtn.dataset.modalOpen); return; }
-    // data-modal-close
-    const closeBtn = e.target.closest('[data-modal-close]');
-    if (closeBtn) { close(closeBtn.dataset.modalClose); return; }
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && _open.size > 0) close([..._open].pop());
-  });
-
-  return { open, close, closeAll };
-})();
-
-function closeMov(id) { ModalManager.close(id); }
-
 // ── NOTLAR ───────────────────────────────────────────────────────────────────
 function renderNotes(){
   const nl=document.getElementById('NL');
@@ -2777,7 +2607,6 @@ const LOG_ICONS = {
   default:    {icon:'📋', bg:'rgba(255,255,255,.07)'},
 };
 
-function fmtAmt(a,c){ return (c&&c!=='TRY'?c+' ':'₺')+Number(a).toLocaleString('tr-TR',{maximumFractionDigits:0}); }
 
 function addLog(type, title, detail, navTab) {
   try {
@@ -2843,18 +2672,6 @@ function renderActLog() {
   }
 }
 
-function fmtLogTime(iso) {
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = now - d;
-  if (diff < 60000)  return 'Az önce';
-  if (diff < 3600000) return Math.floor(diff/60000) + ' dk önce';
-  if (diff < 86400000) return Math.floor(diff/3600000) + ' sa önce';
-  const dd = d.getDate().toString().padStart(2,'0');
-  const mm = (d.getMonth()+1).toString().padStart(2,'0');
-  const hh = d.getHours().toString().padStart(2,'0');
-  const mn = d.getMinutes().toString().padStart(2,'0');
-  return dd+'.'+mm+' '+hh+':'+mn;
 }
 
 function logNav(tab) {

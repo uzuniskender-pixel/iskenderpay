@@ -13,7 +13,8 @@ const STATIC = [
   './js/crypto.js',
   './js/db.js',
   './js/ui.js',
-  './js/app.js'
+  './js/app.js',
+  './js/modal.js'
 ];
 
 self.addEventListener('install', e => {

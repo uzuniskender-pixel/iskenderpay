@@ -15,6 +15,7 @@ import {
   sCls,
   sLbl,
   toLocalISO,
+  toTRY,
   parseLocalDate,
   parseLocalDate2
 } from './util.js';
@@ -32,5 +33,6 @@ window.isOD        = isOD;
 window.sCls        = sCls;
 window.sLbl        = sLbl;
 window.toLocalISO  = toLocalISO;
+window.toTRY       = (a, c) => toTRY(a, c, window.rates);
 window.parseLocalDate  = parseLocalDate;
 window.parseLocalDate2 = parseLocalDate2;
