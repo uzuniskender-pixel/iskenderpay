@@ -536,14 +536,9 @@ function savePay() {
       pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
     }
   }
-  try{
-    const _eid3=document.getElementById('EID').value||'';
-    const _spn2=document.getElementById('PN').value||'';
-    const _spa2=parseFloat(document.getElementById('PA').value)||0;
-    const _spc2=document.getElementById('PC').value||'TRY';
-    if(_eid3){addLog('plan_edit','Kayıt düzenlendi',_spn2+' · '+fmtAmt(_spa2,_spc2),0);}
-    else{addLog('plan_add','Kayıt eklendi',_spn2+' · '+fmtAmt(_spa2,_spc2),0);}
-  }catch(e){console.warn('plan log hata:',e);}
+  // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz
+  if(eid){ addLog('plan_edit','Kayıt düzenlendi', name+' · '+fmtAmt(amount,currency), 0); }
+  else   { addLog('plan_add', 'Kayıt eklendi',    name+' · '+fmtAmt(amount,currency), 0); }
   saveSecure(); closeMov('PM2'); render();
 }
 
