@@ -643,23 +643,6 @@ function saveHistItem() {
   saveSecure(); ModalManager.close('HIMOD'); renderHist();
 }
 
-function delMonthEntry(idEnc) {
-  const id=decodeURIComponent(idEnc);
-  if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
-  const p=findPayById(id);
-  if(p){try{addLog('plan_del','Kayıt silindi',p.name+' · '+fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};hist.unshift({...p,delAt:new Date().toISOString()});window.pays=pays.filter(x=>String(x.id)!==id);}
-  saveSecure();closeDV();render();
-}
-
-function delCellItems(keyEnc,month) {
-  const key=decodeURIComponent(keyEnc);
-  if(!confirm('Bu aydaki kayıtlar silinecek. Emin misin?'))return;
-  const all=getAllItems(),mx=buildMx(all);
-  const items=(mx[key]?.[month]?.items)||[];
-  items.forEach(p=>{if(p._cid)return;hist.unshift({...p,delAt:new Date().toISOString()});window.pays=window.pays.filter(x=>String(x.id)!==String(p.id));});
-  saveSecure();closeDV();render();
-}
-
 function restoreFromHist(i) {
   const p=hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
