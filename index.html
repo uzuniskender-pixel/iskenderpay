@@ -595,6 +595,7 @@ select.fi{appearance:none}
     import './js/modal.js';
     import './js/app.js';
     import './js/ui.js';
+    import './js/data.js';
   </script>
 </head>
 <body>
@@ -987,189 +988,8 @@ var _suppressSave = false;   // true iken saveSecure çalışmaz (batch işlemle
 var _saveTimer = null;       // debounce timer
 const SAVE_DEBOUNCE_MS = 400;// art arda save'leri birleştir
 
-// Lookup Maps — sık erişilen veriye O(1) erişim
-var _lookupDirty = true;
-var _mapPaysById = new Map();
-var _mapPaysByGroup = new Map();
-var _mapCredsById = new Map();
-
-function invalidateLookups() { _lookupDirty = true; }
-
-function rebuildLookups() {
-  if (!_lookupDirty) return;
-  _mapPaysById.clear();
-  _mapPaysByGroup.clear();
-  _mapCredsById.clear();
-  pays.forEach(p => {
-    _mapPaysById.set(String(p.id), p);
-    const gid = p.groupId || String(Math.floor(Number(p.id)));
-    if (!_mapPaysByGroup.has(gid)) _mapPaysByGroup.set(gid, []);
-    _mapPaysByGroup.get(gid).push(p);
-  });
-  creds.forEach(c => _mapCredsById.set(String(c.id), c));
-  _lookupDirty = false;
-}
-
-// Hızlı lookup fonksiyonları
-function findPayById(id) { rebuildLookups(); return _mapPaysById.get(String(id)) || null; }
-function findPaysByGroup(gid) { rebuildLookups(); return _mapPaysByGroup.get(gid) || []; }
-function findCredById(id) { rebuildLookups(); return _mapCredsById.get(String(id)) || null; }
-
-// ── SECURE STORAGE ──────────────────────────────────────────────────────────
-async function saveSecure() {
-  if (_suppressSave) return;
-  if (!_cryptoKey) return;
-  invalidateLookups();
-  // Debounce kaldırıldı — tek kullanıcı, anında kaydet
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = null;
-  await _doSave();
-}
-
-async function _doSave() {
-  _saveTimer = null;
-  if (!_cryptoKey) return;
-  const data = { pays, creds, hist, persons, notes, paidItems, rehber, actLog };
-  const enc = await encryptData(data, _cryptoKey);
-  // Firebase'e kaydet (birincil)
-  if (window._fbSave) {
-    try {
-      await window._fbSave(enc);
-      // Başarılı yazımdan sonra _lastUpdated'i güncelle — poll kendi verisini tekrar yüklemesin
-      window._lastUpdated = Date.now();
-    } catch(e) { console.warn('Firebase kayıt hatası:', e); }
-  }
-  // localStorage yedek olarak da tut (plan'a özel key)
-  localStorage.setItem('v5-data-' + window._planId, enc);
-  localStorage.setItem('v5-rates-' + window._planId, JSON.stringify(rates));
-}
-
-// Anında kaydet (debounce beklemeden — kritik işlemler için)
-async function saveSecureNow() {
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _suppressSave = false;
-  invalidateLookups();
-  await _doSave();
-}
-
-async function loadSecure() {
-  // Önce Firebase'den yükle
-  let enc = null;
-  if (window._fbLoad) {
-    try { enc = await window._fbLoad(); } catch(e) { console.warn('Firebase yükleme hatası:', e); }
-  }
-  // Firebase'de yoksa localStorage'a bak (plan'a özel key, eski key'e fallback)
-  if (!enc) enc = localStorage.getItem('v5-data-' + window._planId) || localStorage.getItem('v5-data');
-  if (!enc) return; // Veri yok — yeni hesap
-  try {
-    const data = await decryptData(enc, _cryptoKey);
-    pays      = window.pays      = data.pays      || [];
-    creds     = window.creds     = data.creds     || [];
-    hist      = window.hist      = data.hist      || [];
-    persons   = window.persons   = data.persons   || [];
-    notes     = window.notes     = data.notes     || [];
-    paidItems = window.paidItems = data.paidItems || [];
-    rehber    = window.rehber    = data.rehber    || [];
-    actLog    = window.actLog    = data.actLog    || [];
-    // Firebase'e de kaydet (localStorage'dan geliyorsa senkronize et)
-    if (window._fbSave) {
-      try { await window._fbSave(enc); } catch(e) {}
-    }
-  } catch(e) {
-    throw new Error('decrypt_failed');
-  }
-  const r = localStorage.getItem('v5-rates-' + window._planId) || localStorage.getItem('v5-rates');
-  if (r) try { Object.assign(rates, JSON.parse(r)); } catch(e) {}
-}
-
-// ── V7 MİGRASYON: Recurring → Bağımsız, PaidItems Ayrıştırma ─────────────
 // Migrasyon kilidi — aynı anda birden fazla çalışmasını engeller
 var _migrationRunning = false;
-
-async function migrateToV7() {
-  const migKey = 'v7-migrated-' + (window._fbUid||'local') + '-' + window._planId;
-  if (localStorage.getItem(migKey)) return;
-
-  _suppressSave = true; // batch işlem — ara kayıtları engelle
-
-  // 1. Tüm recurring kayıtlarını bağımsız yap + groupId ata
-  // groupId: eski rp (parent ID) veya kendi ID'si — aynı akıştaki ödemeler aynı satırda kalır
-  pays = window.pays = pays.map(p => {
-    const entry = {...p};
-    // groupId: eski rp varsa parent'ın ID'si, yoksa kendi ID'si
-    if (!entry.groupId) {
-      entry.groupId = String(Math.floor(Number(entry.rp || entry.id)));
-    }
-    delete entry.rec;
-    delete entry.rp;
-    delete entry.rs;
-    delete entry.rm;
-    return entry;
-  });
-
-  // 2. Ödendi/Kısmi olanlardan paidItems oluştur (plan'da da kalacak)
-  if (!paidItems.length) {
-    const allItems = [...pays];
-    creds.forEach(c => c.pays.forEach(i => allItems.push({...i, name: c.name, currency: 'TRY', _cid: c.id, _ii: i.idx})));
-    paidItems = window.paidItems = allItems
-      .filter(p => p.status === 'paid' || p.status === 'partial')
-      .map(p => ({...p, paidId: 'pi_' + Date.now() + '_' + Math.random()}));
-  }
-
-  _suppressSave = false;
-  await saveSecureNow();
-  localStorage.setItem(migKey, '1');
-  console.log('v7 migrasyon tamamlandı — groupId atandı, paidItems oluşturuldu');
-}
-
-// ── V7b MİGRASYON: rp olmadan groupId düzeltme (ay çakışması algoritması) ──
-async function migrateToV7b() {
-  const migKey = 'v7b-migrated-' + (window._fbUid||'local') + '-' + window._planId;
-  if (localStorage.getItem(migKey)) return;
-
-  _suppressSave = true;
-
-  // Aynı isimli ödemeleri ay çakışmasına göre grupla
-  const byName = {};
-  pays.forEach(p => { if (!byName[p.name]) byName[p.name] = []; byName[p.name].push(p); });
-
-  Object.keys(byName).forEach(name => {
-    const entries = byName[name];
-    if (entries.length <= 1) {
-      if (!entries[0].groupId) entries[0].groupId = String(Math.floor(Number(entries[0].id)));
-      return;
-    }
-    entries.sort((a, b) => a.date.localeCompare(b.date));
-    const groups = [];
-    entries.forEach(entry => {
-      const em = entry.date.substring(0, 7);
-      let placed = false;
-      for (const g of groups) {
-        if (!g.some(e => e.date.substring(0, 7) === em)) { g.push(entry); placed = true; break; }
-      }
-      if (!placed) groups.push([entry]);
-    });
-    groups.forEach(group => {
-      const gid = String(Math.floor(Number(group[0].id)));
-      group.forEach(e => { e.groupId = gid; });
-    });
-  });
-
-  _suppressSave = false;
-  await saveSecureNow();
-  localStorage.setItem(migKey, '1');
-  console.log('v7b migrasyon tamamlandı — groupId ay-çakışma algoritması ile düzeltildi');
-}
-
-// compat: xDec/xEnc backup dosyası şifreleme için kullanılıyor
-function xDec(e,p){try{const t=decodeURIComponent(escape(atob(e)));let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return r;}catch(e){return null;}}
-function xEnc(t,p){let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^p.charCodeAt(i%p.length));return btoa(unescape(encodeURIComponent(r)));}
-
-// save / savePersons / saveNotes → hepsi saveSecure'e yönlendiriliyor
-function save(){ return saveSecure(); }
-function savePersons(){ return saveSecure(); }
-function saveNotes(){ return saveSecure(); }
-function loadNotes(){} // loadSecure içinde yapılıyor
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
 let _plainPin = '';
@@ -1277,9 +1097,9 @@ async function startRealtimeSync() {
   setSyncDot('connecting');
   window._lastUpdated = 0; // yeni oturum — timestamp sıfırla
   window._fbStartListen(async encData => {
-    if (!_cryptoKey) return;
+    if (!window._cryptoKey) return;
     try {
-      const d = await decryptData(encData, _cryptoKey);
+      const d = await decryptData(encData, window._cryptoKey);
       pays      = window.pays      = d.pays      || [];
       creds     = window.creds     = d.creds     || [];
       hist      = window.hist      = d.hist      || [];
@@ -1287,7 +1107,7 @@ async function startRealtimeSync() {
       notes     = window.notes     = d.notes     || [];
       paidItems = window.paidItems = d.paidItems || [];
       rehber    = window.rehber    = d.rehber    || [];
-      buildLookups();
+      if(window.invalidateLookups) window.invalidateLookups();
       render();
       renderHist && renderHist();
       renderPaid && renderPaid();
@@ -1354,8 +1174,8 @@ async function chPass() {
 
 // ── DETAY ─────────────────────────────────────────────────────────────────────
 
-var APP_VERSION = 'v8.27';
-var APP_BUILD   = '20260523-05';
+var APP_VERSION = 'v8.28';
+var APP_BUILD   = '20260523-06';
 
 
 function readRF(inp){
