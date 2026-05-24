@@ -62,7 +62,7 @@ function genRec() {} // v7'de kaldırıldı — compat için boş
 // ── MİGRASYON (kredi tarihleri) ──────────────────────────────────────────────
 async function migrateCredDates() {
   (window.creds || []).forEach(c => {
-    if (!c.start || !c.pays || !c.pays || !c.pays.length) return;
+    if (!c.start || !c.pays || !c.pays.length) return;
     const [_sy,_sm,_sd] = c.start.split('-').map(Number);
     const startDay=_sd, startMo=_sm-1, startYr=_sy;
     c.pays.forEach((p,i) => {

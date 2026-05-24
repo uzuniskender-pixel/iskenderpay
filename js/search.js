@@ -66,7 +66,7 @@ function renderAI() {
   // Bu ay istatistikleri
   const now  = new Date();
   const nowY = now.getFullYear(), nowM = now.getMonth();
-  const buAy = pays.filter(p => {
+  const buAy = window.pays.filter(p => {
     const d = parseLocalDate(p.date);
     return d.getFullYear()===nowY && d.getMonth()===nowM;
   });
@@ -75,7 +75,7 @@ function renderAI() {
   const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&isOD(p)).reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
 
   // Genel toplam borç (tüm ödenmemiş)
-  const toplamBekleyen = pays.filter(p=>(p.status||'pending')!=='paid')
+  const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
     .reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
   const krediBekleyen = creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
     .reduce((a,p)=>a+p.amount,0),0);
@@ -85,7 +85,7 @@ function renderAI() {
   for(let i=2;i>=0;i--){
     const tM=new Date(nowY,nowM-i,1);
     const tY=tM.getFullYear(), tMo=tM.getMonth();
-    const mPays=paidItems.filter(p=>{const d=parseLocalDate(p.date);return d.getFullYear()===tY&&d.getMonth()===tMo;});
+    const mPays=window.paidItems.filter(p=>{const d=parseLocalDate(p.date);return d.getFullYear()===tY&&d.getMonth()===tMo;});
     const mTot=mPays.reduce((s,p)=>s+(p.paid||toTRY(p.amount,p.currency||'TRY')),0);
     trend.push({lbl:tM.toLocaleDateString('tr-TR',{month:'short'}), tot:mTot});
   }
