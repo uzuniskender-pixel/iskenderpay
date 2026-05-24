@@ -200,6 +200,24 @@ function renderKur() {
   h += `<span id="sync-dot" title="Canlı sync"></span>`;
   h += `<span id="ver-tag" onclick="go(5)" title="Sürüm bilgisi" style="margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);cursor:pointer;flex-shrink:0;padding:2px 6px;border:1px solid var(--bdr);border-radius:4px">${window.APP_VERSION}</span>`;
   document.getElementById('KB').innerHTML = h;
+  renderSiradaki();
+}
+
+function renderSiradaki() {
+  const el = document.getElementById('SIRADAKI');
+  if (!el || !window.pays) return;
+  const today = todayMidnight ? todayMidnight() : new Date();
+  const bekleyenler = (window.pays||[])
+    .filter(p => (p.status||'pending') !== 'paid' && parseLocalDate(p.date) >= today)
+    .sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
+  if (!bekleyenler.length) { el.style.display = 'none'; return; }
+  const p = bekleyenler[0];
+  const d = parseLocalDate(p.date);
+  const kalan = Math.round((d - today) / 86400000);
+  const kalanStr = kalan === 0 ? 'Bugün' : kalan === 1 ? 'Yarın' : kalan + ' gün';
+  const tryAmt = toTRY(p.amount, p.currency||'TRY');
+  el.style.display = '';
+  el.innerHTML = `<span style="opacity:.5;font-size:10px">Sıradaki:</span> <span style="font-size:11px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle">${esc(p.name)}</span> <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ok)">${fmt(tryAmt)}</span> <span style="font-size:10px;color:var(--muted)">${kalanStr}</span>`;
 }
 
 function saveRates() {
@@ -516,6 +534,7 @@ window.showSyncToast      = showSyncToast;
 window.toggleEye          = toggleEye;
 window.fetchRates         = fetchRates;
 window.renderKur          = renderKur;
+window.renderSiradaki     = renderSiradaki;
 window.saveRates          = saveRates;
 window.renderAI           = renderAI;
 window.doBackup           = doBackup;

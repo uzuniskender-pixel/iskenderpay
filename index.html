@@ -396,6 +396,7 @@ select.fi{appearance:none}
       <button class="mtab" id="m7" onclick="go(7)">📋 Log</button>
     </div>
     <div class="kurbar" id="KB"><span style="font-size:11px;color:var(--muted)">Kurlar yükleniyor...</span></div>
+    <div id="SIRADAKI" style="display:none;background:var(--surf2);border-bottom:1px solid var(--bdr);padding:4px 16px;font-size:11px;color:var(--txt);display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none;white-space:nowrap"></div>
 
     <!-- ÖZET -->
     <div id="T0">
@@ -703,8 +704,8 @@ var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.41';
-var APP_BUILD   = '20260523-19';
+var APP_VERSION = 'v8.42';
+var APP_BUILD   = '20260523-20';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

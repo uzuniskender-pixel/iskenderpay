@@ -126,6 +126,17 @@ function render() {
   html+=`<td>${fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
   document.getElementById('MAT').innerHTML = rowKeys.length ? html : '<div class="empty"><div class="ico">📋</div><p>Henüz ödeme yok.<br>+ butonuyla ekleyin.</p></div>';
 
+  // Mevcut aya scroll
+  requestAnimationFrame(() => {
+    const mwrap = document.querySelector('.mwrap');
+    const curTh = document.querySelector('.mtbl th[style*="color:var(--acc)"]');
+    if (mwrap && curTh) {
+      const thLeft = curTh.offsetLeft;
+      const mwrapW = mwrap.offsetWidth;
+      mwrap.scrollLeft = Math.max(0, thLeft - 180); // sticky rh sütunu payı
+    }
+  });
+
   // Bu hafta widget'ı
   renderHaftaWidget(all, now, soon7);
 }
