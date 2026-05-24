@@ -50,3 +50,7 @@ export const ModalManager = { open, close, closeAll };
 // Global compat — index.html inline kodu ModalManager.open/close/closeAll kullanıyor
 window.ModalManager = ModalManager;
 window.closeMov = (id) => close(id);
+
+// ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
+window.ModalManager = ModalManager;
+window.closeMov     = (id) => close(id);

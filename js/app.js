@@ -57,7 +57,11 @@ function go(n) {
 
 function chSort(v) { window.sortMode = v; render(); }
 async function chAhead(v) { localStorage.setItem('v5-ahead', v); render(); }
-function genRec() {} // v7'de kaldırıldı — compat için boş
+function genRec() {
+  // Tekrar eden ödemeleri yenile — groupId'li kayıtların süreklilik kontrolü
+  // Gelecekte otomatik tekrar ekleme buraya
+  if (window.invalidateLookups) window.invalidateLookups();
+}
 
 // ── MİGRASYON (kredi tarihleri) ──────────────────────────────────────────────
 async function migrateCredDates() {

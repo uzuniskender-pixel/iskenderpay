@@ -518,6 +518,7 @@ window.getAllItems         = getAllItems;
 window.buildMx            = buildMx;
 window.render             = render;
 window.renderHaftaWidget  = renderHaftaWidget;
+window.renderGecWidget    = renderGecWidget;
 window.openRow            = openRow;
 window.openCell           = openCell;
 window.closeDV            = closeDV;

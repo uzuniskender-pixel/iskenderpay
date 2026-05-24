@@ -7,7 +7,7 @@ import { getAuth, GoogleAuthProvider,
          signInWithPopup, signInWithRedirect,
          getRedirectResult, onAuthStateChanged,
          signOut }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // Firebase nesneleri firebase.js'te init edildi — window üzerinden al
 // _auth ve _db: firebase.js'teki _auth/_db ile aynı instance (getApps guard ile)
