@@ -24,7 +24,9 @@ const STATIC = [
   './js/version.js',
   './js/ui-plan.js',
   './js/ui-data.js',
-  './js/ui-misc.js',
+  './js/rehber.js',
+  './js/log.js',
+  './js/search.js',
 ];
 
 self.addEventListener('install', e => {
