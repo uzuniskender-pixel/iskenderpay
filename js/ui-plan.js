@@ -3,7 +3,7 @@
 
 function getAllItems() {
   const credPays = [];
-  window.creds.forEach(c => c.window.pays.forEach((p,ii) => credPays.push({...p, name:c.name, currency:'TRY', _cid:c.id, _ii:p.idx})));
+  window.creds.forEach(c => c.pays.forEach((p,ii) => credPays.push({...p, name:c.name, currency:'TRY', _cid:c.id, _ii:p.idx})));
   return [...window.pays, ...credPays];
 }
 
@@ -247,7 +247,7 @@ function markOk(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.window.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
     else{const orig=findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
     window.paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
     try{addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
@@ -260,9 +260,9 @@ function undoCell(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.window.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
     else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
-    const pidx=paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.paidItems.splice(pidx,1);
   });
   save().then(()=>{closeDV();render();});
@@ -285,7 +285,7 @@ function doPartial() {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.window.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
     else{const orig=findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
     const existing=window.paidItems.find(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
@@ -301,7 +301,7 @@ function saveCellAmt(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.window.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
     else{const orig=findPayById(p.id);if(orig)orig.amount=v;}
   });
   save().then(()=>{render();openCell(keyEnc,month);});
@@ -312,9 +312,9 @@ function resetPartial(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.window.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
     else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
-    const pidx=paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.paidItems.splice(pidx,1);
   });
   save().then(()=>{closeDV();render();});
@@ -349,7 +349,7 @@ function delByKey(keyEnc) {
   if(key.startsWith('cred_')){
     const credId=key.replace('cred_','');
     const c=findCredById(credId);
-    if(c){c.window.pays.forEach(p=>window.hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));try{addLog('plan_del','Kredi silindi',c.name+' · '+c.window.pays.length+' taksit',0);}catch(e){}}
+    if(c){c.pays.forEach(p=>window.hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));try{addLog('plan_del','Kredi silindi',c.name+' · '+c.pays.length+' taksit',0);}catch(e){}}
     window.creds=window.creds.filter(x=>String(x.id)!==credId);
   } else if(key.startsWith('g_')){
     const gid=key.replace('g_','');

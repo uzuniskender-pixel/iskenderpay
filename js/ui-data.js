@@ -113,9 +113,9 @@ function renderPersons() {
     pl.innerHTML='<div class="empty"><div class="ico">👥</div><p>Henüz kişi yok.<br>+ Kişi Ekle ile başlayın.</p></div>';
     return;
   }
-  const sortedPersons = [...window.persons].sort((a,b) => a.name.localeCompare(b.name,'tr'));
+  const sortedPersons = [...(window.persons||[])].sort((a,b) => a.name.localeCompare(b.name,'tr'));
   pl.innerHTML = `<div style="max-width:480px">` + sortedPersons.map(p => {
-    const origIdx = persons.indexOf(p);
+    const origIdx = (window.persons||[]).indexOf(p);
     return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
@@ -164,9 +164,9 @@ function savePerson() {
   if (!name) { alert('İsim zorunlu'); return; }
   const eid = document.getElementById('PREID').value;
   if (eid !== '') {
-    const oldName = persons[parseInt(eid)].name;
+    const oldName = window.persons[parseInt(eid)].name;
     if (oldName !== name) { window.pays.forEach(p => { if(p.name===oldName) p.name=name; }); }
-    persons[parseInt(eid)] = {name, desc};
+    window.persons[parseInt(eid)] = {name, desc};
   } else {
     let finalName = name;
     const existing = window.persons.map(p => p.name);
@@ -197,7 +197,7 @@ function renderHist() {
 }
 
 function editHistItem(idx) {
-  const p=hist[idx];if(!p)return;
+  const p=window.hist[idx];if(!p)return;
   document.getElementById('HIIDX').value=idx;
   document.getElementById('HINAM').value=p.name||'';
   document.getElementById('HIAMT').value=p.amount||'';
@@ -207,7 +207,7 @@ function editHistItem(idx) {
 
 function saveHistItem() {
   const idx=parseInt(document.getElementById('HIIDX').value);
-  const p=hist[idx];if(!p)return;
+  const p=window.hist[idx];if(!p)return;
   const newName=document.getElementById('HINAM').value.trim();
   const newAmt=parseFloat(document.getElementById('HIAMT').value);
   const newDate=document.getElementById('HIDAT').value;
@@ -218,7 +218,7 @@ function saveHistItem() {
 }
 
 function restoreFromHist(i) {
-  const p=hist[i];if(!p)return;
+  const p=window.hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
   window.pays.push(restored);window.hist.splice(i,1);
   save().then(()=>{renderHist();render();});
