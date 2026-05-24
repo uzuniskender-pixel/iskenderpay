@@ -1151,3 +1151,62 @@ window.rhbAddPhone        = rhbAddPhone;
 window.rhbSavePerson      = rhbSavePerson;
 window.rhbDel             = rhbDel;
 window._rhbPhones         = _rhbPhones; // renderRhbPhones inline onclick'leri için
+
+// ── GLOBAL ARAMA ──────────────────────────────────────────────────────────────
+function execGlobalSearch() {
+  const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
+  const resDiv = document.getElementById('SRCHRES');
+  if (!query) { resDiv.innerHTML = '<div style="text-align:center;color:var(--tc);opacity:.5;padding:20px 0">Yazmaya başlayın...</div>'; return; }
+  let html = '', count = 0;
+  (window.pays||[]).forEach(p => {
+    if (!((p.name||'').toLocaleLowerCase('tr').includes(query)||(String(p.amount||'')).includes(query))) return;
+    count++;
+    const a = Number(p.amount||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
+    html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ffd200">
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(p.name)}</div>
+      <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
+        <span>📅 Plan Ödemesi (${p.date||''})</span><span class="mono" style="color:#ffd200">₺${a}</span>
+      </div></div>`;
+  });
+  (window.paidItems||[]).forEach(pi => {
+    if (!((pi.name||'').toLocaleLowerCase('tr').includes(query)||(String(pi.amount||'')).includes(query))) return;
+    count++;
+    const a = Number(pi.amount||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
+    html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #00ebc7">
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(pi.name)}</div>
+      <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
+        <span>✅ Gerçekleşen Ödeme (${pi.date||''})</span><span class="mono" style="color:#00ebc7">₺${a}</span>
+      </div></div>`;
+  });
+  (window.creds||[]).forEach(c => {
+    if (!((c.name||'').toLocaleLowerCase('tr').includes(query))) return;
+    count++;
+    const total = (c.pays||[]).reduce((s,p)=>s+p.amount,0);
+    html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ff5e62">
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(c.name)}</div>
+      <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
+        <span>💳 ${(c.pays||[]).length} taksit</span><span class="mono" style="color:#ff5e62">₺${Number(total).toLocaleString('tr-TR',{maximumFractionDigits:0})}</span>
+      </div></div>`;
+  });
+  (window.notes||[]).forEach(n => {
+    if (!((n.title||'').toLocaleLowerCase('tr').includes(query)||(n.content||n.text||'').toLocaleLowerCase('tr').includes(query))) return;
+    count++;
+    html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ff8e3c">
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(n.title||'Başlıksız Not')}</div>
+      <div style="font-size:.8rem;opacity:.6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${esc(n.content||n.text||'')}</div>
+    </div>`;
+  });
+  (window.rehber||[]).forEach(r => {
+    const name = (r.name||'').toLocaleLowerCase('tr');
+    const phone = (r.phones||[]).map(p=>p.num).join(' ');
+    if (!(name.includes(query)||phone.includes(query)||(r.company||'').toLocaleLowerCase('tr').includes(query))) return;
+    count++;
+    html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #38ef7d">
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(r.name||'')}</div>
+      <div style="font-size:.8rem;opacity:.7;margin-top:4px;font-family:monospace">${phone?'📞 '+phone:''} ${r.company?'🏢 '+r.company:''}</div>
+    </div>`;
+  });
+  resDiv.innerHTML = count ? html : '<div style="text-align:center;color:var(--tc);opacity:.5;padding:20px 0">Eşleşen sonuç bulunamadı.</div>';
+}
+
+window.execGlobalSearch = execGlobalSearch;

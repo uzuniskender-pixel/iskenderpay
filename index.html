@@ -207,109 +207,7 @@ window.doGoogleSignOut = async function() {
   await signOut(_auth);
 };
 </script>
-<script>
 
-function execGlobalSearch() {
-  const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
-  const resDiv = document.getElementById('SRCHRES');
-  
-  if (!query) {
-    resDiv.innerHTML = '<div style="text-align: center; color: var(--tc); opacity: 0.5; padding: 20px 0;">Yazmaya başlayın...</div>';
-    return;
-  }
-  
-  let html = '';
-  let count = 0;
-
-  if (typeof pays !== 'undefined' && Array.isArray(pays)) {
-    pays.forEach(p => {
-      if ((p.name && p.name.toLocaleLowerCase('tr').includes(query)) || (p.amount && String(p.amount).includes(query))) {
-        count++;
-        const amtStr = p.amount ? Number(p.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
-        html += `
-          <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ffd200;">
-            <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${p.name}</div>
-            <div style="font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;">
-              <span>📅 Plan Ödemesi (${p.date || ''})</span>
-              <span class="mono" style="color: #ffd200;">₺${amtStr}</span>
-            </div>
-          </div>`;
-      }
-    });
-  }
-
-  if (typeof paidItems !== 'undefined' && Array.isArray(paidItems)) {
-    paidItems.forEach(pi => {
-      if ((pi.name && pi.name.toLocaleLowerCase('tr').includes(query)) || (pi.amount && String(pi.amount).includes(query))) {
-        count++;
-        const amtStr = pi.amount ? Number(pi.amount).toLocaleString('tr-TR', {maximumFractionDigits:0}) : '0';
-        html += `
-          <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #00ebc7;">
-            <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${pi.name}</div>
-            <div style="font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;">
-              <span>✅ Gerçekleşen Ödeme (${pi.date || ''})</span>
-              <span class="mono" style="color: #00ebc7;">₺${amtStr}</span>
-            </div>
-          </div>`;
-      }
-    });
-  }
-
-  if (typeof creds !== 'undefined' && Array.isArray(creds)) {
-    creds.forEach(c => {
-      if ((c.name && c.name.toLocaleLowerCase('tr').includes(query)) || (c.amt && String(c.amt).includes(query))) {
-        count++;
-        html += `
-          <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff5e62;">
-            <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${c.name}</div>
-            <div style="font-size: 0.8rem; opacity: 0.7; display: flex; justify-content: space-between; margin-top: 4px;">
-              <span>💳 Taksit/Kredi · ${c.installments || (c.pays && c.pays.length) || 0} taksit</span>
-              <span class="mono" style="color: #ff5e62;">₺${c.pays ? Number(c.pays.reduce((s,p)=>s+p.amount,0)).toLocaleString('tr-TR',{maximumFractionDigits:0}) : '0'}</span>
-            </div>
-          </div>`;
-      }
-    });
-  }
-
-  if (typeof notes !== 'undefined' && Array.isArray(notes)) {
-    notes.forEach(n => {
-      if ((n.title && n.title.toLocaleLowerCase('tr').includes(query)) || (n.text && n.text.toLocaleLowerCase('tr').includes(query))) {
-        count++;
-        html += `
-          <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #ff8e3c;">
-            <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${n.title || 'Başlıksız Not'}</div>
-            <div style="font-size: 0.8rem; opacity: 0.6; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              📝 ${n.text || ''}
-            </div>
-          </div>`;
-      }
-    });
-  }
-
-  if (typeof rehber !== 'undefined' && Array.isArray(rehber)) {
-    rehber.forEach(r => {
-      if ((r.name && r.name.toLocaleLowerCase('tr').includes(query)) || (r.phone && r.phone.includes(query)) || (r.iban && r.iban.includes(query))) {
-        count++;
-        html += `
-          <div style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--rs); border-left: 3px solid #38ef7d;">
-            <div style="font-weight: 500; font-size: 0.9rem; color: var(--tc);">${r.name}</div>
-            <div style="font-size: 0.8rem; opacity: 0.7; margin-top: 4px; font-family: monospace;">
-              ${r.phone ? '📞 ' + r.phone : ''} ${r.iban ? ' | 🏦 ' + r.iban : ''}
-            </div>
-          </div>`;
-      }
-    });
-  }
-
-  if (count === 0) {
-    resDiv.innerHTML = '<div style="text-align: center; color: var(--tc); opacity: 0.5; padding: 20px 0;">Eşleşen sonuç bulunamadı.</div>';
-  } else {
-    resDiv.innerHTML = html;
-  }
-}
-
-
-</script>
 <style>
 :root{
   --bg:#0f0e17;--surf:#1a1928;--surf2:#242338;
@@ -1085,43 +983,6 @@ async function doLogin() {
   enterApp();
 }
 
-function showPinErr(msg) {
-  const inp = document.getElementById('PI');
-  inp.classList.add('err');
-  document.getElementById('PE').textContent = msg;
-  setTimeout(() => { inp.classList.remove('err'); document.getElementById('PE').textContent=''; inp.value=''; }, 2000);
-}
-
-async function startRealtimeSync() {
-  if (!window._fbStartListen) return;
-  setSyncDot('connecting');
-  window._lastUpdated = 0; // yeni oturum — timestamp sıfırla
-  window._fbStartListen(async encData => {
-    if (!window._cryptoKey) return;
-    try {
-      const d = await decryptData(encData, window._cryptoKey);
-      pays      = window.pays      = d.pays      || [];
-      creds     = window.creds     = d.creds     || [];
-      hist      = window.hist      = d.hist      || [];
-      persons   = window.persons   = d.persons   || [];
-      notes     = window.notes     = d.notes     || [];
-      paidItems = window.paidItems = d.paidItems || [];
-      rehber    = window.rehber    = d.rehber    || [];
-      if(window.invalidateLookups) window.invalidateLookups();
-      render();
-      renderHist && renderHist();
-      renderPaid && renderPaid();
-      renderPersons && renderPersons();
-      renderNotes && renderNotes();
-      renderRhb && renderRhb();
-      setSyncDot('synced');
-      showSyncToast();
-    } catch(e) {
-      console.warn('Sync decrypt hatası:', e);
-    }
-  });
-}
-
 // visibilitychange: ekrana dönünce anında poll yap
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
@@ -1174,31 +1035,8 @@ async function chPass() {
 
 // ── DETAY ─────────────────────────────────────────────────────────────────────
 
-var APP_VERSION = 'v8.28';
-var APP_BUILD   = '20260523-06';
-
-
-function readRF(inp){
-  const f=inp.files[0];if(!f)return;
-  const st=document.getElementById('RS');
-  const fr=new FileReader();
-  fr.onload=e=>{
-    try{
-      const raw=JSON.parse(e.target.result);
-      const pin=_plainPin;
-      let data;
-      if(raw.enc&&raw.data){
-        const dec=xDec(raw.data,pin);
-        if(!dec){st.style.color='var(--danger)';st.textContent='Şifre eşleşmiyor.';return;}
-        data=JSON.parse(dec);
-      } else {st.style.color='var(--danger)';st.textContent='Geçersiz dosya';return;}
-      st.style.color='var(--ok)';
-      st.textContent=(data.pays||[]).length+' ödeme, '+(data.creds||[]).length+" kredi bulundu. Geri Yükle'ye bas.";
-      st.dataset.d=JSON.stringify(data);
-    }catch(err){st.style.color='var(--danger)';st.textContent='Hata: '+err.message;}
-  };
-  fr.readAsText(f);
-}
+var APP_VERSION = 'v8.29';
+var APP_BUILD   = '20260523-07';
 
 // ── NOTLAR ───────────────────────────────────────────────────────────────────
 

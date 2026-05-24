@@ -475,3 +475,72 @@ window.initApp            = initApp;
 initBuild();
 setTimeout(checkVersion, 3000);
 setInterval(checkVersion, 5 * 60 * 1000);
+
+// ── SYNC UI (db.js tarafından çağrılır) ───────────────────────────────────────
+async function startRealtimeSync() {
+  if (!window._fbStartListen) return;
+  setSyncDot('connecting');
+  window._lastUpdated = 0;
+  window._fbStartListen(async encData => {
+    if (!window._cryptoKey) return;
+    try {
+      const d = await decryptData(encData, window._cryptoKey);
+      window.pays      = d.pays      || [];
+      window.creds     = d.creds     || [];
+      window.hist      = d.hist      || [];
+      window.persons   = d.persons   || [];
+      window.notes     = d.notes     || [];
+      window.paidItems = d.paidItems || [];
+      window.rehber    = d.rehber    || [];
+      window.actLog    = d.actLog    || [];
+      if (window.invalidateLookups) window.invalidateLookups();
+      if (window.render)       window.render();
+      if (window.renderHist)   window.renderHist();
+      if (window.renderPaid)   window.renderPaid();
+      if (window.renderPersons)window.renderPersons();
+      if (window.renderNotes)  window.renderNotes();
+      if (window.renderRhb)    window.renderRhb();
+      setSyncDot('synced');
+      showSyncToast();
+    } catch(e) { console.warn('Sync decrypt hatasi:', e); }
+  });
+}
+
+function showPinErr(msg) {
+  const inp = document.getElementById('PI');
+  if (!inp) return;
+  inp.classList.add('err');
+  const pe = document.getElementById('PE');
+  if (pe) pe.textContent = msg;
+  setTimeout(() => {
+    inp.classList.remove('err');
+    if (pe) pe.textContent = '';
+    inp.value = '';
+  }, 2000);
+}
+
+function readRF(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const st = document.getElementById('RS');
+  const fr = new FileReader();
+  fr.onload = e => {
+    try {
+      const raw = JSON.parse(e.target.result);
+      const pin = window._plainPin;
+      let data;
+      if (raw.enc && raw.data) {
+        const dec = xDec(raw.data, pin);
+        if (!dec) { st.style.color='var(--danger)'; st.textContent='Şifre eşleşmiyor.'; return; }
+        data = JSON.parse(dec);
+      } else { st.style.color='var(--danger)'; st.textContent='Geçersiz dosya'; return; }
+      st.style.color = 'var(--ok)';
+      st.textContent = (data.pays||[]).length+' ödeme, '+(data.creds||[]).length+" kredi bulundu. Geri Yükle'ye bas.";
+      st.dataset.d = JSON.stringify(data);
+    } catch(err) { st.style.color='var(--danger)'; st.textContent='Hata: '+err.message; }
+  };
+  fr.readAsText(f);
+}
+
+window.startRealtimeSync = startRealtimeSync;
+window.showPinErr        = showPinErr;
+window.readRF            = readRF;
