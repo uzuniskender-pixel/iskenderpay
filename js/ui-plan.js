@@ -123,6 +123,51 @@ function render() {
   colTot.forEach(t=>html+=`<td>${fmt(t)}</td>`);
   html+=`<td>${fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
   document.getElementById('MAT').innerHTML = rowKeys.length ? html : '<div class="empty"><div class="ico">📋</div><p>Henüz ödeme yok.<br>+ butonuyla ekleyin.</p></div>';
+
+  // Bu hafta widget'ı
+  renderHaftaWidget(all, now, soon7);
+}
+
+function renderHaftaWidget(all, now, soon7) {
+  const el = document.getElementById('HAFTA');
+  if (!el) return;
+  const yaklaşan = all.filter(p => {
+    if ((p.status||'pending') === 'paid') return false;
+    const d = parseLocalDate(p.date);
+    return d >= now && d <= soon7;
+  }).sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
+
+  if (!yaklaşan.length) { el.innerHTML = ''; return; }
+
+  const rows = yaklaşan.map(p => {
+    const d = parseLocalDate(p.date);
+    const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
+    const kalan = Math.ceil((d - now) / 86400000);
+    const kalanStr = kalan === 0 ? '<span style="color:var(--danger)">Bugün!</span>'
+      : kalan === 1 ? '<span style="color:var(--ora)">Yarın</span>'
+      : `<span style="color:var(--cy,#fcd34d)">${kalan} gün</span>`;
+    const tryAmt = toTRY(p.amount, p.currency||'TRY');
+    const keyEnc = encodeURIComponent(p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id))));
+    const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surf2);border-radius:8px;margin-bottom:5px;cursor:pointer" onclick="openCell('${keyEnc}','${mKey}')">
+      <div style="min-width:36px;text-align:center;background:rgba(252,211,77,.15);border-radius:6px;padding:3px 0">
+        <div style="font-size:13px;font-weight:700;color:#fcd34d">${gun}</div>
+        <div style="font-size:9px;color:var(--muted)">${ay}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace">${fmt(tryAmt)}</div>
+        <div style="font-size:10px">${kalanStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="background:rgba(252,211,77,.08);border:1px solid rgba(252,211,77,.2);border-radius:10px;padding:10px 12px;margin:0 0 10px">
+    <div style="font-size:10px;font-weight:700;color:#fcd34d;letter-spacing:.8px;margin-bottom:8px">⚡ BU HAFTA — ${yaklaşan.length} ödeme</div>
+    ${rows}
+  </div>`;
 }
 
 function openRow(keyEnc) {
@@ -405,6 +450,7 @@ function delCellItems(keyEnc,month) {
 window.getAllItems         = getAllItems;
 window.buildMx            = buildMx;
 window.render             = render;
+window.renderHaftaWidget  = renderHaftaWidget;
 window.openRow            = openRow;
 window.openCell           = openCell;
 window.closeDV            = closeDV;
