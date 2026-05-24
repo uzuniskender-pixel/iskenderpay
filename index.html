@@ -870,9 +870,8 @@ select.fi{appearance:none}
 </div>
 
 <script>
-// ── CRYPTO [crypto.js'e taşındı — js/crypto.js] ──────────────────────────
-let _cryptoKey  = null;
-let _dataKeyRaw = null;
+var _cryptoKey  = null;
+var _dataKeyRaw = null;
 
 // var kullanımı zorunlu: db.js modülü window.pays = [...] yaptığında
 // render() aynı referansı okuyabilsin diye window.* ile alias olmalı
@@ -889,104 +888,12 @@ const SAVE_DEBOUNCE_MS = 400;// art arda save'leri birleştir
 // Migrasyon kilidi — aynı anda birden fazla çalışmasını engeller
 var _migrationRunning = false;
 
-// ── PIN ─────────────────────────────────────────────────────────────────────
-let _plainPin = '';
-async function doLogin() {
-  const val = document.getElementById('PI').value;
-  if (!val) return;
-
-  // Plan değişimi: _cryptoKey zaten var ve PIN aynıysa direkt yükle
-  if (_cryptoKey && _plainPin && _plainPin === val) {
-    try {
-      await loadSecure();
-      enterApp();
-      return;
-    } catch(e) {
-      // Devam et — normal login akışına düş
-    }
-  }
-
-  // pinSalt: PIN hash doğrulama + wrappedKey için
-  const pinSalt = await getSaltAsync('v5-pin-salt');
-
-  // PIN hash'i Firebase'den al
-  let storedHash = null;
-  if (window._fbLoadPinHash) {
-    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
-  }
-
-  if (!storedHash) {
-    // İlk kullanım — şifreyi kaydet
-    if (val.length < 4) {
-      showPinErr('En az 4 karakter girmelisiniz!'); return;
-    }
-    const hash = await hashPin(val, pinSalt);
-    // Firebase'e kaydet
-    if (window._fbSavePinHash) {
-      try { await window._fbSavePinHash(hash); } catch(e) {}
-    }
-    // İlk kullanım — rastgele dataKey üret, wrap et
-    const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
-    const wrappedB64 = await wrapDataKey(dataKeyRaw, val, pinSalt);
-    _saveWrappedKeyLocal(wrappedB64);
-    await _saveWrappedKeyFirebase(wrappedB64);
-    _dataKeyRaw = dataKeyRaw;
-    _plainPin   = val;
-    _cryptoKey  = await importDataKey(dataKeyRaw);
-    await loadSecure();
-    enterApp();
-    return;
-  }
-
-  // Şifreyi doğrula
-  const hash = await hashPin(val, pinSalt);
-  if (hash !== storedHash) {
-    const inp = document.getElementById('PI');
-    inp.classList.add('err');
-    document.getElementById('PE').textContent = 'Hatalı şifre!';
-    setTimeout(() => { inp.classList.remove('err'); document.getElementById('PE').textContent=''; inp.value=''; }, 1400);
-    return;
-  }
-
-  // v8: wrapped key'i al ve unwrap et
-  let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
-  if (!wrappedB64) {
-    // wrappedKey yok — veri bozuk veya hesap sıfırlandı
-    showPinErr('Şifreleme anahtarı bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'); return;
-  }
-  let unwrapped;
-  try {
-    unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt);
-  } catch(e) {
-    showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return;
-  }
-  _dataKeyRaw = unwrapped.rawBytes;
-  _plainPin   = val;
-  _cryptoKey  = unwrapped.cryptoKey;
-  // wrappedKey'i her zaman localStorage'a yaz (localStorage temizlense bile Firebase'den gelir)
-  _saveWrappedKeyLocal(wrappedB64);
-  try {
-    await loadSecure();
-  } catch(e) {
-    // loadSecure başarısız — diğer planı dene (plan değişikliği olmuş olabilir)
-    const otherPlan = window._planId === 'plan1' ? 'plan2' : 'plan1';
-    const origPlan = window._planId;
-    window._planId = otherPlan;
-    try {
-      await loadSecure();
-      localStorage.setItem('v6-active-plan', otherPlan);
-    } catch(e2) {
-      window._planId = origPlan;
-      showPinErr('Veri çözülemedi. Lütfen tekrar deneyin.'); return;
-    }
-  }
-  enterApp();
-}
+var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.31';
-var APP_BUILD   = '20260523-09';
+var APP_VERSION = 'v8.32';
+var APP_BUILD   = '20260523-10';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
