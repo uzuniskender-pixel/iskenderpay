@@ -39,7 +39,7 @@ function rhbGetInitials(p) {
 
 function renderRhb() {
   const q=(document.getElementById('RHB_SRCH')?.value||'').toLocaleLowerCase('tr');
-  let list=[...rehber];
+  let list=[...window.rehber];
   if(q)list=list.filter(p=>rhbGetName(p).toLocaleLowerCase('tr').includes(q)||(p.company||'').toLocaleLowerCase('tr').includes(q)||(p.phones||[]).some(ph=>ph.num.includes(q)));
   const sort=document.getElementById('RHB_SORT')?.value||'name';
   list.sort((a,b)=>{
@@ -47,7 +47,7 @@ function renderRhb() {
     if(sort==='company'){const ca=(a.company||'\uffff').toLocaleLowerCase('tr');const cb=(b.company||'\uffff').toLocaleLowerCase('tr');return ca.localeCompare(cb,'tr')||rhbGetName(a).localeCompare(rhbGetName(b),'tr');}
     return rhbGetName(a).localeCompare(rhbGetName(b),'tr');
   });
-  const coSet=[...new Set(rehber.map(p=>p.company).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
+  const coSet=[...new Set(window.rehber.map(p=>p.company).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
   const dlEl=document.getElementById('RHB_CO_LIST');
   if(dlEl)dlEl.innerHTML=coSet.map(c=>`<option value="${esc(c)}">`).join('');
   const el=document.getElementById('RHB_LIST');if(!el)return;
@@ -71,7 +71,7 @@ function renderRhb() {
 }
 
 function openRhbDetail(id) {
-  const p=rehber.find(x=>String(x.id)===String(id));if(!p)return;
+  const p=window.rehber.find(x=>String(x.id)===String(id));if(!p)return;
   const initials=rhbGetInitials(p);
   let h=`<div style="text-align:center;margin-bottom:18px">
     <div class="rhb-avatar" style="width:56px;height:56px;font-size:20px;margin:0 auto 10px">${initials}</div>
@@ -104,9 +104,9 @@ function rhbImport() {
       }
       if(!data.length){alert('Aktarılacak kayıt bulunamadı.');return;}
       data.forEach(p=>{p.name=(p.name||'').toLocaleUpperCase('tr');p.company=(p.company||'').toLocaleUpperCase('tr');if(p.phones)p.phones=p.phones.map(ph=>({...ph,num:normPhone(ph.num)}));});
-      const existKey=new Set(rehber.map(p=>rhbGetName(p)+'|'+(p.phones?.[0]?.num||'')));
+      const existKey=new Set(window.rehber.map(p=>rhbGetName(p)+'|'+(p.phones?.[0]?.num||'')));
       let added=0,skipped=0;
-      data.forEach(p=>{const key=rhbGetName(p)+'|'+(p.phones?.[0]?.num||'');if(existKey.has(key)){skipped++;return;}p.id=p.id||Date.now()+added;rehber.push(p);added++;existKey.add(key);});
+      data.forEach(p=>{const key=rhbGetName(p)+'|'+(p.phones?.[0]?.num||'');if(existKey.has(key)){skipped++;return;}p.id=p.id||Date.now()+added;window.rehber.push(p);added++;existKey.add(key);});
       rhbSave();renderRhb();
       if(added>0)addLog('rhb_import','Rehber içe aktarıldı',added+' kişi eklendi'+(skipped>0?', '+skipped+' atlandı':''),6);
       alert(added+' kişi eklendi'+(skipped>0?', '+skipped+' zaten mevcut':'')+'.');
@@ -167,7 +167,7 @@ function openRhbAdd() {
 }
 
 function openRhbEdit(id) {
-  const p=rehber.find(x=>String(x.id)===String(id));if(!p)return;
+  const p=window.rehber.find(x=>String(x.id)===String(id));if(!p)return;
   closeRDET();
   document.getElementById('RMOD_ID').value=id;
   document.getElementById('RMOD_T').innerHTML='Kişi <span>Düzenle</span>';
@@ -202,13 +202,13 @@ function rhbSavePerson() {
   const email=document.getElementById('RMOD_EMAIL').value.trim();
   const note=document.getElementById('RMOD_NOTE').value.trim();
   const eid=document.getElementById('RMOD_ID').value;
-  if(eid){const p=rehber.find(x=>String(x.id)===String(eid));if(p)Object.assign(p,{name,company,phones,email,note});addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
-  else{rehber.push({id:Date.now(),name,company,phones,email,note});addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
+  if(eid){const p=window.rehber.find(x=>String(x.id)===String(eid));if(p)Object.assign(p,{name,company,phones,email,note});addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
+  else{window.rehber.push({id:Date.now(),name,company,phones,email,note});addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
   rhbSave();closeMov('RMOD');renderRhb();
 }
 
 function rhbDel(id) {
-  const p=rehber.find(x=>String(x.id)===String(id));
+  const p=window.rehber.find(x=>String(x.id)===String(id));
   if(!confirm(rhbGetName(p)+' silinecek. Emin misin?'))return;
   addLog('rhb_del','Kişi silindi',rhbGetName(p||{})+(p?.company?' · '+p.company:''),6);
   window.rehber=window.rehber.filter(x=>String(x.id)!==String(id));
@@ -217,11 +217,11 @@ function rhbDel(id) {
 
 function renderActLog() {
   const el=document.getElementById('ACT_LOG_LIST');if(!el)return;
-  const cntEl=document.getElementById('LOG_CNT');if(cntEl)cntEl.textContent=actLog.length+' hareket';
-  if(!actLog.length){el.innerHTML='<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';return;}
+  const cntEl=document.getElementById('LOG_CNT');if(cntEl)cntEl.textContent=window.actLog.length+' hareket';
+  if(!window.actLog.length){el.innerHTML='<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';return;}
   const selMode=_logDelMode==='select';
   try {
-    el.innerHTML=actLog.map((e,i)=>{
+    el.innerHTML=window.actLog.map((e,i)=>{
       try {
         const cfg=(LOG_ICONS&&LOG_ICONS[e.type])||{icon:'📋',bg:'rgba(255,255,255,.07)'};
         const time=e.at?fmtLogTime(e.at):'';
@@ -263,7 +263,7 @@ function setLogDelMode(mode) {
 }
 
 function toggleSelectAllLogs(checked) {
-  if(checked){actLog.forEach((_,i)=>_logSelected.add(i));}else{_logSelected.clear();}
+  if(checked){window.actLog.forEach((_,i)=>_logSelected.add(i));}else{_logSelected.clear();}
   renderActLog();_updateLogSelCount();
 }
 
@@ -271,7 +271,7 @@ function toggleLogItem(idx) {
   if(_logSelected.has(idx))_logSelected.delete(idx);else _logSelected.add(idx);
   _updateLogSelCount();
   const cb=document.getElementById('LOG_CB_'+idx);if(cb)cb.checked=_logSelected.has(idx);
-  const allCb=document.getElementById('LOG_SEL_ALL');if(allCb)allCb.checked=_logSelected.size===actLog.length;
+  const allCb=document.getElementById('LOG_SEL_ALL');if(allCb)allCb.checked=_logSelected.size===window.actLog.length;
 }
 
 function _updateLogSelCount() {
@@ -299,7 +299,7 @@ function doLogDel() {
   if(!d1||!d2){alert('Tarih aralığı seçin');return;}
   const from=new Date(d1).getTime(),to=new Date(d2).getTime();
   if(isNaN(from)||isNaN(to)){alert('Geçersiz tarih');return;}
-  const before=actLog.length;
+  const before=window.actLog.length;
   window.actLog=window.actLog.filter(e=>{const t=new Date(e.at).getTime();return t<from||t>to;});
   const deleted=before-window.actLog.length;
   saveSecure();renderActLog();closeLogDel();

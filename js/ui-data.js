@@ -44,7 +44,7 @@ function savePay() {
       const totalMo=(pm-1)+i;
       const yr=py+Math.floor(totalMo/12),mo=totalMo%12;
       const lastDay=new Date(yr,mo+1,0).getDate();
-      pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
+      window.pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
     }
   }
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz
@@ -86,7 +86,7 @@ function saveCred() {
   const pArr=Array.from({length:inst},(_,i)=>{const totalMo=startMo+i;const yr=startYr+Math.floor(totalMo/12),mo=totalMo%12;const lastDay=new Date(yr,mo+1,0).getDate();return{idx:i+1,date:toLocalISO(yr,mo,Math.min(startDay,lastDay)),amount:monthly,status:'pending',paid:0};});
   const eid=document.getElementById('CEID').value;
   if(eid){const c=findCredById(eid);if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;} addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+fmtAmt(monthly,'TRY'),0);}
-  else{creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr}); addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+fmtAmt(monthly,'TRY'),0);}
+  else{window.creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr}); addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+fmtAmt(monthly,'TRY'),0);}
   save().then(()=>{closeMov('CM');render();});
 }
 
@@ -109,11 +109,11 @@ function updLP() {
 function renderPersons() {
   const pl = document.getElementById('PRL');
   updateDatalist();
-  if (!persons.length) {
+  if (!window.persons.length) {
     pl.innerHTML='<div class="empty"><div class="ico">👥</div><p>Henüz kişi yok.<br>+ Kişi Ekle ile başlayın.</p></div>';
     return;
   }
-  const sortedPersons = [...persons].sort((a,b) => a.name.localeCompare(b.name,'tr'));
+  const sortedPersons = [...window.persons].sort((a,b) => a.name.localeCompare(b.name,'tr'));
   pl.innerHTML = `<div style="max-width:480px">` + sortedPersons.map(p => {
     const origIdx = persons.indexOf(p);
     return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -132,8 +132,8 @@ function renderPersons() {
 function updateDatalist() {
   const dl = document.getElementById('PNLIST');
   if (!dl) return;
-  const usedNames = pays.filter(p => !p._cid).map(p => p.name);
-  const options = persons.map(p => {
+  const usedNames = window.pays.filter(p => !p._cid).map(p => p.name);
+  const options = window.persons.map(p => {
     if (!usedNames.includes(p.name)) return p.name;
     let i=2; while(usedNames.includes(p.name+' '+i)) i++;
     return p.name+' '+i;
@@ -165,28 +165,28 @@ function savePerson() {
   const eid = document.getElementById('PREID').value;
   if (eid !== '') {
     const oldName = persons[parseInt(eid)].name;
-    if (oldName !== name) { pays.forEach(p => { if(p.name===oldName) p.name=name; }); }
+    if (oldName !== name) { window.pays.forEach(p => { if(p.name===oldName) p.name=name; }); }
     persons[parseInt(eid)] = {name, desc};
   } else {
     let finalName = name;
-    const existing = persons.map(p => p.name);
+    const existing = window.persons.map(p => p.name);
     if (existing.includes(name)) { let i=2; while(existing.includes(name+' '+i)) i++; finalName=name+' '+i; }
-    persons.push({name:finalName, desc});
+    window.persons.push({name:finalName, desc});
   }
   savePersons(); closeMov('PRM'); renderPersons();
 }
 
 function delPerson(i) {
   if (!confirm('Bu kişiyi silmek istiyor musunuz?')) return;
-  persons.splice(i, 1);
+  window.persons.splice(i, 1);
   savePersons(); renderPersons();
 }
 
 function renderHist() {
   document.getElementById('HD').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   const hl=document.getElementById('HL');
-  if(!hist.length){hl.innerHTML='<div class="empty"><div class="ico">🗃️</div><p>Silinmiş ödeme yok</p></div>';return;}
-  hl.innerHTML=hist.map((p,i)=>`
+  if(!window.hist.length){hl.innerHTML='<div class="empty"><div class="ico">🗃️</div><p>Silinmiş ödeme yok</p></div>';return;}
+  hl.innerHTML=window.hist.map((p,i)=>`
     <div class="hi">
       <div class="hi-inf"><div class="hi-name">${esc(p.name)}</div><div class="hi-date">Silindi: ${new Date(p.delAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})} · ${fmtD(p.date)}</div></div>
       <div class="hi-amt">${fmtA(p.amount,p.currency||'TRY')}</div>
@@ -220,20 +220,20 @@ function saveHistItem() {
 function restoreFromHist(i) {
   const p=hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
-  pays.push(restored);hist.splice(i,1);
+  window.pays.push(restored);window.hist.splice(i,1);
   save().then(()=>{renderHist();render();});
 }
 
-function delHist(i) { hist.splice(i,1); save().then(()=>renderHist()); }
+function delHist(i) { window.hist.splice(i,1); save().then(()=>renderHist()); }
 
 function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.hist=[]; save().then(()=>renderHist()); }
 
 function renderNotes() {
   const nl=document.getElementById('NL');
-  if(!notes.length){nl.innerHTML='<div class="empty"><div class="ico">📝</div><p>Henüz not yok.<br>+ Not Ekle ile başlayın.</p></div>';return;}
+  if(!window.notes.length){nl.innerHTML='<div class="empty"><div class="ico">📝</div><p>Henüz not yok.<br>+ Not Ekle ile başlayın.</p></div>';return;}
   notes.forEach((n,i)=>{if(!n.nid)n.nid='n'+(Date.now()+i)+'_'+Math.random().toString(36).slice(2,7);});
   const catColors={'Banka / IBAN':'var(--blue)','Şifre / Hesap':'var(--danger)','Telefon / İletişim':'var(--ok)','Genel Not':'var(--muted)'};
-  nl.innerHTML=notes.map(n=>`
+  nl.innerHTML=window.notes.map(n=>`
     <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:9px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div>
@@ -260,7 +260,7 @@ function openNoteModal() {
 }
 
 function editNote(nid) {
-  const n=notes.find(x=>x.nid===nid);if(!n){console.error('editNote: not bulunamadı',nid);return;}
+  const n=window.notes.find(x=>x.nid===nid);if(!n){console.error('editNote: not bulunamadı',nid);return;}
   document.getElementById('NEID').value=nid;
   document.getElementById('NMT').innerHTML='Not <span>Düzenle</span>';
   document.getElementById('NTIT').value=n.title||'';
@@ -276,13 +276,13 @@ function saveNote() {
   if(!title||!content){alert('Başlık ve içerik zorunlu');return;}
   const eid=document.getElementById('NEID').value;
   if(eid!==''){const idx=notes.findIndex(x=>x.nid===eid);if(idx!==-1){notes[idx]={...notes[idx],title,content,cat,upd:new Date().toISOString()};}}
-  else{const nid='n'+Date.now()+'_'+Math.random().toString(36).slice(2,7);notes.unshift({nid,title,content,cat,at:new Date().toISOString()});}
+  else{const nid='n'+Date.now()+'_'+Math.random().toString(36).slice(2,7);window.notes.unshift({nid,title,content,cat,at:new Date().toISOString()});}
   saveNotes(); closeMov('NM'); renderNotes();
 }
 
 function delNote(nid) {
   if(!confirm('Bu notu silmek istiyor musun?'))return;
-  const idx=notes.findIndex(x=>x.nid===nid);if(idx!==-1)notes.splice(idx,1);
+  const idx=notes.findIndex(x=>x.nid===nid);if(idx!==-1)window.notes.splice(idx,1);
   saveNotes(); renderNotes();
 }
 
@@ -295,7 +295,7 @@ function renderPaid() {
   sel.innerHTML='<option value="all">Tüm aylar</option>'+months.map(m=>{const[y,mo]=m.split('-');const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});return`<option value="${m}"${curVal===m?' selected':''}>${lbl}</option>`;}).join('');
   const flt=(document.getElementById('PFLT')?.value||'').trim().toLowerCase();
   const mflt=sel.value;
-  let filtered=[...paidItems];
+  let filtered=[...window.paidItems];
   if(flt) filtered=filtered.filter(p=>p.name.toLowerCase().includes(flt));
   if(mflt!=='all') filtered=filtered.filter(p=>{const d=parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return mk===mflt;});
   filtered.sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -333,7 +333,7 @@ function renderPaid() {
 }
 
 function openPaidEdit(paidId) {
-  const p=paidItems.find(x=>x.paidId===paidId);if(!p)return;
+  const p=window.paidItems.find(x=>x.paidId===paidId);if(!p)return;
   document.getElementById('PIEID').value=paidId;
   document.getElementById('PINAM').value=p.name||'';
   document.getElementById('PIAMT').value=p.paid!=null?p.paid:(p.amount||'');
@@ -343,7 +343,7 @@ function openPaidEdit(paidId) {
 
 function savePaidItem() {
   const paidId=document.getElementById('PIEID').value;
-  const p=paidItems.find(x=>x.paidId===paidId);if(!p)return;
+  const p=window.paidItems.find(x=>x.paidId===paidId);if(!p)return;
   const name=document.getElementById('PINAM').value.trim();
   const amt=parseFloat(document.getElementById('PIAMT').value);
   const date=document.getElementById('PIDAT').value;
@@ -355,9 +355,9 @@ function savePaidItem() {
 }
 
 function delPaidItem(paidId) {
-  const p=paidItems.find(x=>x.paidId===paidId);if(!p)return;
+  const p=window.paidItems.find(x=>x.paidId===paidId);if(!p)return;
   if(!confirm(p.name+' yapılan ödemelerden silinecek. Plan etkilenmez. Emin misin?'))return;
-  const idx=paidItems.indexOf(p);if(idx!==-1)paidItems.splice(idx,1);
+  const idx=paidItems.indexOf(p);if(idx!==-1)window.paidItems.splice(idx,1);
   saveSecure();renderPaid();
 }
 
