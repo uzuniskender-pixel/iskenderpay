@@ -215,16 +215,77 @@ function saveRates() {
 
 // ── AYARLAR SEKMESİ ──────────────────────────────────────────────────────────
 function renderAI() {
+  const pays     = window.pays     || [];
+  const creds    = window.creds    || [];
+  const paidItems= window.paidItems|| [];
+  const rehber   = window.rehber   || [];
+
+  // Bu ay istatistikleri
+  const now  = new Date();
+  const nowY = now.getFullYear(), nowM = now.getMonth();
+  const buAy = pays.filter(p => {
+    const d = parseLocalDate(p.date);
+    return d.getFullYear()===nowY && d.getMonth()===nowM;
+  });
+  const buAyTot  = buAy.reduce((s,p) => s+toTRY(p.amount,p.currency||'TRY'), 0);
+  const buAyOdendi = buAy.filter(p=>(p.status||'pending')==='paid').reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
+  const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&isOD(p)).reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
+
+  // Genel toplam borç (tüm ödenmemiş)
+  const toplamBekleyen = pays.filter(p=>(p.status||'pending')!=='paid')
+    .reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
+  const krediBekleyen = creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
+    .reduce((a,p)=>a+p.amount,0),0);
+
+  // Son 3 ay ödeme trendi
+  const trend = [];
+  for(let i=2;i>=0;i--){
+    const tM=new Date(nowY,nowM-i,1);
+    const tY=tM.getFullYear(), tMo=tM.getMonth();
+    const mPays=paidItems.filter(p=>{const d=parseLocalDate(p.date);return d.getFullYear()===tY&&d.getMonth()===tMo;});
+    const mTot=mPays.reduce((s,p)=>s+(p.paid||toTRY(p.amount,p.currency||'TRY')),0);
+    trend.push({lbl:tM.toLocaleDateString('tr-TR',{month:'short'}), tot:mTot});
+  }
+  const trendMax = Math.max(...trend.map(t=>t.tot), 1);
+  const trendBars = trend.map(t=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+      <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${fmt(t.tot)}</div>
+      <div style="width:100%;height:${Math.round((t.tot/trendMax)*48)+4}px;background:rgba(74,222,128,.35);border-radius:4px 4px 0 0;min-height:4px;transition:height .3s"></div>
+      <div style="font-size:10px;color:var(--muted)">${t.lbl}</div>
+    </div>`).join('');
+
   document.getElementById('AI').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <span style="color:var(--txt);font-size:15px;font-weight:800;letter-spacing:.5px">${window.APP_VERSION}</span>
-      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:3px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace">${window._knownBuild || window.APP_BUILD}</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <span style="color:var(--txt);font-size:14px;font-weight:700">${window.APP_VERSION}</span>
+      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:2px 9px;font-size:11px;font-family:'IBM Plex Mono',monospace">${window._knownBuild||window.APP_BUILD}</span>
     </div>
-    <div>🔐 AES-256-GCM şifreli</div>
-    <div>📦 ${(window.pays||[]).length} ödeme · ${(window.creds||[]).length} kredi · ${(window.paidItems||[]).length} yapılan</div>
-    <div>📒 ${(window.rehber||[]).length} rehber kaydı</div>
-    <div>☁️ Firebase Realtime Sync aktif</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:var(--surf2);border-radius:10px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Bu ay toplam</div>
+        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${fmt(buAyTot)}</div>
+        <div style="font-size:10px;color:var(--ok);margin-top:2px">✓ ${fmt(buAyOdendi)} ödendi</div>
+      </div>
+      <div style="background:var(--surf2);border-radius:10px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Toplam bekleyen</div>
+        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${fmt(toplamBekleyen+krediBekleyen)}</div>
+        <div style="font-size:10px;color:var(--danger);margin-top:2px">${buAyGec>0?'⚡ '+fmt(buAyGec)+' gecikmiş':pays.length+' kayıt · '+creds.length+' kredi'}</div>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Son 3 ay gerçekleşen</div>
+    <div style="display:flex;gap:6px;align-items:flex-end;height:72px;margin-bottom:14px;padding:0 4px">
+      ${trendBars}
+    </div>
+
+    <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--bdr);padding-top:10px;display:flex;gap:12px;flex-wrap:wrap">
+      <span>🔐 AES-256-GCM</span>
+      <span>📦 ${pays.length} ödeme · ${creds.length} kredi</span>
+      <span>📒 ${rehber.length} kişi</span>
+      <span>☁️ Firebase sync</span>
+    </div>
   `;
+
   const r = JSON.parse(localStorage.getItem('v5-rates-'+window._planId)||localStorage.getItem('v5-rates')||'{}');
   if (r.EUR)  document.getElementById('ME').value = r.EUR.toFixed(2);
   if (r.USD)  document.getElementById('MU').value = r.USD.toFixed(2);
