@@ -66,7 +66,13 @@ function render() {
     <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
     <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
   const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
-  document.getElementById('OHS').textContent = `Bu ay ${pct}% ödendi · ${fmt(tot)} toplam`;
+  const pctColor = pct>=100?'var(--ok)':pct>=60?'var(--blue)':pct>=30?'var(--ora)':'var(--danger)';
+  document.getElementById('OHS').innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+    <div style="flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px;transition:width .4s"></div>
+    </div>
+    <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:${pctColor};font-weight:600;flex-shrink:0">${pct}%</span>
+  </div>`;
   document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   const mx = buildMx(all);
   const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'6');
@@ -139,6 +145,7 @@ function render() {
 
   // Bu hafta widget'ı
   renderHaftaWidget(all, now, soon7);
+  if (window.renderSiradaki) window.renderSiradaki();
 }
 
 function renderGecWidget(all) {

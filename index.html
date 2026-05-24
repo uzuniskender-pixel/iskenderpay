@@ -685,10 +685,7 @@ select.fi{appearance:none}
 var _cryptoKey  = null;
 var _dataKeyRaw = null;
 
-// var kullanımı zorunlu: db.js modülü window.pays = [...] yaptığında
-// render() aynı referansı okuyabilsin diye window.* ile alias olmalı
-var pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
-var persons=[], notes=[], paidItems=[], rehber=[], actLog=[];
+// UI state — state.js veri dizilerini window.* üzerinde yönetir
 var partialCtx=null; var curTab=0;
 var sortMode='date';
 
@@ -704,8 +701,8 @@ var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.42';
-var APP_BUILD   = '20260523-20';
+var APP_VERSION = 'v8.43';
+var APP_BUILD   = '20260524-01';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
