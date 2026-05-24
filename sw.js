@@ -17,6 +17,8 @@ const STATIC = [
   './js/data.js',
   './js/db.js',
   './js/app.js',
+  './js/plan.js',
+  './js/sync.js',
   './js/kur.js',
   './js/backup.js',
   './js/version.js',
