@@ -47,10 +47,21 @@ function render() {
     const s = p.status||'pending';
     if(s==='paid'){ok+=t;okN++;}else if(isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
   });
+  // Sayfa başlığında geciken ödeme sayısı
+  document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
+
+  // 7 gün içi yaklaşan ödemeleri hesapla
+  const soon7 = new Date(now.getTime() + 7*24*60*60*1000);
+  const yaklaşanN = all.filter(p => {
+    if((p.status||'pending')==='paid') return false;
+    const d = parseLocalDate(p.date);
+    return d >= now && d <= soon7;
+  }).length;
+
   document.getElementById('OC').innerHTML=`
     <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
     <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
-    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${fmt(bek)}</div><div class="sub">${bekN} ödeme</div></div>
+    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
     <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
   const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
   document.getElementById('OHS').textContent = `Bu ay ${pct}% ödendi · ${fmt(tot)} toplam`;
@@ -94,7 +105,8 @@ function render() {
     months.forEach(m=>{
       const c=mx[k]?.[m];
       if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
-      const cls=c.status==='paid'?'cp':c.status==='partial'?'ck':c.status==='overdue'?'cg':'cb';
+      const isSoon=c.status!=='paid'&&c.items.some(p=>{const d=parseLocalDate(p.date);return d>=now&&d<=soon7;});
+      const cls=c.status==='paid'?'cp':c.status==='partial'?'ck':c.status==='overdue'?'cg':isSoon?'cy':'cb';
       const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
       const totalPaid=c.items.reduce((a,p)=>a+(p.paid||0),0);
       const kalan=c.try-totalPaid;
