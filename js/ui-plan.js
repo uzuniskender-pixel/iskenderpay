@@ -287,7 +287,7 @@ function openCell(keyEnc,month) {
       <input class="fi mono-inp" id="CEA" type="number" value="${orig?orig.amount:Math.round(c.try)}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
       <button onclick="saveCellAmt('${encodeURIComponent(key)}','${month}')" class="btn bs" style="flex:none;padding:10px 13px;font-size:12px">Kaydet</button>
     </div>
-    ${orig&&rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?fmt(rates.EUR):fmt(rates.GOLD)}</div>`:''}
+    ${orig&&window.rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?fmt(window.rates.EUR):fmt(window.rates.GOLD)}</div>`:''}
   </div>`;
   const cellKey=encodeURIComponent(key),cellMo=month;
   const isSingleItem=c.items.length===1&&!c.items[0]._cid;
