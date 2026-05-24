@@ -51,11 +51,13 @@ function render() {
   document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
 
   // 7 gün içi yaklaşan ödemeleri hesapla
-  const soon7 = new Date(now.getTime() + 7*24*60*60*1000);
+  const today0 = todayMidnight();
+  const soon7 = new Date(today0.getTime() + 7*24*60*60*1000);
   const yaklaşanN = all.filter(p => {
     if((p.status||'pending')==='paid') return false;
+    if(p._cid) return false;
     const d = parseLocalDate(p.date);
-    return d >= now && d <= soon7;
+    return d >= today0 && d <= soon7;
   }).length;
 
   document.getElementById('OC').innerHTML=`
@@ -105,7 +107,7 @@ function render() {
     months.forEach(m=>{
       const c=mx[k]?.[m];
       if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
-      const isSoon=c.status!=='paid'&&c.items.some(p=>{const d=parseLocalDate(p.date);return d>=now&&d<=soon7;});
+      const isSoon=c.status!=='paid'&&c.items.some(p=>{const d=parseLocalDate(p.date);return d>=today0&&d<=soon7;});
       const cls=c.status==='paid'?'cp':c.status==='partial'?'ck':c.status==='overdue'?'cg':isSoon?'cy':'cb';
       const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
       const totalPaid=c.items.reduce((a,p)=>a+(p.paid||0),0);
@@ -128,13 +130,28 @@ function render() {
   renderHaftaWidget(all, now, soon7);
 }
 
+function renderGecWidget(all) {
+  const el = document.getElementById('HAFTA');
+  if (!el) return null; // HAFTA elementini paylaşıyoruz, gecikmiş önce render edilecek
+  const today = todayMidnight();
+  const gecikmiş = all.filter(p => {
+    if ((p.status||'pending') === 'paid') return false;
+    if (p._cid) return false;
+    return parseLocalDate(p.date) < today;
+  }).sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
+  return gecikmiş;
+}
+
 function renderHaftaWidget(all, now, soon7) {
   const el = document.getElementById('HAFTA');
   if (!el) return;
+  const today = todayMidnight();
+  const soon7mid = new Date(today.getTime() + 7*24*60*60*1000);
   const yaklaşan = all.filter(p => {
     if ((p.status||'pending') === 'paid') return false;
+    if (p._cid) return false; // kredi taksitlerini ayrı gösterme (matriste zaten var)
     const d = parseLocalDate(p.date);
-    return d >= now && d <= soon7;
+    return d >= today && d <= soon7mid;
   }).sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
 
   if (!yaklaşan.length) { el.innerHTML = ''; return; }
@@ -142,12 +159,13 @@ function renderHaftaWidget(all, now, soon7) {
   const rows = yaklaşan.map(p => {
     const d = parseLocalDate(p.date);
     const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
-    const kalan = Math.ceil((d - now) / 86400000);
-    const kalanStr = kalan === 0 ? '<span style="color:var(--danger)">Bugün!</span>'
+    const kalan = Math.round((d - today) / 86400000);
+    const kalanStr = kalan === 0 ? '<span style="color:var(--danger);font-weight:700">Bugün!</span>'
       : kalan === 1 ? '<span style="color:var(--ora)">Yarın</span>'
-      : `<span style="color:var(--cy,#fcd34d)">${kalan} gün</span>`;
+      : `<span style="color:#fcd34d">${kalan} gün</span>`;
     const tryAmt = toTRY(p.amount, p.currency||'TRY');
-    const keyEnc = encodeURIComponent(p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id))));
+    const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
+    const keyEnc = encodeURIComponent(rawKey);
     const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surf2);border-radius:8px;margin-bottom:5px;cursor:pointer" onclick="openCell('${keyEnc}','${mKey}')">
       <div style="min-width:36px;text-align:center;background:rgba(252,211,77,.15);border-radius:6px;padding:3px 0">
@@ -164,10 +182,41 @@ function renderHaftaWidget(all, now, soon7) {
     </div>`;
   }).join('');
 
-  el.innerHTML = `<div style="background:rgba(252,211,77,.08);border:1px solid rgba(252,211,77,.2);border-radius:10px;padding:10px 12px;margin:0 0 10px">
+  const gecList = renderGecWidget(all);
+  let gecHTML = '';
+  if (gecList && gecList.length) {
+    const gecRows = gecList.slice(0,5).map(p => {
+      const d = parseLocalDate(p.date);
+      const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
+      const gecGun = Math.round((todayMidnight() - d) / 86400000);
+      const tryAmt = toTRY(p.amount, p.currency||'TRY');
+      const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
+      const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(248,113,113,.08);border-radius:8px;margin-bottom:5px;cursor:pointer" onclick="openCell('${encodeURIComponent(rawKey)}','${mKey}')">
+        <div style="min-width:36px;text-align:center;background:rgba(248,113,113,.2);border-radius:6px;padding:3px 0">
+          <div style="font-size:13px;font-weight:700;color:#fca5a5">${gun}</div>
+          <div style="font-size:9px;color:var(--muted)">${ay}</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#fca5a5">${fmt(tryAmt)}</div>
+          <div style="font-size:10px;color:var(--danger)">${gecGun} gün gecikti</div>
+        </div>
+      </div>`;
+    }).join('');
+    const artı = gecList.length > 5 ? `<div style="font-size:10px;color:var(--muted);text-align:center;padding-top:4px">+${gecList.length-5} daha</div>` : '';
+    gecHTML = `<div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:10px;padding:10px 12px;margin:0 0 8px">
+      <div style="font-size:10px;font-weight:700;color:#fca5a5;letter-spacing:.8px;margin-bottom:8px">⚠ GECİKMİŞ — ${gecList.length} ödeme</div>
+      ${gecRows}${artı}
+    </div>`;
+  }
+
+  el.innerHTML = gecHTML + (yaklaşan.length ? `<div style="background:rgba(252,211,77,.08);border:1px solid rgba(252,211,77,.2);border-radius:10px;padding:10px 12px;margin:0 0 10px">
     <div style="font-size:10px;font-weight:700;color:#fcd34d;letter-spacing:.8px;margin-bottom:8px">⚡ BU HAFTA — ${yaklaşan.length} ödeme</div>
     ${rows}
-  </div>`;
+  </div>` : '');
 }
 
 function openRow(keyEnc) {
