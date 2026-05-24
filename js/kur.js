@@ -2,13 +2,14 @@
 // Kur çekme, kur bar render, sıradaki ödeme
 
 async function fetchRates() {
+  if (!window.rates) window.rates = {EUR:null, USD:null, GOLD:null};
   const s = localStorage.getItem('v5-rates-'+window._planId) || localStorage.getItem('v5-rates');
   if (s) try { const parsed = JSON.parse(s); Object.assign(window.rates, parsed); } catch(e) {}
   renderKur();
   let anySuccess = false;
   try {
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-    if (r.ok) { const d=await r.json(); window.rates.USD=d.rates.TRY; window.rates.EUR=d.rates.TRY/d.window.rates.EUR; anySuccess=true; }
+    if (r.ok) { const d=await r.json(); window.rates.USD=d.rates.TRY; window.rates.EUR=d.rates.TRY/d.rates.EUR; anySuccess=true; }
     else console.warn('exchangerate-api HTTP hatası:', r.status);
   } catch(e) { console.warn('exchangerate-api erişim hatası:', e.message); }
   try {
