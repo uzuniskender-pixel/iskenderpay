@@ -610,7 +610,6 @@ select.fi{appearance:none}
       <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
     </div>
 
-
 <!-- DETAY PANELİ -->
 <div class="dov" id="DV">
   <div class="dpanel"><div class="dhdl"></div><div id="DC"></div></div>
@@ -697,20 +696,14 @@ var _dataKeyRaw = null;
 // UI state — sadece partialCtx burada (state.js curTab/sortMode yönetiyor)
 var partialCtx=null;
 
-// ── YAPISAL İYİLEŞTİRMELER (UYS v3 pattern) ──────────────────────────────
-var _suppressSave = false;   // true iken saveSecure çalışmaz (batch işlemler)
-var _saveTimer = null;       // debounce timer
-const SAVE_DEBOUNCE_MS = 400;// art arda save'leri birleştir
-
-// Migrasyon kilidi — aynı anda birden fazla çalışmasını engeller
-var _migrationRunning = false;
+// _suppressSave · _saveTimer · SAVE_DEBOUNCE_MS · _migrationRunning → db.js
 
 var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.48';
-var APP_BUILD   = '20260524-06';
+var APP_VERSION = 'v8.49';
+var APP_BUILD   = '20260524-07';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -718,7 +711,6 @@ if ('serviceWorker' in navigator) {
     .then(() => console.log('SW kayıtlı'))
     .catch(err => console.warn('SW hatası:', err));
 }
-
 
 // Single source of truth: version.json
 // _knownBuild; initBuild() ile sayfa açılışında set edilir, APP_BUILD'e bağımlılık yok
@@ -735,7 +727,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 </script>
-
 
 </div>
 
@@ -826,7 +817,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
-
 <!-- YAPILAN ÖDEMELER DÜZENLE MODAL -->
 <div class="mov" id="PIMOD">
   <div class="modal">
@@ -839,7 +829,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="brow"><button class="btn bc" data-modal-close="PIMOD">İptal</button><button class="btn bs" onclick="savePaidItem()">Kaydet</button></div>
   </div>
 </div>
-
 
 <!-- GLOBAL ARAMA MODALI (v8.8) -->
 <div class="mov" id="SRCHMOD">

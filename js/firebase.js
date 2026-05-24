@@ -76,6 +76,13 @@ onAuthStateChanged(_auth, (user) => {
   }
 });
 
+// Firebase nesnelerini window'a bağla — db.js getApp() yerine bunları kullanır
+window._firebaseApp  = _app;
+window._firebaseAuth = _auth;
+window._firebaseDb   = _db;
+window._planDoc      = _planDoc;
+window._metaDoc      = _metaDoc;
+
 // Google ile giriş — popup kullan
 window.doGoogleLogin = async function() {
   try {

@@ -2,37 +2,26 @@
 // Firebase bağlantısı, auth, doLogin, loadSecure, saveSecure, migrasyon.
 // index.html'deki Firebase init ile çakışmayı önlemek için getApps() guard eklendi.
 
-import { initializeApp, getApps, getApp }         from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+// firebase-app: firebase.js'te init edildi
 import { getAuth, GoogleAuthProvider,
          signInWithPopup, signInWithRedirect,
          getRedirectResult, onAuthStateChanged,
          signOut }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
-  authDomain: "iskenderpay-a23d1.firebaseapp.com",
-  projectId: "iskenderpay-a23d1",
-  storageBucket: "iskenderpay-a23d1.firebasestorage.app",
-  messagingSenderId: "916658036032",
-  appId: "1:916658036032:web:ad44e5d591e1adfc49aea5",
-  measurementId: "G-SPPX7F1BDY"
-};
+// Firebase nesneleri firebase.js'te init edildi — window üzerinden al
+// _auth ve _db: firebase.js'teki _auth/_db ile aynı instance (getApps guard ile)
+const _auth = window._firebaseAuth;
+const _db   = window._firebaseDb;
 
-const _app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const _auth = getAuth(_app);
-const _db   = getFirestore(_app);
 let   _fbUid = null;
 window._fbUid = null;
 
 // ── Firestore yardımcıları ───────────────────────────────────────────────────
 
-function _planDoc(planId) {
-  return doc(_db, 'users', _fbUid + '_' + (planId || window._planId));
-}
-function _metaDoc() {
-  return doc(_db, 'users', _fbUid + '_meta');
-}
+const _planDoc = window._planDoc;
+const _metaDoc = window._metaDoc;
+
 
 window._fbSave = async function(encData) {
   if (!_fbUid) return;
