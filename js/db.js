@@ -384,3 +384,39 @@ window.save          = () => saveSecure();
 window.savePersons   = () => saveSecure();
 window.saveNotes     = () => saveSecure();
 window.loadNotes     = () => {};
+
+// ── ŞİFRE DEĞİŞTİR ──────────────────────────────────────────────────────────
+async function chPass() {
+  const cur = document.getElementById('CP').value;
+  const nw  = document.getElementById('NP').value;
+  const nw2 = document.getElementById('NP2').value;
+  const msg = document.getElementById('PM');
+
+  const pinSalt = await getSaltAsync('v5-pin-salt');
+
+  let storedHash = null;
+  if (window._fbLoadPinHash) {
+    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
+  }
+
+  const curHash = await hashPin(cur, pinSalt);
+  if (curHash !== storedHash) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut şifre yanlış'; return; }
+  if (!nw || nw.length < 4)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 4 karakter'; return; }
+  if (nw !== nw2)             { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreler eşleşmiyor'; return; }
+
+  const newHash = await hashPin(nw, pinSalt);
+  if (window._fbSavePinHash) {
+    try { await window._fbSavePinHash(newHash); } catch(e) {}
+  }
+
+  const newWrappedB64 = await wrapDataKey(window._dataKeyRaw, nw, pinSalt);
+  _saveWrappedKeyLocal(newWrappedB64);
+  await _saveWrappedKeyFirebase(newWrappedB64);
+  window._plainPin = nw;
+
+  msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
+  ['CP','NP','NP2'].forEach(id => document.getElementById(id).value='');
+  setTimeout(() => msg.textContent='', 3000);
+}
+
+window.chPass = chPass;

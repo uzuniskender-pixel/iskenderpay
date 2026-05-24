@@ -872,8 +872,6 @@ select.fi{appearance:none}
 let _cryptoKey  = null;
 let _dataKeyRaw = null;
 
-// ── STATE ───────────────────────────────────────────────────────────────────
-// [state.js'e taşındı — js/state.js]
 // var kullanımı zorunlu: db.js modülü window.pays = [...] yaptığında
 // render() aynı referansı okuyabilsin diye window.* ile alias olmalı
 var pays=[], creds=[], hist=[], rates={EUR:null,USD:null,GOLD:null};
@@ -983,70 +981,11 @@ async function doLogin() {
   enterApp();
 }
 
-// visibilitychange: ekrana dönünce anında poll yap
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    setSyncDot('connecting');
-    setTimeout(window._fbPoll, 500);
-  }
-});
+// visibilitychange → app.js startRealtimeSync içinde
 
-// ── ŞİFRE DEĞİŞTİR ──────────────────────────────────────────────────────────
-async function chPass() {
-  const cur  = document.getElementById('CP').value;
-  const nw   = document.getElementById('NP').value;
-  const nw2  = document.getElementById('NP2').value;
-  const msg  = document.getElementById('PM');
+var APP_VERSION = 'v8.30';
+var APP_BUILD   = '20260523-08';
 
-  const pinSalt = await getSaltAsync('v5-pin-salt');
-
-  let storedHash = null;
-  if (window._fbLoadPinHash) {
-    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
-  }
-
-  const curHash = await hashPin(cur, pinSalt);
-  if (curHash !== storedHash) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut şifre yanlış'; return; }
-  if (!nw || nw.length < 4)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 4 karakter'; return; }
-  if (nw !== nw2)             { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreler eşleşmiyor'; return; }
-
-  const newHash = await hashPin(nw, pinSalt);
-  if (window._fbSavePinHash) {
-    try { await window._fbSavePinHash(newHash); } catch(e) {}
-  }
-  // dataKey değişmez — sadece yeni PIN ile yeniden wrap edilir
-  const newWrappedB64 = await wrapDataKey(_dataKeyRaw, nw, pinSalt);
-  _saveWrappedKeyLocal(newWrappedB64);
-  await _saveWrappedKeyFirebase(newWrappedB64);
-  _plainPin = nw;
-  // _cryptoKey ve _dataKeyRaw değişmez, veri dokunulmaz
-
-  msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
-  ['CP','NP','NP2'].forEach(id => document.getElementById(id).value='');
-  setTimeout(() => msg.textContent='', 3000);
-}
-
-
-// [util.js'e taşındı — js/util.js]
-
-
-// ── RENDER ───────────────────────────────────────────────────────────────────
-
-
-// ── DETAY ─────────────────────────────────────────────────────────────────────
-
-var APP_VERSION = 'v8.29';
-var APP_BUILD   = '20260523-07';
-
-// ── NOTLAR ───────────────────────────────────────────────────────────────────
-
-// Yapılan Ödemeler düzenleme/silme (plan'a etkisi yok)
-
-// Telefon normalleştirme: +90... veya 90... → 0XXX XXX XX XX
-
-// CSV satır parser (tırnak içi virgülleri doğru böler)
-
-// ── PWA: Service Worker Kaydı ─────────────────────────────────────────────────
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js')

@@ -544,3 +544,11 @@ function readRF(inp) {
 window.startRealtimeSync = startRealtimeSync;
 window.showPinErr        = showPinErr;
 window.readRF            = readRF;
+
+// ── VİSİBİLİTY SYNC POLL ─────────────────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (window.setSyncDot) setSyncDot('connecting');
+    setTimeout(() => { if (window._fbPoll) window._fbPoll(); }, 500);
+  }
+});
