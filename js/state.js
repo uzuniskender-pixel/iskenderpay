@@ -60,7 +60,7 @@ export function setLookupDirty(v)  { _lookupDirty = v; }
 export function setRates(r)        { rates = r; window.rates = r; }
 
 // stateMap — setState için referans tablosu
-const stateMap = { pays, creds, hist, persons, notes, paidItems, rehber, actLog, rates };
+// stateMap — setState için (dizi referansları clearState sonrası güncellenir)
 
 // ── clearState ───────────────────────────────────────────────────────────────
 export function clearState() {
@@ -73,6 +73,7 @@ export function clearState() {
   rehber    = []; window.rehber    = [];
   actLog    = []; window.actLog    = [];
   rates     = { EUR: null, USD: null, GOLD: null };
+  window.rates = rates;
   _lookupDirty = true;
   console.log('[State] Bellek tamamen temizlendi.');
 }
@@ -82,6 +83,9 @@ window.clearState = clearState;
 // index.html'deki render/CRUD fonksiyonları window.pays gibi global değişkenleri
 // doğrudan kullandığından, state.js'in export'ları ile senkron olmalı.
 window._planId   = _planId;
+window.curTab    = curTab;
+window.sortMode  = sortMode;
+window.partialCtx = partialCtx;
 window.pays      = pays;
 window.creds     = creds;
 window.hist      = hist;
