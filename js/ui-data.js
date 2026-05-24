@@ -85,8 +85,8 @@ function saveCred() {
   const startMo=startMo0-1;
   const pArr=Array.from({length:inst},(_,i)=>{const totalMo=startMo+i;const yr=startYr+Math.floor(totalMo/12),mo=totalMo%12;const lastDay=new Date(yr,mo+1,0).getDate();return{idx:i+1,date:toLocalISO(yr,mo,Math.min(startDay,lastDay)),amount:monthly,status:'pending',paid:0};});
   const eid=document.getElementById('CEID').value;
-  if(eid){const c=findCredById(eid);if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;}}
-  else{creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr});}
+  if(eid){const c=findCredById(eid);if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;} addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+fmtAmt(monthly,'TRY'),0);}
+  else{creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr}); addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+fmtAmt(monthly,'TRY'),0);}
   save().then(()=>{closeMov('CM');render();});
 }
 

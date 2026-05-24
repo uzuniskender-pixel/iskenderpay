@@ -238,6 +238,7 @@ function addToMonth(keyEnc,month) {
   const groupId=key.startsWith('g_')?key.replace('g_',''):null;
   const refItem=groupId?findPaysByGroup(groupId)[0]:pays.find(p=>p.name===name);
   pays.push({id:Date.now()+Math.random(), groupId:groupId||String(Date.now()), name, amount:amt, currency:cur, date, category:refItem?refItem.category||'Diğer':'Diğer', status:'pending', paid:0});
+  addLog('plan_add', 'Kayıt eklendi', name+' · '+fmtAmt(amt,cur), 0);
   saveSecure(); closeDV(); render();
 }
 
