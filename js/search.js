@@ -77,7 +77,7 @@ function renderAI() {
   // Genel toplam borç (tüm ödenmemiş)
   const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
     .reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
-  const krediBekleyen = creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
+  const krediBekleyen = window.creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
     .reduce((a,p)=>a+p.amount,0),0);
 
   // Son 3 ay ödeme trendi
@@ -112,7 +112,7 @@ function renderAI() {
       <div style="background:var(--surf2);border-radius:10px;padding:10px 12px">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Toplam bekleyen</div>
         <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${fmt(toplamBekleyen+krediBekleyen)}</div>
-        <div style="font-size:10px;color:var(--danger);margin-top:2px">${buAyGec>0?'⚡ '+fmt(buAyGec)+' gecikmiş':pays.length+' kayıt · '+creds.length+' kredi'}</div>
+        <div style="font-size:10px;color:var(--danger);margin-top:2px">${buAyGec>0?'⚡ '+fmt(buAyGec)+' gecikmiş':window.pays.length+' kayıt · '+window.creds.length+' kredi'}</div>
       </div>
     </div>
 
@@ -123,8 +123,8 @@ function renderAI() {
 
     <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--bdr);padding-top:10px;display:flex;gap:12px;flex-wrap:wrap">
       <span>🔐 AES-256-GCM</span>
-      <span>📦 ${pays.length} ödeme · ${creds.length} kredi</span>
-      <span>📒 ${rehber.length} kişi</span>
+      <span>📦 ${window.pays.length} ödeme · ${window.creds.length} kredi</span>
+      <span>📒 ${window.rehber.length} kişi</span>
       <span>☁️ Firebase sync</span>
     </div>
   `;
