@@ -1,0 +1,410 @@
+// js/ui-plan.js — iskenderpay
+// Plan matrisi, hücre detayları, ödeme durum aksiyonları
+
+function getAllItems() {
+  const credPays = [];
+  creds.forEach(c => c.pays.forEach((p,ii) => credPays.push({...p, name:c.name, currency:'TRY', _cid:c.id, _ii:p.idx})));
+  return [...pays, ...credPays];
+}
+
+function buildMx(all) {
+  const mx = {};
+  all.forEach(p => {
+    const d = parseLocalDate(p.date);
+    const mk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const rawKey = p._cid ? 'cred_'+p._cid : (p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id))));
+    if (!mx[rawKey]) mx[rawKey] = {_name:p.name};
+    if (!mx[rawKey][mk]) mx[rawKey][mk] = {items:[], status:'pending', try:0};
+    mx[rawKey][mk].items.push(p);
+    mx[rawKey][mk].try += toTRY(p.amount, p.currency||'TRY');
+  });
+  // Durum hesabı düzeltme (item bazlı)
+  Object.keys(mx).forEach(rk => {
+    Object.keys(mx[rk]).filter(k=>!k.startsWith('_')).forEach(mk => {
+      const cell = mx[rk][mk];
+      const items = cell.items;
+      if (items.every(p => (p.status||'pending')==='paid')) cell.status='paid';
+      else if (items.some(p => (p.status||'pending')==='partial')) cell.status='partial';
+      else if (items.some(p => (p.status||'pending')!=='paid' && isOD(p))) cell.status='overdue';
+      else cell.status='pending';
+    });
+  });
+  return mx;
+}
+
+function render() {
+  invalidateLookups();
+  const all = getAllItems();
+  const now = new Date();
+  const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const buAy = all.filter(p => {
+    const d = parseLocalDate(p.date);
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  });
+  let tot=0, ok=0, bek=0, gec=0, okN=0, bekN=0, gecN=0;
+  buAy.forEach(p => {
+    const t = toTRY(p.amount, p.currency||'TRY'); tot+=t;
+    const s = p.status||'pending';
+    if(s==='paid'){ok+=t;okN++;}else if(isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
+  });
+  document.getElementById('OC').innerHTML=`
+    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
+    <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
+    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${fmt(bek)}</div><div class="sub">${bekN} ödeme</div></div>
+    <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
+  const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
+  document.getElementById('OHS').textContent = `Bu ay ${pct}% ödendi · ${fmt(tot)} toplam`;
+  document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
+  const mx = buildMx(all);
+  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'6');
+  const monthSet = new Set();
+  const nowY=now.getFullYear(), nowM=now.getMonth();
+  for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
+  all.forEach(p=>{const d=parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const pY=d.getFullYear(),pM=d.getMonth();if(pY<nowY||(pY===nowY&&pM<nowM))monthSet.add(mk);});
+  const fltEl = document.getElementById('FLT');
+  const fltVal = fltEl ? fltEl.value.trim().toLocaleLowerCase('tr') : '';
+  let rowKeys = Object.keys(mx).filter(k=>mx[k]._name!==undefined);
+  if(window.sortMode==='name'){
+    rowKeys.sort((a,b)=>(mx[a]._name||'').localeCompare(mx[b]._name||'','tr'));
+  } else {
+    rowKeys.sort((a,b)=>{
+      const dayOf=k=>{const mks=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort();if(!mks.length)return 99;const items=mx[k][mks[0]]?.items||[];return items[0]?parseLocalDate(items[0].date).getDate():99;};
+      const da=dayOf(a),db=dayOf(b);
+      if(da!==db)return da-db;
+      return (mx[a]._name||'').localeCompare(mx[b]._name||'','tr');
+    });
+  }
+  if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+  const nameCountMap={};
+  rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
+  const nameIdxMap={};
+  rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=n+' '+nameIdxMap[n];}else{mx[k]._displayName=n;}});
+  const allMonths=Array.from(monthSet).sort();
+  const months=allMonths.filter(m=>rowKeys.some(k=>{const c=mx[k]?.[m];return c&&c.status!=='paid';}));
+  const mLbls=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'short',year:'2-digit'});});
+  const colTot=months.map(m=>rowKeys.reduce((s,k)=>{const c=mx[k]&&mx[k][m];if(!c)return s;if(c.status==='paid')return s;if(c.status==='partial')return s+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s+c.try;},0));
+  let html='<table class="mtbl"><thead><tr><th class="rh">Ödeme</th><th style="min-width:32px;max-width:36px;width:32px">Gün</th>';
+  months.forEach((m,i)=>html+=`<th${m===curMK?' style="color:var(--acc);font-weight:700"':''}>${mLbls[i]}</th>`);
+  html+='<th>Toplam</th></tr></thead><tbody>';
+  rowKeys.forEach(k=>{
+    const dispName=mx[k]._displayName||mx[k]._name||k;
+    const _firstMk=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort()[0];
+    const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
+    html+=`<tr><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${esc(dispName)}">${esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
+    months.forEach(m=>{
+      const c=mx[k]?.[m];
+      if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
+      const cls=c.status==='paid'?'cp':c.status==='partial'?'ck':c.status==='overdue'?'cg':'cb';
+      const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
+      const totalPaid=c.items.reduce((a,p)=>a+(p.paid||0),0);
+      const kalan=c.try-totalPaid;
+      let cellContent;
+      if(c.status==='paid'){cellContent=`<span style="font-size:14px">✓</span>`;}
+      else if(c.status==='partial'){const ob2=orig?`<span class="orig-small">${fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${fmt(kalan)}${ob2}`;}
+      else{const ob2=orig?`<span class="orig-small">${fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${fmt(c.try)}${ob2}`;}
+      html+=`<td class="${cls}" onclick="openCell('${encodeURIComponent(k)}','${m}')">${cellContent}</td>`;
+    });
+    const rKalan=months.reduce((acc,m)=>{const c=mx[k]?.[m];if(!c)return acc;if(c.status==='paid')return acc;if(c.status==='partial')return acc+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return acc+c.try;},0);
+    html+=`<td style="font-weight:600;color:${rKalan===0?'var(--ok)':'var(--txt)'}">${rKalan===0?'✓':fmt(rKalan)}</td></tr>`;
+  });
+  html+=`<tr class="tot"><td class="rh">TOPLAM</td><td></td>`;
+  colTot.forEach(t=>html+=`<td>${fmt(t)}</td>`);
+  html+=`<td>${fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
+  document.getElementById('MAT').innerHTML = rowKeys.length ? html : '<div class="empty"><div class="ico">📋</div><p>Henüz ödeme yok.<br>+ butonuyla ekleyin.</p></div>';
+}
+
+function openRow(keyEnc) {
+  const key=decodeURIComponent(keyEnc), all=getAllItems(), mx=buildMx(all);
+  const dispName=mx[key]?._displayName||mx[key]?._name||key;
+  const months=Object.keys(mx[key]||{}).filter(k=>!k.startsWith('_')).sort();
+  let h=`<div class="dtitle">${dispName}</div><div class="dsub">Tüm aylar — tıkla işaretlemek için</div>`;
+  months.forEach(m=>{
+    const c=mx[key][m];if(!c||!c.items)return;
+    const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>isOD(x));
+    const[y,mo]=m.split('-');
+    const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+    h+=`<div class="drow">
+      <span class="dk">${lbl}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="${sCls(s,over)}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600">${fmt(c.try)}</span>
+        <span class="${sCls(s,over)}" style="font-size:11px">${sLbl(s,over)}</span>
+        ${s!=='paid'?`<button class="dact da-ok" style="padding:3px 8px;font-size:11px;flex:none" onclick="markOk('${encodeURIComponent(key)}','${m}')">✓</button>`:''}
+        ${s==='partial'?`<button class="dact da-part" style="padding:3px 8px;font-size:11px;flex:none" onclick="resetPartial('${encodeURIComponent(key)}','${m}')">↺</button>`:''}
+        ${s!=='paid'?`<button class="dact da-part" style="padding:3px 8px;font-size:11px;flex:none" onclick="openKM('${encodeURIComponent(key)}','${m}')">½</button>`:''}
+        ${(s==='paid'||s==='partial')?`<button class="dact da-undo" style="padding:3px 8px;font-size:11px;flex:none" onclick="undoCell('${encodeURIComponent(key)}','${m}')">↩</button>`:''}
+      </span>
+    </div>`;
+  });
+  h+=`<div class="dacts">
+    <button class="dact da-edit" onclick="editByKey('${encodeURIComponent(key)}')">Düzenle</button>
+    <button class="dact da-del" onclick="delByKey('${encodeURIComponent(key)}')">Sil</button>
+    <button class="dact da-close" onclick="closeDV()">Kapat</button>
+  </div>`;
+  document.getElementById('DC').innerHTML=h;
+  ModalManager.open('DV');
+}
+
+function openCell(keyEnc,month) {
+  const key=decodeURIComponent(keyEnc),all=getAllItems(),mx=buildMx(all);
+  const c=mx[key]?.[month];if(!c||!c.items)return;
+  const name=mx[key]?._name||key;
+  const[y,mo]=month.split('-');
+  const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+  const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>isOD(x));
+  const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
+  let h=`<div class="dtitle">${name}</div><div class="dsub">${lbl}</div>`;
+  h+=`<div class="drow"><span class="dk">Tutar</span><span class="dv">${fmt(c.try)}${orig?` <span style="font-size:11px;opacity:.65">${fmtA(orig.amount,orig.currency)}</span>`:''}</span></div>`;
+  h+=`<div class="drow"><span class="dk">Durum</span><span class="${sCls(s,over)}" style="font-weight:600">${sLbl(s,over)}</span></div>`;
+  if(s==='partial') h+=`<div class="drow"><span class="dk">Ödenen</span><span class="dv" style="color:var(--ora)">${fmt(c.items.reduce((a,p)=>a+(p.paid||0),0))}</span></div>`;
+  c.items.forEach(p=>{if(p.date)h+=`<div class="drow"><span class="dk">Tarih</span><span class="dv" style="font-family:'Inter',sans-serif">${fmtD(p.date)}</span></div>`;});
+  h+=`<div class="dedit">
+    <div class="dedit-lbl">Bu Ayın Tutarını Düzenle${orig?' ('+orig.currency+')':' (₺)'}</div>
+    <div class="dedit-row">
+      <input class="fi mono-inp" id="CEA" type="number" value="${orig?orig.amount:Math.round(c.try)}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
+      <button onclick="saveCellAmt('${encodeURIComponent(key)}','${month}')" class="btn bs" style="flex:none;padding:10px 13px;font-size:12px">Kaydet</button>
+    </div>
+    ${orig&&rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?fmt(rates.EUR):fmt(rates.GOLD)}</div>`:''}
+  </div>`;
+  const cellKey=encodeURIComponent(key),cellMo=month;
+  const isSingleItem=c.items.length===1&&!c.items[0]._cid;
+  const delBtn=isSingleItem?`<button class="dact da-del" onclick="delMonthEntry('${encodeURIComponent(String(c.items[0].id))}')">Bu Ayı Sil</button>`:`<button class="dact da-del" onclick="delCellItems('${cellKey}','${cellMo}')">Bu Ayı Sil</button>`;
+  const editItem=c.items.find(x=>!x._cid);
+  const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>editPay('${editItem.id}'),50)">Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
+  h+=`<div class="dacts">
+    ${s!=='paid'?`<button class="dact da-ok" onclick="markOk('${cellKey}','${cellMo}')">✓ Ödendi</button>`:''}
+    ${s==='partial'?`<button class="dact da-part" onclick="resetPartial('${cellKey}','${cellMo}')">↺ Sıfırla</button>`:''}
+    ${(s==='pending'||s==='overdue')?`<button class="dact da-part" onclick="openKM('${cellKey}','${cellMo}')">½ Kısmi</button>`:''}
+    ${s==='partial'?`<button class="dact da-part" onclick="openKM('${cellKey}','${cellMo}')">+ Ekle</button>`:''}
+    ${(s==='paid'||s==='partial')?`<button class="dact da-undo" onclick="undoCell('${cellKey}','${cellMo}')">↩ Geri Al</button>`:''}
+    ${editBtn}${delBtn}
+    <button class="dact da-del" onclick="delByKey('${cellKey}')" style="font-size:10px">Tümünü Sil</button>
+    <button class="dact da-close" onclick="closeDV()">Kapat</button>
+  </div>`;
+  document.getElementById('DC').innerHTML=h;
+  ModalManager.open('DV');
+}
+
+function closeDV()   { ModalManager.close('DV'); }
+
+function closeRDET() { ModalManager.close('RDET'); }
+
+function openEmptyCell(keyEnc,month) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const name=mx[key]?._name||key.replace(/^(g_|pay_)/,'');
+  const[y,mo]=month.split('-');
+  const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+  const groupId=key.startsWith('g_')?key.replace('g_',''):null;
+  const refItem=groupId
+    ?all.filter(p=>p.groupId===groupId&&!p._cid).sort((a,b)=>b.date.localeCompare(a.date))[0]
+    :all.filter(p=>p.name===name&&!p._cid).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const refAmt=refItem?refItem.amount:'';
+  const refCur=refItem?refItem.currency||'TRY':'TRY';
+  const refDay=refItem?parseLocalDate(refItem.date).getDate():1;
+  const lastDay=new Date(+y,+mo,0).getDate();
+  const day=Math.min(refDay,lastDay);
+  const dateStr=`${y}-${String(mo).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  let h=`<div class="dtitle">${name}</div><div class="dsub">${lbl} — Bu Aya Ekle</div>`;
+  h+=`<div class="dedit" style="margin-top:0;padding-top:0;border-top:none">
+    <div class="dedit-lbl" style="margin-bottom:10px">Tutar</div>
+    <div class="dedit-row" style="gap:8px;margin-bottom:10px">
+      <input class="fi mono-inp" id="ECA" type="number" value="${refAmt}" inputmode="decimal" style="flex:1;font-size:18px;text-align:center" placeholder="0">
+      <select class="fi" id="ECC" style="flex:none;width:90px">
+        <option value="TRY"${refCur==='TRY'?' selected':''}>₺ TRY</option>
+        <option value="EUR"${refCur==='EUR'?' selected':''}>€ EUR</option>
+        <option value="GOLD"${refCur==='GOLD'?' selected':''}>Altın</option>
+      </select>
+    </div>
+    <div class="dedit-lbl">Tarih</div>
+    <input class="fi" id="ECD" type="date" value="${dateStr}" style="margin-bottom:0">
+  </div>`;
+  h+=`<div class="dacts" style="margin-top:14px">
+    <button class="dact da-ok" onclick="addToMonth('${encodeURIComponent(key)}','${month}')">+ Ekle</button>
+    <button class="dact da-close" onclick="closeDV()">İptal</button>
+  </div>`;
+  document.getElementById('DC').innerHTML=h;
+  ModalManager.open('DV');
+  setTimeout(()=>document.getElementById('ECA')?.focus(),100);
+}
+
+function addToMonth(keyEnc,month) {
+  const amt=parseFloat(document.getElementById('ECA').value)||0;
+  const cur=document.getElementById('ECC').value;
+  const date=document.getElementById('ECD').value;
+  if(!amt||!date){alert('Tutar ve tarih zorunlu');return;}
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const name=mx[key]?._name||key.replace(/^(g_|pay_)/,'');
+  const groupId=key.startsWith('g_')?key.replace('g_',''):null;
+  const refItem=groupId?findPaysByGroup(groupId)[0]:pays.find(p=>p.name===name);
+  pays.push({id:Date.now()+Math.random(), groupId:groupId||String(Date.now()), name, amount:amt, currency:cur, date, category:refItem?refItem.category||'Diğer':'Diğer', status:'pending', paid:0});
+  saveSecure(); closeDV(); render();
+}
+
+function markOk(keyEnc,month) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const items=(mx[key]?.[month]?.items)||[];
+  items.forEach(p=>{
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
+    else{const orig=findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
+    paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
+    try{addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
+  });
+  save().then(()=>{closeDV();render();});
+}
+
+function undoCell(keyEnc,month) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const items=(mx[key]?.[month]?.items)||[];
+  items.forEach(p=>{
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
+    const pidx=paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    if(pidx>=0) paidItems.splice(pidx,1);
+  });
+  save().then(()=>{closeDV();render();});
+}
+
+function openKM(keyEnc,month) {
+  window.partialCtx = {keyEnc, month};
+  const key=decodeURIComponent(keyEnc),all=getAllItems(),mx=buildMx(all);
+  const c=mx[key]?.[month];
+  document.getElementById('KA').value='';
+  document.getElementById('KI').textContent=c?fmt(c.try)+' toplam':'';
+  closeDV();
+  ModalManager.open('KM');
+}
+
+function doPartial() {
+  const amt=parseFloat(document.getElementById('KA').value)||0;
+  if(!amt){alert('Tutar girin');return;}
+  const key=decodeURIComponent(window.partialCtx.keyEnc), month=window.partialCtx.month;
+  const all=getAllItems(),mx=buildMx(all);
+  const items=(mx[key]?.[month]?.items)||[];
+  items.forEach(p=>{
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
+    else{const orig=findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
+    const existing=paidItems.find(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
+    else{paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'partial', paid:amt, paidAt:new Date().toISOString()});}
+  });
+  save().then(()=>{closeMov('KM');render();});
+}
+
+function saveCellAmt(keyEnc,month) {
+  const v=parseFloat(document.getElementById('CEA').value)||0;
+  if(!v){alert('Geçerli tutar girin');return;}
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const items=(mx[key]?.[month]?.items)||[];
+  items.forEach(p=>{
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
+    else{const orig=findPayById(p.id);if(orig)orig.amount=v;}
+  });
+  save().then(()=>{render();openCell(keyEnc,month);});
+}
+
+function resetPartial(keyEnc,month) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const items=(mx[key]?.[month]?.items)||[];
+  items.forEach(p=>{
+    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
+    const pidx=paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    if(pidx>=0) paidItems.splice(pidx,1);
+  });
+  save().then(()=>{closeDV();render();});
+}
+
+function editByKey(keyEnc) {
+  const key=decodeURIComponent(keyEnc);
+  closeDV();
+  if(key.startsWith('cred_')){
+    const credId=key.replace('cred_','');
+    const c=findCredById(credId);
+    if(c) setTimeout(()=>editCred(c.id),50);
+    else alert('Düzenlenecek kayıt bulunamadı.');
+  } else if(key.startsWith('g_')){
+    const gid=key.replace('g_','');
+    const p=findPaysByGroup(gid)[0];
+    if(p) setTimeout(()=>editPay(p.id),50);
+    else alert('Düzenlenecek kayıt bulunamadı.');
+  } else {
+    const pid=key.replace('pay_','');
+    const p=pays.find(x=>String(Math.floor(Number(x.id)))===pid);
+    if(p) setTimeout(()=>editPay(p.id),50);
+    else alert('Düzenlenecek kayıt bulunamadı.');
+  }
+}
+
+function delByKey(keyEnc) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const dispName=mx[key]?._displayName||mx[key]?._name||key;
+  if(!confirm(dispName+' — tüm aylar silinecek. Emin misin?'))return;
+  if(key.startsWith('cred_')){
+    const credId=key.replace('cred_','');
+    const c=findCredById(credId);
+    if(c){c.pays.forEach(p=>hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));try{addLog('plan_del','Kredi silindi',c.name+' · '+c.pays.length+' taksit',0);}catch(e){}}
+    window.creds=window.creds.filter(x=>String(x.id)!==credId);
+  } else if(key.startsWith('g_')){
+    const gid=key.replace('g_','');
+    const toDelete=pays.filter(p=>p.groupId===gid);
+    toDelete.forEach(p=>hist.unshift({...p,delAt:new Date().toISOString()}));
+    try{addLog('plan_del','Kayıt silindi',dispName+' · '+toDelete.length+' ödeme',0);}catch(e){}
+    window.pays=window.pays.filter(p=>p.groupId!==gid);
+  } else {
+    const pid=key.replace('pay_','');
+    const toDelete=pays.filter(p=>String(Math.floor(Number(p.id)))===pid);
+    toDelete.forEach(p=>hist.unshift({...p,delAt:new Date().toISOString()}));
+    try{if(toDelete.length)addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0);}catch(e){}
+    window.pays=window.pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);
+  }
+  saveSecure(); closeDV(); render();
+}
+
+function delMonthEntry(idEnc) {
+  const id=decodeURIComponent(idEnc);
+  if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
+  const p=findPayById(id);
+  if(p){try{addLog('plan_del','Kayıt silindi',p.name+' · '+fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};hist.unshift({...p,delAt:new Date().toISOString()});window.pays=pays.filter(x=>String(x.id)!==id);}
+  saveSecure(); closeDV(); render();
+}
+
+function delCellItems(keyEnc,month) {
+  const key=decodeURIComponent(keyEnc);
+  if(!confirm('Bu aydaki kayıtlar silinecek. Emin misin?'))return;
+  const all=getAllItems(),mx=buildMx(all);
+  const items=(mx[key]?.[month]?.items)||[];
+  items.forEach(p=>{
+    if(p._cid) return;
+    hist.unshift({...p,delAt:new Date().toISOString()});
+    window.pays=window.pays.filter(x=>String(x.id)!==String(p.id));
+  });
+  saveSecure(); closeDV(); render();
+}
+
+
+// ── GLOBAL COMPAT ─────────────────────────────────────────────────────────────
+window.getAllItems         = getAllItems;
+window.buildMx            = buildMx;
+window.render             = render;
+window.openRow            = openRow;
+window.openCell           = openCell;
+window.closeDV            = closeDV;
+window.closeRDET          = closeRDET;
+window.openEmptyCell      = openEmptyCell;
+window.addToMonth         = addToMonth;
+window.markOk             = markOk;
+window.undoCell           = undoCell;
+window.openKM             = openKM;
+window.doPartial          = doPartial;
+window.saveCellAmt        = saveCellAmt;
+window.resetPartial       = resetPartial;
+window.editByKey          = editByKey;
+window.delByKey           = delByKey;
+window.delMonthEntry      = delMonthEntry;
+window.delCellItems       = delCellItems;

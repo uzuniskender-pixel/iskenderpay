@@ -492,7 +492,9 @@ select.fi{appearance:none}
     import './js/db.js';
     import './js/modal.js';
     import './js/app.js';
-    import './js/ui.js';
+    import './js/ui-plan.js';
+    import './js/ui-data.js';
+    import './js/ui-misc.js';
     import './js/data.js';
   </script>
 </head>
@@ -983,8 +985,8 @@ async function doLogin() {
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.30';
-var APP_BUILD   = '20260523-08';
+var APP_VERSION = 'v8.31';
+var APP_BUILD   = '20260523-09';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
