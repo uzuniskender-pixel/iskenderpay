@@ -8,6 +8,7 @@ const STATIC = [
   './icon-512.png',
   './manifest.json',
   './version.json',
+  './js/firebase.js',
   './js/state.js',
   './js/util.js',
   './js/compat.js',
