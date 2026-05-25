@@ -19,7 +19,7 @@ async function confirmBackup() {
     return;
   }
   window.closeMov('BPM');
-  const data = {pays, creds, hist, persons, notes, paidItems, at:new Date().toISOString(), v:'7.0'};
+  const data = {pays:window.pays||[], creds:window.creds||[], hist:window.hist||[], persons:window.persons||[], notes:window.notes||[], paidItems:window.paidItems||[], rehber:window.rehber||[], actLog:window.actLog||[], at:new Date().toISOString(), v:'7.0'};
   const enc = window.xEnc(JSON.stringify(data), entered);
   const payload = JSON.stringify({enc:true, data:enc, v:'7.0', hint:'odeme-takvimi-backup'});
   const blob = new Blob([payload], {type:'application/json;charset=utf-8'});
