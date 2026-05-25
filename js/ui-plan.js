@@ -107,7 +107,18 @@ function render() {
   const nameIdxMap={};
   rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=n+' '+nameIdxMap[n];}else{mx[k]._displayName=n;}});
   const allMonths=Array.from(monthSet).sort();
-  const months=allMonths.filter(m=>rowKeys.some(k=>{const c=mx[k]?.[m];return c&&c.status!=='paid';}));
+  const showPaid = localStorage.getItem('v8-show-paid') === '1';
+  const months = showPaid
+    ? allMonths
+    : allMonths.filter(m=>rowKeys.some(k=>{const c=mx[k]?.[m];return c&&c.status!=='paid';}));
+  // Toggle buton görünümü
+  const tb = document.getElementById('PAID_TOGGLE');
+  if (tb) {
+    tb.style.background = showPaid ? 'rgba(74,222,128,.15)' : 'var(--surf2)';
+    tb.style.color = showPaid ? 'var(--ok)' : 'var(--muted)';
+    tb.style.borderColor = showPaid ? 'rgba(74,222,128,.3)' : 'var(--bdr)';
+    tb.textContent = showPaid ? '✓ Ödendiler gizle' : '✓ Ödendiler';
+  }
   const mLbls=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'short',year:'2-digit'});});
   const colTot=months.map(m=>rowKeys.reduce((s,k)=>{const c=mx[k]&&mx[k][m];if(!c)return s;if(c.status==='paid')return s;if(c.status==='partial')return s+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s+c.try;},0));
   let html='<table class="mtbl"><thead><tr><th class="rh">Ödeme</th><th style="min-width:32px;max-width:36px;width:32px">Gün</th>';
@@ -560,3 +571,11 @@ window.editByKey          = editByKey;
 window.delByKey           = delByKey;
 window.delMonthEntry      = delMonthEntry;
 window.delCellItems       = delCellItems;
+
+// ── ÖDENDI AY TOGGLE ─────────────────────────────────────────────────────────
+function togglePaidMonths() {
+  const current = localStorage.getItem('v8-show-paid') === '1';
+  localStorage.setItem('v8-show-paid', current ? '0' : '1');
+  window.render();
+}
+window.togglePaidMonths = togglePaidMonths;

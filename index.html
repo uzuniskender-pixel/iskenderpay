@@ -437,6 +437,7 @@ select.fi{appearance:none}
               <option value="24">24 ay</option>
               <option value="36">36 ay</option>
             </select>
+            <button id="PAID_TOGGLE" class="add-btn" onclick="togglePaidMonths()" style="background:var(--surf2);border:1px solid var(--bdr);color:var(--muted)">✓ Ödendiler</button>
             <button class="add-btn" onclick="openPay()">+ Ödeme Ekle</button>
             <button class="add-btn" style="background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="exportExcel()">📥 Excel</button>
           </div>
@@ -704,8 +705,8 @@ var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.61';
-var APP_BUILD   = '20260524-19';
+var APP_VERSION = 'v8.62';
+var APP_BUILD   = '20260524-20';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
