@@ -23,7 +23,7 @@ async function startRealtimeSync() {
   window._fbStartListen(async encData => {
     if (!window._cryptoKey) return;
     try {
-      const d = await decryptData(encData, window._cryptoKey);
+      const d = await window.decryptData(encData, window._cryptoKey);
       window.pays      = d.pays      || [];
       window.creds     = d.creds     || [];
       window.hist      = d.hist      || [];

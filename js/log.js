@@ -27,7 +27,7 @@ function renderActLog() {
     el.innerHTML=window.actLog.map((e,i)=>{
       try {
         const cfg=(LOG_ICONS&&LOG_ICONS[e.type])||{icon:'📋',bg:'rgba(255,255,255,.07)'};
-        const time=e.at?fmtLogTime(e.at):'';
+        const time=e.at?window.fmtLogTime(e.at):'';
         const nav=(typeof e.navTab==='number'&&e.navTab>=0)?e.navTab:-1;
         const title=e.title?String(e.title):'(başlık yok)';
         const detail=e.detail?String(e.detail):'';
@@ -105,7 +105,7 @@ function doLogDel() {
   const before=window.actLog.length;
   window.actLog=window.actLog.filter(e=>{const t=new Date(e.at).getTime();return t<from||t>to;});
   const deleted=before-window.actLog.length;
-  saveSecure();renderActLog();closeLogDel();
+  window.saveSecure();renderActLog();closeLogDel();
   if(deleted>0)alert(deleted+' kayıt silindi.');else alert('Bu aralıkta kayıt bulunamadı.');
 }
 
@@ -113,12 +113,12 @@ function doLogDelSelected() {
   if(!_logSelected.size){alert('Önce silinecek kayıtları seçin.');return;}
   if(!confirm(_logSelected.size+' kayıt silinecek. Emin misin?'))return;
   window.actLog=window.actLog.filter((_,i)=>!_logSelected.has(i));
-  _logSelected.clear();saveSecure();renderActLog();closeLogDel();
+  _logSelected.clear();window.saveSecure();renderActLog();closeLogDel();
 }
 
 function doLogDelAll() {
   if(!confirm('Tüm log silinecek. Emin misin?'))return;
-  window.actLog=[];saveSecure();renderActLog();closeLogDel();
+  window.actLog=[];window.saveSecure();renderActLog();closeLogDel();
 }
 
 

@@ -11,7 +11,7 @@ function execGlobalSearch() {
     count++;
     const a = Number(p.amount||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ffd200">
-      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(p.name)}</div>
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(p.name)}</div>
       <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
         <span>📅 Plan Ödemesi (${p.date||''})</span><span class="mono" style="color:#ffd200">₺${a}</span>
       </div></div>`;
@@ -21,7 +21,7 @@ function execGlobalSearch() {
     count++;
     const a = Number(pi.amount||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #00ebc7">
-      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(pi.name)}</div>
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(pi.name)}</div>
       <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
         <span>✅ Gerçekleşen Ödeme (${pi.date||''})</span><span class="mono" style="color:#00ebc7">₺${a}</span>
       </div></div>`;
@@ -31,7 +31,7 @@ function execGlobalSearch() {
     count++;
     const total = (c.pays||[]).reduce((s,p)=>s+p.amount,0);
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ff5e62">
-      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(c.name)}</div>
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(c.name)}</div>
       <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
         <span>💳 ${(c.pays||[]).length} taksit</span><span class="mono" style="color:#ff5e62">₺${Number(total).toLocaleString('tr-TR',{maximumFractionDigits:0})}</span>
       </div></div>`;
@@ -40,8 +40,8 @@ function execGlobalSearch() {
     if (!((n.title||'').toLocaleLowerCase('tr').includes(query)||(n.content||n.text||'').toLocaleLowerCase('tr').includes(query))) return;
     count++;
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ff8e3c">
-      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(n.title||'Başlıksız Not')}</div>
-      <div style="font-size:.8rem;opacity:.6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${esc(n.content||n.text||'')}</div>
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(n.title||'Başlıksız Not')}</div>
+      <div style="font-size:.8rem;opacity:.6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${window.esc(n.content||n.text||'')}</div>
     </div>`;
   });
   (window.rehber||[]).forEach(r => {
@@ -50,7 +50,7 @@ function execGlobalSearch() {
     if (!(name.includes(query)||phone.includes(query)||(r.company||'').toLocaleLowerCase('tr').includes(query))) return;
     count++;
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #38ef7d">
-      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${esc(r.name||'')}</div>
+      <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(r.name||'')}</div>
       <div style="font-size:.8rem;opacity:.7;margin-top:4px;font-family:monospace">${phone?'📞 '+phone:''} ${r.company?'🏢 '+r.company:''}</div>
     </div>`;
   });
@@ -67,16 +67,16 @@ function renderAI() {
   const now  = new Date();
   const nowY = now.getFullYear(), nowM = now.getMonth();
   const buAy = window.pays.filter(p => {
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     return d.getFullYear()===nowY && d.getMonth()===nowM;
   });
-  const buAyTot  = buAy.reduce((s,p) => s+toTRY(p.amount,p.currency||'TRY'), 0);
-  const buAyOdendi = buAy.filter(p=>(p.status||'pending')==='paid').reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
-  const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&isOD(p)).reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
+  const buAyTot  = buAy.reduce((s,p) => s+window.toTRY(p.amount,p.currency||'TRY'), 0);
+  const buAyOdendi = buAy.filter(p=>(p.status||'pending')==='paid').reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+  const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&window.isOD(p)).reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
 
   // Genel toplam borç (tüm ödenmemiş)
   const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
-    .reduce((s,p)=>s+toTRY(p.amount,p.currency||'TRY'),0);
+    .reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
   const krediBekleyen = window.creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
     .reduce((a,p)=>a+p.amount,0),0);
 
@@ -85,14 +85,14 @@ function renderAI() {
   for(let i=2;i>=0;i--){
     const tM=new Date(nowY,nowM-i,1);
     const tY=tM.getFullYear(), tMo=tM.getMonth();
-    const mPays=window.paidItems.filter(p=>{const d=parseLocalDate(p.date);return d.getFullYear()===tY&&d.getMonth()===tMo;});
-    const mTot=mPays.reduce((s,p)=>s+(p.paid||toTRY(p.amount,p.currency||'TRY')),0);
+    const mPays=window.paidItems.filter(p=>{const d=window.parseLocalDate(p.date);return d.getFullYear()===tY&&d.getMonth()===tMo;});
+    const mTot=mPays.reduce((s,p)=>s+(p.paid||window.toTRY(p.amount,p.currency||'TRY')),0);
     trend.push({lbl:tM.toLocaleDateString('tr-TR',{month:'short'}), tot:mTot});
   }
   const trendMax = Math.max(...trend.map(t=>t.tot), 1);
   const trendBars = trend.map(t=>`
     <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
-      <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${fmt(t.tot)}</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${window.fmt(t.tot)}</div>
       <div style="width:100%;height:${Math.round((t.tot/trendMax)*48)+4}px;background:rgba(74,222,128,.35);border-radius:4px 4px 0 0;min-height:4px;transition:height .3s"></div>
       <div style="font-size:10px;color:var(--muted)">${t.lbl}</div>
     </div>`).join('');
@@ -106,13 +106,13 @@ function renderAI() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:var(--surf2);border-radius:10px;padding:10px 12px">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Bu ay toplam</div>
-        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${fmt(buAyTot)}</div>
-        <div style="font-size:10px;color:var(--ok);margin-top:2px">✓ ${fmt(buAyOdendi)} ödendi</div>
+        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${window.fmt(buAyTot)}</div>
+        <div style="font-size:10px;color:var(--ok);margin-top:2px">✓ ${window.fmt(buAyOdendi)} ödendi</div>
       </div>
       <div style="background:var(--surf2);border-radius:10px;padding:10px 12px">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Toplam bekleyen</div>
-        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${fmt(toplamBekleyen+krediBekleyen)}</div>
-        <div style="font-size:10px;color:var(--danger);margin-top:2px">${buAyGec>0?'⚡ '+fmt(buAyGec)+' gecikmiş':window.pays.length+' kayıt · '+window.creds.length+' kredi'}</div>
+        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace">${window.fmt(toplamBekleyen+krediBekleyen)}</div>
+        <div style="font-size:10px;color:var(--danger);margin-top:2px">${buAyGec>0?'⚡ '+window.fmt(buAyGec)+' gecikmiş':window.pays.length+' kayıt · '+window.creds.length+' kredi'}</div>
       </div>
     </div>
 

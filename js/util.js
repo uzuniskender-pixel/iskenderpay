@@ -17,7 +17,7 @@ export function fmt(n) {
 export function fmtA(a, c) {
   if (c === 'EUR')  return '€' + Number(a).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (c === 'GOLD') return Number(a).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'gr';
-  return fmt(a);
+  return window.fmt(a);
 }
 
 export function fmtAmt(a, c) {
@@ -47,11 +47,11 @@ export function toLocalISO(yr, mo, day) {
 }
 
 export function fmtD(s) {
-  return parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  return window.parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
 }
 
 export function fmtDS(s) {
-  return parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+  return window.parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function fmtLogTime(iso) {
@@ -72,7 +72,7 @@ export function fmtLogTime(iso) {
 export function dd(s) {
   const t = new Date();
   t.setHours(0, 0, 0, 0);
-  const date = parseLocalDate(s);
+  const date = window.parseLocalDate(s);
   return Math.round((date - t) / 864e5);
 }
 
@@ -84,7 +84,7 @@ export function todayMidnight() {
 
 // ── Ödeme durum yardımcıları ─────────────────────────────────────────────────
 export function isOD(p) {
-  return (p.status || 'pending') !== 'paid' && parseLocalDate(p.date) < todayMidnight();
+  return (p.status || 'pending') !== 'paid' && window.parseLocalDate(p.date) < window.todayMidnight();
 }
 
 export function sCls(s, over) {

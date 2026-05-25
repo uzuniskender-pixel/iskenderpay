@@ -9,22 +9,22 @@ function doBackup() {
 
 async function confirmBackup() {
   const entered = document.getElementById('BPP').value;
-  const pinSalt = await getSaltAsync('v5-pin-salt');
+  const pinSalt = await window.getSaltAsync('v5-pin-salt');
   let storedHash = null;
   if (window._fbLoadPinHash) { try { storedHash = await window._fbLoadPinHash(); } catch(e) {} }
-  const enteredHash = await hashPin(entered, pinSalt);
+  const enteredHash = await window.hashPin(entered, pinSalt);
   if (enteredHash !== storedHash) {
     document.getElementById('BPERR').textContent = 'Hatalı şifre!';
     document.getElementById('BPP').value = '';
     return;
   }
-  closeMov('BPM');
+  window.closeMov('BPM');
   const data = {pays, creds, hist, persons, notes, paidItems, at:new Date().toISOString(), v:'7.0'};
-  const enc = xEnc(JSON.stringify(data), entered);
+  const enc = window.xEnc(JSON.stringify(data), entered);
   const payload = JSON.stringify({enc:true, data:enc, v:'7.0', hint:'odeme-takvimi-backup'});
   const blob = new Blob([payload], {type:'application/json;charset=utf-8'});
   const url = URL.createObjectURL(blob);
-  const planName = getPlanName(window._planId).replace(/\s+/g, '-');
+  const planName = window.getPlanName(window._planId).replace(/\s+/g, '-');
   const a = document.createElement('a');
   a.href = url;
   a.download = 'yedek-'+planName+'-'+new Date().toISOString().split('T')[0]+'.json';
@@ -41,21 +41,21 @@ function doRestore() {
   window.pays=d.pays||[]; window.creds=d.creds||[]; window.hist=d.hist||[];
   window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
   window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
-  invalidateLookups();
-  save().then(() => { migrateCredDates(); closeMov('RM'); render(); });
+  window.invalidateLookups();
+  window.save().then(() => { window.migrateCredDates(); window.closeMov('RM'); window.render(); });
   alert('Veriler yüklendi!');
 }
 
 function exportExcel() {
-  const all = getAllItems();
-  const mx = buildMx(all);
+  const all = window.getAllItems();
+  const mx = window.buildMx(all);
   let rowKeys = Object.keys(mx).filter(k => mx[k]._name !== undefined);
   rowKeys.sort((a,b) => {
     const dayOf = k => {
       const mks = Object.keys(mx[k]).filter(x => !x.startsWith('_')).sort();
       if (!mks.length) return 99;
       const items = mx[k][mks[0]]?.items||[];
-      return items[0] ? parseLocalDate(items[0].date).getDate() : 99;
+      return items[0] ? window.parseLocalDate(items[0].date).getDate() : 99;
     };
     const da=dayOf(a), db=dayOf(b);
     if (da !== db) return da-db;
@@ -63,7 +63,7 @@ function exportExcel() {
   });
   const monthSet = new Set();
   all.forEach(p => {
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
   });
   const months = Array.from(monthSet).sort();
@@ -77,7 +77,7 @@ function exportExcel() {
   rowKeys.forEach(k => {
     const dispName = mx[k]._name || k;
     const _firstMk = Object.keys(mx[k]).filter(x => !x.startsWith('_')).sort()[0];
-    const _dayNum = _firstMk && mx[k][_firstMk]?.items?.[0]?.date ? parseLocalDate(mx[k][_firstMk].items[0].date).getDate() : '';
+    const _dayNum = _firstMk && mx[k][_firstMk]?.items?.[0]?.date ? window.parseLocalDate(mx[k][_firstMk].items[0].date).getDate() : '';
     const cells = months.map(m => {
       const c = mx[k]?.[m];
       if (!c) return '';

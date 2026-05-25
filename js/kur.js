@@ -22,7 +22,7 @@ async function fetchRates() {
     localStorage.setItem('v5-rates-'+window._planId, JSON.stringify(window.rates));
   }
   renderKur();
-  if (window.curTab === 0) render();
+  if (window.curTab === 0) window.render();
 }
 
 function renderKur() {
@@ -47,10 +47,10 @@ function renderKur() {
   if (h) {
     h += timeLabel + `<button class="kbtn" onclick="fetchRates()">🔄</button>`;
   } else {
-    h = `<span style="font-size:11px;color:var(--danger)">Kur alınamadı</span><button class="kbtn" onclick="go(5)" style="color:var(--acc);font-weight:600;font-size:11px;margin-left:6px">Manuel Gir →</button><button class="kbtn" onclick="fetchRates()">🔄</button>`;
+    h = `<span style="font-size:11px;color:var(--danger)">Kur alınamadı</span><button class="kbtn" onclick="window.go(5)" style="color:var(--acc);font-weight:600;font-size:11px;margin-left:6px">Manuel Gir →</button><button class="kbtn" onclick="fetchRates()">🔄</button>`;
   }
   h += `<span id="sync-dot" title="Canlı sync"></span>`;
-  h += `<span id="ver-tag" onclick="go(5)" title="Sürüm bilgisi" style="margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);cursor:pointer;flex-shrink:0;padding:2px 6px;border:1px solid var(--bdr);border-radius:4px">${window.APP_VERSION}</span>`;
+  h += `<span id="ver-tag" onclick="window.go(5)" title="Sürüm bilgisi" style="margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);cursor:pointer;flex-shrink:0;padding:2px 6px;border:1px solid var(--bdr);border-radius:4px">${window.APP_VERSION}</span>`;
   document.getElementById('KB').innerHTML = h;
   renderSiradaki();
 }
@@ -62,25 +62,25 @@ function saveRates() {
   if (e) window.rates.EUR=e; if (u) window.rates.USD=u; if (g) window.rates.GOLD=g;
   localStorage.setItem('v5-rates-'+window._planId, JSON.stringify(window.rates));
   renderKur();
-  if (window.curTab === 0) render();
+  if (window.curTab === 0) window.render();
   alert('Kurlar kaydedildi!');
 }
 
 function renderSiradaki() {
   const el = document.getElementById('SIRADAKI');
   if (!el || !window.pays) return;
-  const today = todayMidnight ? todayMidnight() : new Date();
+  const today = todayMidnight ? window.todayMidnight() : new Date();
   const bekleyenler = (window.pays||[])
-    .filter(p => (p.status||'pending') !== 'paid' && parseLocalDate(p.date) >= today)
-    .sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
+    .filter(p => (p.status||'pending') !== 'paid' && window.parseLocalDate(p.date) >= today)
+    .sort((a,b) => window.parseLocalDate(a.date) - window.parseLocalDate(b.date));
   if (!bekleyenler.length) { el.style.display = 'none'; return; }
   const p = bekleyenler[0];
-  const d = parseLocalDate(p.date);
+  const d = window.parseLocalDate(p.date);
   const kalan = Math.round((d - today) / 86400000);
   const kalanStr = kalan === 0 ? 'Bugün' : kalan === 1 ? 'Yarın' : kalan + ' gün';
-  const tryAmt = toTRY(p.amount, p.currency||'TRY');
+  const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
   el.style.display = '';
-  el.innerHTML = `<span style="opacity:.5;font-size:10px">Sıradaki:</span> <span style="font-size:11px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle">${esc(p.name)}</span> <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ok)">${fmt(tryAmt)}</span> <span style="font-size:10px;color:var(--muted)">${kalanStr}</span>`;
+  el.innerHTML = `<span style="opacity:.5;font-size:10px">Sıradaki:</span> <span style="font-size:11px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle">${window.esc(p.name)}</span> <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ok)">${window.fmt(tryAmt)}</span> <span style="font-size:10px;color:var(--muted)">${kalanStr}</span>`;
 }
 
 

@@ -60,7 +60,7 @@ onAuthStateChanged(_auth, (user) => {
     if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
     if (plsEl) plsEl.style.display = 'flex';
     if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-    renderPlanNames();
+    window.renderPlanNames();
   } else {
     _fbUid = null;
     window._fbUid = null;

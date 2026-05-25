@@ -13,8 +13,8 @@ function renderPersons() {
     const origIdx = (window.persons||[]).indexOf(p);
     return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0;flex:1">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
-        ${p.desc?`<div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.desc)}</div>`:''}
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.name)}</div>
+        ${p.desc?`<div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.desc)}</div>`:''}
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0">
         <button onclick="editPerson(${origIdx})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
@@ -68,13 +68,13 @@ function savePerson() {
     if (existing.includes(name)) { let i=2; while(existing.includes(name+' '+i)) i++; finalName=name+' '+i; }
     window.persons.push({name:finalName, desc});
   }
-  savePersons(); closeMov('PRM'); renderPersons();
+  window.savePersons(); window.closeMov('PRM'); renderPersons();
 }
 
 function delPerson(i) {
   if (!confirm('Bu kişiyi silmek istiyor musunuz?')) return;
   window.persons.splice(i, 1);
-  savePersons(); renderPersons();
+  window.savePersons(); renderPersons();
 }
 
 function renderHist() {
@@ -83,8 +83,8 @@ function renderHist() {
   if(!window.hist.length){hl.innerHTML='<div class="empty"><div class="ico">🗃️</div><p>Silinmiş ödeme yok</p></div>';return;}
   hl.innerHTML=window.hist.map((p,i)=>`
     <div class="hi">
-      <div class="hi-inf"><div class="hi-name">${esc(p.name)}</div><div class="hi-date">Silindi: ${new Date(p.delAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})} · ${fmtD(p.date)}</div></div>
-      <div class="hi-amt">${fmtA(p.amount,p.currency||'TRY')}</div>
+      <div class="hi-inf"><div class="hi-name">${window.esc(p.name)}</div><div class="hi-date">Silindi: ${new Date(p.delAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})} · ${window.fmtD(p.date)}</div></div>
+      <div class="hi-amt">${window.fmtA(p.amount,p.currency||'TRY')}</div>
       <button onclick="editHistItem(${i})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0">Düzenle</button>
       <button onclick="restoreFromHist(${i})" style="background:rgba(74,222,128,.15);color:var(--ok);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">↩ Geri Al</button>
       <button class="hi-del" onclick="delHist(${i})">Sil</button>
@@ -109,14 +109,14 @@ function saveHistItem() {
   if(newName) p.name=newName;
   if(!isNaN(newAmt)&&newAmt>0) p.amount=newAmt;
   if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) p.date=newDate;
-  saveSecure(); ModalManager.close('HIMOD'); renderHist();
+  window.saveSecure(); ModalManager.close('HIMOD'); renderHist();
 }
 
 function restoreFromHist(i) {
   const p=window.hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
   window.pays.push(restored);window.hist.splice(i,1);
-  save().then(()=>{renderHist();render();});
+  window.save().then(()=>{renderHist();window.render();});
 }
 
 function delHist(i) { window.hist.splice(i,1); save().then(()=>renderHist()); }

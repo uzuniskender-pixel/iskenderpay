@@ -10,13 +10,13 @@ function getAllItems() {
 function buildMx(all) {
   const mx = {};
   all.forEach(p => {
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     const mk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     const rawKey = p._cid ? 'cred_'+p._cid : (p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id))));
     if (!mx[rawKey]) mx[rawKey] = {_name:p.name};
     if (!mx[rawKey][mk]) mx[rawKey][mk] = {items:[], status:'pending', try:0};
     mx[rawKey][mk].items.push(p);
-    mx[rawKey][mk].try += toTRY(p.amount, p.currency||'TRY');
+    mx[rawKey][mk].try += window.toTRY(p.amount, p.currency||'TRY');
   });
   // Durum hesabı düzeltme (item bazlı)
   Object.keys(mx).forEach(rk => {
@@ -25,7 +25,7 @@ function buildMx(all) {
       const items = cell.items;
       if (items.every(p => (p.status||'pending')==='paid')) cell.status='paid';
       else if (items.some(p => (p.status||'pending')==='partial')) cell.status='partial';
-      else if (items.some(p => (p.status||'pending')!=='paid' && isOD(p))) cell.status='overdue';
+      else if (items.some(p => (p.status||'pending')!=='paid' && window.isOD(p))) cell.status='overdue';
       else cell.status='pending';
     });
   });
@@ -33,19 +33,19 @@ function buildMx(all) {
 }
 
 function render() {
-  invalidateLookups();
+  window.invalidateLookups();
   const all = getAllItems();
   const now = new Date();
   const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const buAy = all.filter(p => {
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
   });
   let tot=0, ok=0, bek=0, gec=0, okN=0, bekN=0, gecN=0;
   buAy.forEach(p => {
-    const t = toTRY(p.amount, p.currency||'TRY'); tot+=t;
+    const t = window.toTRY(p.amount, p.currency||'TRY'); tot+=t;
     const s = p.status||'pending';
-    if(s==='paid'){ok+=t;okN++;}else if(isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
+    if(s==='paid'){ok+=t;okN++;}else if(window.isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
   });
   // Sayfa başlığında geciken ödeme sayısı
   document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
@@ -59,20 +59,20 @@ function render() {
   }
 
   // 7 gün içi yaklaşan ödemeleri hesapla
-  const today0 = todayMidnight();
+  const today0 = window.todayMidnight();
   const soon7 = new Date(today0.getTime() + 7*24*60*60*1000);
   const yaklaşanN = all.filter(p => {
     if((p.status||'pending')==='paid') return false;
     if(p._cid) return false;
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     return d >= today0 && d <= soon7;
   }).length;
 
   document.getElementById('OC').innerHTML=`
-    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
-    <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
-    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
-    <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
+    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
+    <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${window.fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
+    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${window.fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
+    <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${window.fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
   const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
   const pctColor = pct>=100?'var(--ok)':pct>=60?'var(--blue)':pct>=30?'var(--ora)':'var(--danger)';
   document.getElementById('OHS').innerHTML = `<div style="display:flex;align-items:center;gap:8px">
@@ -87,7 +87,7 @@ function render() {
   const monthSet = new Set();
   const nowY=now.getFullYear(), nowM=now.getMonth();
   for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
-  all.forEach(p=>{const d=parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const pY=d.getFullYear(),pM=d.getMonth();if(pY<nowY||(pY===nowY&&pM<nowM))monthSet.add(mk);});
+  all.forEach(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const pY=d.getFullYear(),pM=d.getMonth();if(pY<nowY||(pY===nowY&&pM<nowM))monthSet.add(mk);});
   const fltEl = document.getElementById('FLT');
   const fltVal = fltEl ? fltEl.value.trim().toLocaleLowerCase('tr') : '';
   let rowKeys = Object.keys(mx).filter(k=>mx[k]._name!==undefined);
@@ -95,7 +95,7 @@ function render() {
     rowKeys.sort((a,b)=>(mx[a]._name||'').localeCompare(mx[b]._name||'','tr'));
   } else {
     rowKeys.sort((a,b)=>{
-      const dayOf=k=>{const mks=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort();if(!mks.length)return 99;const items=mx[k][mks[0]]?.items||[];return items[0]?parseLocalDate(items[0].date).getDate():99;};
+      const dayOf=k=>{const mks=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort();if(!mks.length)return 99;const items=mx[k][mks[0]]?.items||[];return items[0]?window.parseLocalDate(items[0].date).getDate():99;};
       const da=dayOf(a),db=dayOf(b);
       if(da!==db)return da-db;
       return (mx[a]._name||'').localeCompare(mx[b]._name||'','tr');
@@ -116,28 +116,28 @@ function render() {
   rowKeys.forEach(k=>{
     const dispName=mx[k]._displayName||mx[k]._name||k;
     const _firstMk=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort()[0];
-    const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
-    html+=`<tr><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${esc(dispName)}">${esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
+    const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?window.parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
+    html+=`<tr><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}">${window.esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
     months.forEach(m=>{
       const c=mx[k]?.[m];
       if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
-      const isSoon=c.status!=='paid'&&c.items.some(p=>{const d=parseLocalDate(p.date);return d>=today0&&d<=soon7;});
+      const isSoon=c.status!=='paid'&&c.items.some(p=>{const d=window.parseLocalDate(p.date);return d>=today0&&d<=soon7;});
       const cls=c.status==='paid'?'cp':c.status==='partial'?'ck':c.status==='overdue'?'cg':isSoon?'cy':'cb';
       const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
       const totalPaid=c.items.reduce((a,p)=>a+(p.paid||0),0);
       const kalan=c.try-totalPaid;
       let cellContent;
       if(c.status==='paid'){cellContent=`<span style="font-size:14px">✓</span>`;}
-      else if(c.status==='partial'){const ob2=orig?`<span class="orig-small">${fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${fmt(kalan)}${ob2}`;}
-      else{const ob2=orig?`<span class="orig-small">${fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${fmt(c.try)}${ob2}`;}
+      else if(c.status==='partial'){const ob2=orig?`<span class="orig-small">${window.fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${window.fmt(kalan)}${ob2}`;}
+      else{const ob2=orig?`<span class="orig-small">${window.fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${window.fmt(c.try)}${ob2}`;}
       html+=`<td class="${cls}" onclick="openCell('${encodeURIComponent(k)}','${m}')">${cellContent}</td>`;
     });
     const rKalan=months.reduce((acc,m)=>{const c=mx[k]?.[m];if(!c)return acc;if(c.status==='paid')return acc;if(c.status==='partial')return acc+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return acc+c.try;},0);
-    html+=`<td style="font-weight:600;color:${rKalan===0?'var(--ok)':'var(--txt)'}">${rKalan===0?'✓':fmt(rKalan)}</td></tr>`;
+    html+=`<td style="font-weight:600;color:${rKalan===0?'var(--ok)':'var(--txt)'}">${rKalan===0?'✓':window.fmt(rKalan)}</td></tr>`;
   });
   html+=`<tr class="tot"><td class="rh">TOPLAM</td><td></td>`;
-  colTot.forEach(t=>html+=`<td>${fmt(t)}</td>`);
-  html+=`<td>${fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
+  colTot.forEach(t=>html+=`<td>${window.fmt(t)}</td>`);
+  html+=`<td>${window.fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
   document.getElementById('MAT').innerHTML = rowKeys.length ? html : '<div class="empty"><div class="ico">📋</div><p>Henüz ödeme yok.<br>+ butonuyla ekleyin.</p></div>';
 
   // Mevcut aya scroll
@@ -160,37 +160,37 @@ function render() {
 function renderGecWidget(all) {
   const el = document.getElementById('HAFTA');
   if (!el) return null; // HAFTA elementini paylaşıyoruz, gecikmiş önce render edilecek
-  const today = todayMidnight();
+  const today = window.todayMidnight();
   const gecikmiş = all.filter(p => {
     if ((p.status||'pending') === 'paid') return false;
     if (p._cid) return false;
-    return parseLocalDate(p.date) < today;
-  }).sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
+    return window.parseLocalDate(p.date) < today;
+  }).sort((a,b) => window.parseLocalDate(a.date) - window.parseLocalDate(b.date));
   return gecikmiş;
 }
 
 function renderHaftaWidget(all, now, soon7) {
   const el = document.getElementById('HAFTA');
   if (!el) return;
-  const today = todayMidnight();
+  const today = window.todayMidnight();
   const soon7mid = new Date(today.getTime() + 7*24*60*60*1000);
   const yaklaşan = all.filter(p => {
     if ((p.status||'pending') === 'paid') return false;
     if (p._cid) return false; // kredi taksitlerini ayrı gösterme (matriste zaten var)
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     return d >= today && d <= soon7mid;
-  }).sort((a,b) => parseLocalDate(a.date) - parseLocalDate(b.date));
+  }).sort((a,b) => window.parseLocalDate(a.date) - window.parseLocalDate(b.date));
 
   if (!yaklaşan.length) { el.innerHTML = ''; return; }
 
   const rows = yaklaşan.map(p => {
-    const d = parseLocalDate(p.date);
+    const d = window.parseLocalDate(p.date);
     const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
     const kalan = Math.round((d - today) / 86400000);
     const kalanStr = kalan === 0 ? '<span style="color:var(--danger);font-weight:700">Bugün!</span>'
       : kalan === 1 ? '<span style="color:var(--ora)">Yarın</span>'
       : `<span style="color:#fcd34d">${kalan} gün</span>`;
-    const tryAmt = toTRY(p.amount, p.currency||'TRY');
+    const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
     const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
     const keyEnc = encodeURIComponent(rawKey);
     const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
@@ -200,10 +200,10 @@ function renderHaftaWidget(all, now, soon7) {
         <div style="font-size:9px;color:var(--muted)">${ay}</div>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.name)}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace">${fmt(tryAmt)}</div>
+        <div style="font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace">${window.fmt(tryAmt)}</div>
         <div style="font-size:10px">${kalanStr}</div>
       </div>
     </div>`;
@@ -213,10 +213,10 @@ function renderHaftaWidget(all, now, soon7) {
   let gecHTML = '';
   if (gecList && gecList.length) {
     const gecRows = gecList.slice(0,5).map(p => {
-      const d = parseLocalDate(p.date);
+      const d = window.parseLocalDate(p.date);
       const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
-      const gecGun = Math.round((todayMidnight() - d) / 86400000);
-      const tryAmt = toTRY(p.amount, p.currency||'TRY');
+      const gecGun = Math.round((window.todayMidnight() - d) / 86400000);
+      const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
       const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
       const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
       return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(248,113,113,.08);border-radius:8px;margin-bottom:5px;cursor:pointer" onclick="openCell('${encodeURIComponent(rawKey)}','${mKey}')">
@@ -225,10 +225,10 @@ function renderHaftaWidget(all, now, soon7) {
           <div style="font-size:9px;color:var(--muted)">${ay}</div>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.name)}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#fca5a5">${fmt(tryAmt)}</div>
+          <div style="font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#fca5a5">${window.fmt(tryAmt)}</div>
           <div style="font-size:10px;color:var(--danger)">${gecGun} gün gecikti</div>
         </div>
       </div>`;
@@ -253,14 +253,14 @@ function openRow(keyEnc) {
   let h=`<div class="dtitle">${dispName}</div><div class="dsub">Tüm aylar — tıkla işaretlemek için</div>`;
   months.forEach(m=>{
     const c=mx[key][m];if(!c||!c.items)return;
-    const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>isOD(x));
+    const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>window.isOD(x));
     const[y,mo]=m.split('-');
     const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
     h+=`<div class="drow">
       <span class="dk">${lbl}</span>
       <span style="display:flex;align-items:center;gap:8px">
-        <span class="${sCls(s,over)}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600">${fmt(c.try)}</span>
-        <span class="${sCls(s,over)}" style="font-size:11px">${sLbl(s,over)}</span>
+        <span class="${window.sCls(s,over)}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600">${window.fmt(c.try)}</span>
+        <span class="${window.sCls(s,over)}" style="font-size:11px">${window.sLbl(s,over)}</span>
         ${s!=='paid'?`<button class="dact da-ok" style="padding:3px 8px;font-size:11px;flex:none" onclick="markOk('${encodeURIComponent(key)}','${m}')">✓</button>`:''}
         ${s==='partial'?`<button class="dact da-part" style="padding:3px 8px;font-size:11px;flex:none" onclick="resetPartial('${encodeURIComponent(key)}','${m}')">↺</button>`:''}
         ${s!=='paid'?`<button class="dact da-part" style="padding:3px 8px;font-size:11px;flex:none" onclick="openKM('${encodeURIComponent(key)}','${m}')">½</button>`:''}
@@ -283,26 +283,26 @@ function openCell(keyEnc,month) {
   const name=mx[key]?._name||key;
   const[y,mo]=month.split('-');
   const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
-  const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>isOD(x));
+  const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>window.isOD(x));
   const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
   let h=`<div class="dtitle">${name}</div><div class="dsub">${lbl}</div>`;
-  h+=`<div class="drow"><span class="dk">Tutar</span><span class="dv">${fmt(c.try)}${orig?` <span style="font-size:11px;opacity:.65">${fmtA(orig.amount,orig.currency)}</span>`:''}</span></div>`;
-  h+=`<div class="drow"><span class="dk">Durum</span><span class="${sCls(s,over)}" style="font-weight:600">${sLbl(s,over)}</span></div>`;
-  if(s==='partial') h+=`<div class="drow"><span class="dk">Ödenen</span><span class="dv" style="color:var(--ora)">${fmt(c.items.reduce((a,p)=>a+(p.paid||0),0))}</span></div>`;
-  c.items.forEach(p=>{if(p.date)h+=`<div class="drow"><span class="dk">Tarih</span><span class="dv" style="font-family:'Inter',sans-serif">${fmtD(p.date)}</span></div>`;});
+  h+=`<div class="drow"><span class="dk">Tutar</span><span class="dv">${window.fmt(c.try)}${orig?` <span style="font-size:11px;opacity:.65">${window.fmtA(orig.amount,orig.currency)}</span>`:''}</span></div>`;
+  h+=`<div class="drow"><span class="dk">Durum</span><span class="${window.sCls(s,over)}" style="font-weight:600">${window.sLbl(s,over)}</span></div>`;
+  if(s==='partial') h+=`<div class="drow"><span class="dk">Ödenen</span><span class="dv" style="color:var(--ora)">${window.fmt(c.items.reduce((a,p)=>a+(p.paid||0),0))}</span></div>`;
+  c.items.forEach(p=>{if(p.date)h+=`<div class="drow"><span class="dk">Tarih</span><span class="dv" style="font-family:'Inter',sans-serif">${window.fmtD(p.date)}</span></div>`;});
   h+=`<div class="dedit">
     <div class="dedit-lbl">Bu Ayın Tutarını Düzenle${orig?' ('+orig.currency+')':' (₺)'}</div>
     <div class="dedit-row">
       <input class="fi mono-inp" id="CEA" type="number" value="${orig?orig.amount:Math.round(c.try)}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
       <button onclick="saveCellAmt('${encodeURIComponent(key)}','${month}')" class="btn bs" style="flex:none;padding:10px 13px;font-size:12px">Kaydet</button>
     </div>
-    ${orig&&window.rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?fmt(window.rates.EUR):fmt(window.rates.GOLD)}</div>`:''}
+    ${orig&&window.rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?window.fmt(window.rates.EUR):window.fmt(window.rates.GOLD)}</div>`:''}
   </div>`;
   const cellKey=encodeURIComponent(key),cellMo=month;
   const isSingleItem=c.items.length===1&&!c.items[0]._cid;
   const delBtn=isSingleItem?`<button class="dact da-del" onclick="delMonthEntry('${encodeURIComponent(String(c.items[0].id))}')">Bu Ayı Sil</button>`:`<button class="dact da-del" onclick="delCellItems('${cellKey}','${cellMo}')">Bu Ayı Sil</button>`;
   const editItem=c.items.find(x=>!x._cid);
-  const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>editPay('${editItem.id}'),50)">Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
+  const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>window.editPay('${editItem.id}'),50)">Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
   // Geçmiş ödemeler
   const cellPaidHistory = (window.paidItems||[]).filter(pi =>
     c.items.some(x => String(x.id) === String(pi.id) || (x.name === pi.name && pi.date && pi.date.startsWith(month.slice(0,7))))
@@ -312,8 +312,8 @@ function openCell(keyEnc,month) {
       <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Yapılan Ödemeler</div>`;
     cellPaidHistory.forEach(pi => {
       h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted)">
-        <span>${fmtD(pi.date||'')}</span>
-        <span style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-weight:600">${fmt(pi.paid||0)}</span>
+        <span>${window.fmtD(pi.date||'')}</span>
+        <span style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-weight:600">${window.fmt(pi.paid||0)}</span>
       </div>`;
     });
     h += `</div>`;
@@ -349,7 +349,7 @@ function openEmptyCell(keyEnc,month) {
     :all.filter(p=>p.name===name&&!p._cid).sort((a,b)=>b.date.localeCompare(a.date))[0];
   const refAmt=refItem?refItem.amount:'';
   const refCur=refItem?refItem.currency||'TRY':'TRY';
-  const refDay=refItem?parseLocalDate(refItem.date).getDate():1;
+  const refDay=refItem?window.parseLocalDate(refItem.date).getDate():1;
   const lastDay=new Date(+y,+mo,0).getDate();
   const day=Math.min(refDay,lastDay);
   const dateStr=`${y}-${String(mo).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -385,10 +385,10 @@ function addToMonth(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const name=mx[key]?._name||key.replace(/^(g_|pay_)/,'');
   const groupId=key.startsWith('g_')?key.replace('g_',''):null;
-  const refItem=groupId?findPaysByGroup(groupId)[0]:window.pays.find(p=>p.name===name);
+  const refItem=groupId?window.findPaysByGroup(groupId)[0]:window.pays.find(p=>p.name===name);
   window.pays.push({id:Date.now()+Math.random(), groupId:groupId||String(Date.now()), name, amount:amt, currency:cur, date, category:refItem?refItem.category||'Diğer':'Diğer', status:'pending', paid:0});
-  addLog('plan_add', 'Kayıt eklendi', name+' · '+fmtAmt(amt,cur), 0);
-  saveSecure(); closeDV(); render();
+  window.addLog('plan_add', 'Kayıt eklendi', name+' · '+window.fmtAmt(amt,cur), 0);
+  window.saveSecure(); closeDV(); render();
 }
 
 function markOk(keyEnc,month) {
@@ -396,12 +396,12 @@ function markOk(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
-    else{const orig=findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY');}}
-    window.paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
-    try{addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
+    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
+    else{const orig=window.findPayById(p.id);if(orig){orig.status='paid';orig.paid=window.toTRY(orig.amount,orig.currency||'TRY');}}
+    window.paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:window.toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
+    try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
   });
-  save().then(()=>{closeDV();render();});
+  window.save().then(()=>{closeDV();render();});
 }
 
 function undoCell(keyEnc,month) {
@@ -409,12 +409,12 @@ function undoCell(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
-    else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
+    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    else{const orig=window.findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.paidItems.splice(pidx,1);
   });
-  save().then(()=>{closeDV();render();});
+  window.save().then(()=>{closeDV();render();});
 }
 
 function openKM(keyEnc,month) {
@@ -422,7 +422,7 @@ function openKM(keyEnc,month) {
   const key=decodeURIComponent(keyEnc),all=getAllItems(),mx=buildMx(all);
   const c=mx[key]?.[month];
   document.getElementById('KA').value='';
-  document.getElementById('KI').textContent=c?fmt(c.try)+' toplam':'';
+  document.getElementById('KI').textContent=c?window.fmt(c.try)+' toplam':'';
   closeDV();
   ModalManager.open('KM');
 }
@@ -434,13 +434,13 @@ function doPartial() {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
-    else{const orig=findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
+    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
+    else{const orig=window.findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=window.toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
     const existing=window.paidItems.find(x=>String(x.id)===String(p.id)&&x.date===p.date);
-    if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
+    if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=window.toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
     else{window.paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'partial', paid:amt, paidAt:new Date().toISOString()});}
   });
-  save().then(()=>{closeMov('KM');render();});
+  window.save().then(()=>{window.closeMov('KM');render();});
 }
 
 function saveCellAmt(keyEnc,month) {
@@ -450,10 +450,10 @@ function saveCellAmt(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
-    else{const orig=findPayById(p.id);if(orig)orig.amount=v;}
+    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
+    else{const orig=window.findPayById(p.id);if(orig)orig.amount=v;}
   });
-  save().then(()=>{render();openCell(keyEnc,month);});
+  window.save().then(()=>{render();openCell(keyEnc,month);});
 }
 
 function resetPartial(keyEnc,month) {
@@ -461,12 +461,12 @@ function resetPartial(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
-    else{const orig=findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
+    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
+    else{const orig=window.findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.paidItems.splice(pidx,1);
   });
-  save().then(()=>{closeDV();render();});
+  window.save().then(()=>{closeDV();render();});
 }
 
 function editByKey(keyEnc) {
@@ -474,18 +474,18 @@ function editByKey(keyEnc) {
   closeDV();
   if(key.startsWith('cred_')){
     const credId=key.replace('cred_','');
-    const c=findCredById(credId);
-    if(c) setTimeout(()=>editCred(c.id),50);
+    const c=window.findCredById(credId);
+    if(c) setTimeout(()=>window.editCred(c.id),50);
     else alert('Düzenlenecek kayıt bulunamadı.');
   } else if(key.startsWith('g_')){
     const gid=key.replace('g_','');
-    const p=findPaysByGroup(gid)[0];
-    if(p) setTimeout(()=>editPay(p.id),50);
+    const p=window.findPaysByGroup(gid)[0];
+    if(p) setTimeout(()=>window.editPay(p.id),50);
     else alert('Düzenlenecek kayıt bulunamadı.');
   } else {
     const pid=key.replace('pay_','');
     const p=window.pays.find(x=>String(Math.floor(Number(x.id)))===pid);
-    if(p) setTimeout(()=>editPay(p.id),50);
+    if(p) setTimeout(()=>window.editPay(p.id),50);
     else alert('Düzenlenecek kayıt bulunamadı.');
   }
 }
@@ -497,31 +497,31 @@ function delByKey(keyEnc) {
   if(!confirm(dispName+' — tüm aylar silinecek. Emin misin?'))return;
   if(key.startsWith('cred_')){
     const credId=key.replace('cred_','');
-    const c=findCredById(credId);
-    if(c){c.pays.forEach(p=>window.hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));try{addLog('plan_del','Kredi silindi',c.name+' · '+c.pays.length+' taksit',0);}catch(e){}}
+    const c=window.findCredById(credId);
+    if(c){c.pays.forEach(p=>window.hist.unshift({...p,name:c.name,currency:'TRY',delAt:new Date().toISOString()}));try{window.addLog('plan_del','Kredi silindi',c.name+' · '+c.pays.length+' taksit',0);}catch(e){}}
     window.creds=window.creds.filter(x=>String(x.id)!==credId);
   } else if(key.startsWith('g_')){
     const gid=key.replace('g_','');
     const toDelete=window.pays.filter(p=>p.groupId===gid);
     toDelete.forEach(p=>window.hist.unshift({...p,delAt:new Date().toISOString()}));
-    try{addLog('plan_del','Kayıt silindi',dispName+' · '+toDelete.length+' ödeme',0);}catch(e){}
+    try{window.addLog('plan_del','Kayıt silindi',dispName+' · '+toDelete.length+' ödeme',0);}catch(e){}
     window.pays=window.pays.filter(p=>p.groupId!==gid);
   } else {
     const pid=key.replace('pay_','');
     const toDelete=window.pays.filter(p=>String(Math.floor(Number(p.id)))===pid);
     toDelete.forEach(p=>window.hist.unshift({...p,delAt:new Date().toISOString()}));
-    try{if(toDelete.length)addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0);}catch(e){}
+    try{if(toDelete.length)window.addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+window.fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0);}catch(e){}
     window.pays=window.pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);
   }
-  saveSecure(); closeDV(); render();
+  window.saveSecure(); closeDV(); render();
 }
 
 function delMonthEntry(idEnc) {
   const id=decodeURIComponent(idEnc);
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
-  const p=findPayById(id);
-  if(p){try{addLog('plan_del','Kayıt silindi',p.name+' · '+fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};window.hist.unshift({...p,delAt:new Date().toISOString()});window.pays=window.pays.filter(x=>String(x.id)!==id);}
-  saveSecure(); closeDV(); render();
+  const p=window.findPayById(id);
+  if(p){try{window.addLog('plan_del','Kayıt silindi',p.name+' · '+window.fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};window.hist.unshift({...p,delAt:new Date().toISOString()});window.pays=window.pays.filter(x=>String(x.id)!==id);}
+  window.saveSecure(); closeDV(); render();
 }
 
 function delCellItems(keyEnc,month) {
@@ -534,7 +534,7 @@ function delCellItems(keyEnc,month) {
     window.hist.unshift({...p,delAt:new Date().toISOString()});
     window.pays=window.pays.filter(x=>String(x.id)!==String(p.id));
   });
-  saveSecure(); closeDV(); render();
+  window.saveSecure(); closeDV(); render();
 }
 
 

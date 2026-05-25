@@ -14,12 +14,12 @@ function enterApp() {
   rhbNormalizeCompanies();
   if (!window._migrationRunning) {
     window._migrationRunning = true;
-    migrateToV7().then(() => migrateToV7b())
+    window.migrateToV7().then(() => window.migrateToV7b())
       .catch(e => console.warn('Migrasyon hatası:', e))
       .finally(() => { window._migrationRunning = false; });
   }
   initApp();
-  startRealtimeSync();
+  window.startRealtimeSync();
 }
 
 function rhbNormalizeCompanies() {
@@ -45,14 +45,14 @@ function go(n) {
     const m = document.getElementById('m'+i); if (m) m.classList.toggle('on', i===n);
     const s = document.getElementById('s'+i); if (s) s.classList.toggle('on', i===n);
   });
-  if (n===0) render();
-  if (n===1) renderPaid();
-  if (n===2) renderPersons();
-  if (n===3) renderNotes();
-  if (n===4) renderHist();
-  if (n===5) renderAI();
-  if (n===6) renderRhb();
-  if (n===7) renderActLog();
+  if (n===0) window.render();
+  if (n===1) window.renderPaid();
+  if (n===2) window.renderPersons();
+  if (n===3) window.renderNotes();
+  if (n===4) window.renderHist();
+  if (n===5) window.renderAI();
+  if (n===6) window.renderRhb();
+  if (n===7) window.renderActLog();
 }
 
 function chSort(v) { window.sortMode = v; render(); }
@@ -73,7 +73,7 @@ async function migrateCredDates() {
       const totalMo = startMo + i;
       const yr = startYr + Math.floor(totalMo/12), mo = totalMo%12;
       const lastDay = new Date(yr, mo+1, 0).getDate();
-      const correct = toLocalISO(yr, mo, Math.min(startDay, lastDay));
+      const correct = window.toLocalISO(yr, mo, Math.min(startDay, lastDay));
       if (p.date !== correct) p.date = correct;
     });
   });
@@ -109,7 +109,7 @@ function addLog(type, title, detail, navTab) {
     };
     (window.actLog || []).unshift(entry);
     clearTimeout(window._logSaveTimer);
-    window._logSaveTimer = setTimeout(() => { try { saveSecure(); } catch(e) {} }, 800);
+    window._logSaveTimer = setTimeout(() => { try { window.saveSecure(); } catch(e) {} }, 800);
   } catch(e) { console.warn('addLog hata:', e); }
 }
 
@@ -119,12 +119,12 @@ function initApp() {
   document.getElementById('AH').value = ah;
   const sortEl = document.getElementById('SORT');
   if (sortEl) sortEl.value = window.sortMode;
-  const planName = getPlanName(window._planId);
+  const planName = window.getPlanName(window._planId);
   const planBtn = document.getElementById('PLANBTN');
   if (planBtn) planBtn.textContent = '🔄 ' + planName + ' › Değiştir';
   migrateCredDates();
   go(0);
-  fetchRates();
+  window.fetchRates();
 }
 
 // ── GÜNCELLEME ───────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ function readRF(inp) {
       const pin = window._plainPin;
       let data;
       if (raw.enc && raw.data) {
-        const dec = xDec(raw.data, pin);
+        const dec = window.xDec(raw.data, pin);
         if (!dec) { st.style.color='var(--danger)'; st.textContent='Şifre eşleşmiyor.'; return; }
         data = JSON.parse(dec);
       } else { st.style.color='var(--danger)'; st.textContent='Geçersiz dosya'; return; }
@@ -189,7 +189,7 @@ window.readRF            = readRF;
 // ── VİSİBİLİTY SYNC POLL ─────────────────────────────────────────────────────
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    if (window.setSyncDot) setSyncDot('connecting');
+    if (window.setSyncDot) window.setSyncDot('connecting');
     setTimeout(() => { if (window._fbPoll) window._fbPoll(); }, 500);
   }
 });

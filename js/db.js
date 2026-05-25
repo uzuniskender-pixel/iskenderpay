@@ -177,7 +177,7 @@ window.doGoogleSignOut = async function() {
 async function saveSecure() {
   if (window._suppressSave) return;
   if (!window._cryptoKey) return;
-  if (typeof invalidateLookups === 'function') invalidateLookups();
+  if (typeof invalidateLookups === 'function') window.invalidateLookups();
   if (window._saveTimer) clearTimeout(window._saveTimer);
   window._saveTimer = null;
   await _doSave();
@@ -191,7 +191,7 @@ async function _doSave() {
     persons: window.persons, notes: window.notes, paidItems: window.paidItems,
     rehber: window.rehber, actLog: window.actLog
   };
-  const enc = await encryptData(data, window._cryptoKey);
+  const enc = await window.encryptData(data, window._cryptoKey);
   if (window._fbSave) {
     try { await window._fbSave(enc); window._lastUpdated = Date.now(); } catch(e) { console.warn('Firebase kayıt hatası:', e); }
   }
@@ -202,7 +202,7 @@ async function _doSave() {
 async function saveSecureNow() {
   if (window._saveTimer) clearTimeout(window._saveTimer);
   window._suppressSave = false;
-  if (typeof invalidateLookups === 'function') invalidateLookups();
+  if (typeof invalidateLookups === 'function') window.invalidateLookups();
   await _doSave();
 }
 
@@ -214,7 +214,7 @@ async function loadSecure() {
   if (!enc) enc = localStorage.getItem('v5-data-' + window._planId) || localStorage.getItem('v5-data');
   if (!enc) return;
   try {
-    const data = await decryptData(enc, window._cryptoKey);
+    const data = await window.decryptData(enc, window._cryptoKey);
     window.pays      = data.pays      || [];
     window.creds     = data.creds     || [];
     window.hist      = data.hist      || [];
@@ -301,7 +301,7 @@ async function doLogin() {
     try { await loadSecure(); window.enterApp && window.enterApp(); return; } catch(e) {}
   }
 
-  const pinSalt = await getSaltAsync('v5-pin-salt');
+  const pinSalt = await window.getSaltAsync('v5-pin-salt');
 
   let storedHash = null;
   if (window._fbLoadPinHash) {
@@ -310,21 +310,21 @@ async function doLogin() {
 
   if (!storedHash) {
     if (val.length < 4) { window.showPinErr && window.showPinErr('En az 4 karakter girmelisiniz!'); return; }
-    const hash = await hashPin(val, pinSalt);
+    const hash = await window.hashPin(val, pinSalt);
     if (window._fbSavePinHash) { try { await window._fbSavePinHash(hash); } catch(e) {} }
     const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
-    const wrappedB64 = await wrapDataKey(dataKeyRaw, val, pinSalt);
-    _saveWrappedKeyLocal(wrappedB64);
-    await _saveWrappedKeyFirebase(wrappedB64);
+    const wrappedB64 = await window.wrapDataKey(dataKeyRaw, val, pinSalt);
+    window._saveWrappedKeyLocal(wrappedB64);
+    await window._saveWrappedKeyFirebase(wrappedB64);
     window._dataKeyRaw = dataKeyRaw;
     window._plainPin   = val;
-    window._cryptoKey  = await importDataKey(dataKeyRaw);
+    window._cryptoKey  = await window.importDataKey(dataKeyRaw);
     await loadSecure();
     window.enterApp && window.enterApp();
     return;
   }
 
-  const hash = await hashPin(val, pinSalt);
+  const hash = await window.hashPin(val, pinSalt);
   if (hash !== storedHash) {
     const inp = document.getElementById('PI');
     inp.classList.add('err');
@@ -333,17 +333,17 @@ async function doLogin() {
     return;
   }
 
-  let wrappedB64 = await _loadWrappedKeyFirebase() || _getWrappedKey();
+  let wrappedB64 = await window._loadWrappedKeyFirebase() || window._getWrappedKey();
   if (!wrappedB64) { window.showPinErr && window.showPinErr('Şifreleme anahtarı bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'); return; }
 
   let unwrapped;
-  try { unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt); }
+  try { unwrapped = await window.unwrapDataKey(wrappedB64, val, pinSalt); }
   catch(e) { window.showPinErr && window.showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return; }
 
   window._dataKeyRaw = unwrapped.rawBytes;
   window._plainPin   = val;
   window._cryptoKey  = unwrapped.cryptoKey;
-  _saveWrappedKeyLocal(wrappedB64);
+  window._saveWrappedKeyLocal(wrappedB64);
 
   try {
     await loadSecure();
@@ -381,26 +381,26 @@ async function chPass() {
   const nw2 = document.getElementById('NP2').value;
   const msg = document.getElementById('PM');
 
-  const pinSalt = await getSaltAsync('v5-pin-salt');
+  const pinSalt = await window.getSaltAsync('v5-pin-salt');
 
   let storedHash = null;
   if (window._fbLoadPinHash) {
     try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
   }
 
-  const curHash = await hashPin(cur, pinSalt);
+  const curHash = await window.hashPin(cur, pinSalt);
   if (curHash !== storedHash) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut şifre yanlış'; return; }
   if (!nw || nw.length < 4)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 4 karakter'; return; }
   if (nw !== nw2)             { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreler eşleşmiyor'; return; }
 
-  const newHash = await hashPin(nw, pinSalt);
+  const newHash = await window.hashPin(nw, pinSalt);
   if (window._fbSavePinHash) {
     try { await window._fbSavePinHash(newHash); } catch(e) {}
   }
 
-  const newWrappedB64 = await wrapDataKey(window._dataKeyRaw, nw, pinSalt);
-  _saveWrappedKeyLocal(newWrappedB64);
-  await _saveWrappedKeyFirebase(newWrappedB64);
+  const newWrappedB64 = await window.wrapDataKey(window._dataKeyRaw, nw, pinSalt);
+  window._saveWrappedKeyLocal(newWrappedB64);
+  await window._saveWrappedKeyFirebase(newWrappedB64);
   window._plainPin = nw;
 
   msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
