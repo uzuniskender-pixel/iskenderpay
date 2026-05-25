@@ -50,6 +50,14 @@ function render() {
   // Sayfa başlığında geciken ödeme sayısı
   document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
 
+  // Mobil nav badge — Plan butonuna gecikmiş sayısı
+  const navPlan = document.getElementById('m0');
+  if (navPlan) {
+    navPlan.innerHTML = gecN > 0
+      ? `📊 Plan <span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px">${gecN}</span>`
+      : '📊 Plan';
+  }
+
   // 7 gün içi yaklaşan ödemeleri hesapla
   const today0 = todayMidnight();
   const soon7 = new Date(today0.getTime() + 7*24*60*60*1000);
@@ -295,16 +303,32 @@ function openCell(keyEnc,month) {
   const delBtn=isSingleItem?`<button class="dact da-del" onclick="delMonthEntry('${encodeURIComponent(String(c.items[0].id))}')">Bu Ayı Sil</button>`:`<button class="dact da-del" onclick="delCellItems('${cellKey}','${cellMo}')">Bu Ayı Sil</button>`;
   const editItem=c.items.find(x=>!x._cid);
   const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>editPay('${editItem.id}'),50)">Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
-  h+=`<div class="dacts">
-    ${s!=='paid'?`<button class="dact da-ok" onclick="markOk('${cellKey}','${cellMo}')">✓ Ödendi</button>`:''}
-    ${s==='partial'?`<button class="dact da-part" onclick="resetPartial('${cellKey}','${cellMo}')">↺ Sıfırla</button>`:''}
-    ${(s==='pending'||s==='overdue')?`<button class="dact da-part" onclick="openKM('${cellKey}','${cellMo}')">½ Kısmi</button>`:''}
-    ${s==='partial'?`<button class="dact da-part" onclick="openKM('${cellKey}','${cellMo}')">+ Ekle</button>`:''}
-    ${(s==='paid'||s==='partial')?`<button class="dact da-undo" onclick="undoCell('${cellKey}','${cellMo}')">↩ Geri Al</button>`:''}
-    ${editBtn}${delBtn}
-    <button class="dact da-del" onclick="delByKey('${cellKey}')" style="font-size:10px">Tümünü Sil</button>
+  // Geçmiş ödemeler
+  const cellPaidHistory = (window.paidItems||[]).filter(pi =>
+    c.items.some(x => String(x.id) === String(pi.id) || (x.name === pi.name && pi.date && pi.date.startsWith(month.slice(0,7))))
+  );
+  if (cellPaidHistory.length) {
+    h += `<div style="margin-top:10px;border-top:1px solid var(--bdr);padding-top:8px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Yapılan Ödemeler</div>`;
+    cellPaidHistory.forEach(pi => {
+      h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted)">
+        <span>${fmtD(pi.date||'')}</span>
+        <span style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-weight:600">${fmt(pi.paid||0)}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  h+=\`<div class="dacts">
+    \${s!=='paid'?\`<button class="dact da-ok" onclick="markOk('\${cellKey}','\${cellMo}')">✓ Ödendi</button>\`:''}
+    \${s==='partial'?\`<button class="dact da-part" onclick="resetPartial('\${cellKey}','\${cellMo}')">↺ Sıfırla</button>\`:''}
+    \${(s==='pending'||s==='overdue')?\`<button class="dact da-part" onclick="openKM('\${cellKey}','\${cellMo}')">½ Kısmi</button>\`:''}
+    \${s==='partial'?\`<button class="dact da-part" onclick="openKM('\${cellKey}','\${cellMo}')">+ Ekle</button>\`:''}
+    \${(s==='paid'||s==='partial')?\`<button class="dact da-undo" onclick="undoCell('\${cellKey}','\${cellMo}')">↩ Geri Al</button>\`:''}
+    \${editBtn}\${delBtn}
+    <button class="dact da-del" onclick="delByKey('\${cellKey}')" style="font-size:10px">Tümünü Sil</button>
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
-  </div>`;
+  </div>\`;
   document.getElementById('DC').innerHTML=h;
   ModalManager.open('DV');
 }
