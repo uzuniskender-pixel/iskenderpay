@@ -35,15 +35,51 @@ async function confirmBackup() {
 
 function doRestore() {
   const st = document.getElementById('RS');
-  if (!st.dataset.d) { st.textContent = 'Önce dosya seç'; return; }
-  if (!confirm('Mevcut veriler silinecek. Emin misin?')) return;
+  if (!st.dataset.d) { st.textContent = 'Önce dosya sec'; return; }
+  if (!confirm('Mevcut veriler silinecek. Emin misin?\n\nGeri yukleme oncesi snapshot alinacak.')) return;
+
+  // Snapshot
+  const snapshot = {
+    pays: window.pays||[], creds: window.creds||[], hist: window.hist||[],
+    persons: window.persons||[], notes: window.notes||[], paidItems: window.paidItems||[],
+    rehber: window.rehber||[], actLog: window.actLog||[], at: new Date().toISOString()
+  };
+  localStorage.setItem('v8-restore-snapshot', JSON.stringify(snapshot));
+
   const d = JSON.parse(st.dataset.d);
   window.pays=d.pays||[]; window.creds=d.creds||[]; window.hist=d.hist||[];
   window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
   window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
   window.invalidateLookups();
-  window.save().then(() => { window.migrateCredDates(); window.closeMov('RM'); window.render(); });
-  alert('Veriler yüklendi!');
+  window.save().then(() => {
+    window.migrateCredDates();
+    window.closeMov('RM');
+    window.render();
+    const bar = document.getElementById('RESTORE_UNDO');
+    if (bar) {
+      bar.innerHTML = '<span style="flex:1">Geri yukleme tamamlandi. Yanlis yuklediysen:</span>'
+        + '<button onclick="window.undoRestore()" style="background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">Geri Al</button>';
+      bar.style.display = 'flex';
+    }
+  });
+}
+
+function undoRestore() {
+  const raw = localStorage.getItem('v8-restore-snapshot');
+  if (!raw) { alert('Snapshot bulunamadi.'); return; }
+  if (!confirm('Geri yukleme oncesindeki veriye donmek istiyor musun?')) return;
+  const d = JSON.parse(raw);
+  window.pays=d.pays||[]; window.creds=d.creds||[]; window.hist=d.hist||[];
+  window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
+  window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
+  window.invalidateLookups();
+  window.save().then(() => {
+    window.migrateCredDates(); window.render();
+    localStorage.removeItem('v8-restore-snapshot');
+    const bar = document.getElementById('RESTORE_UNDO');
+    if (bar) bar.style.display = 'none';
+    alert('Onceki veriye geri donuldu.');
+  });
 }
 
 function exportExcel() {
@@ -118,4 +154,5 @@ function exportExcel() {
 window.doBackup           = doBackup;
 window.confirmBackup      = confirmBackup;
 window.doRestore          = doRestore;
+window.undoRestore        = undoRestore;
 window.exportExcel        = exportExcel;
