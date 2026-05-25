@@ -319,16 +319,16 @@ function openCell(keyEnc,month) {
     h += `</div>`;
   }
 
-  h+=\`<div class="dacts">
-    \${s!=='paid'?\`<button class="dact da-ok" onclick="markOk('\${cellKey}','\${cellMo}')">✓ Ödendi</button>\`:''}
-    \${s==='partial'?\`<button class="dact da-part" onclick="resetPartial('\${cellKey}','\${cellMo}')">↺ Sıfırla</button>\`:''}
-    \${(s==='pending'||s==='overdue')?\`<button class="dact da-part" onclick="openKM('\${cellKey}','\${cellMo}')">½ Kısmi</button>\`:''}
-    \${s==='partial'?\`<button class="dact da-part" onclick="openKM('\${cellKey}','\${cellMo}')">+ Ekle</button>\`:''}
-    \${(s==='paid'||s==='partial')?\`<button class="dact da-undo" onclick="undoCell('\${cellKey}','\${cellMo}')">↩ Geri Al</button>\`:''}
-    \${editBtn}\${delBtn}
-    <button class="dact da-del" onclick="delByKey('\${cellKey}')" style="font-size:10px">Tümünü Sil</button>
+  h+=`<div class="dacts">
+    ${s!=='paid'?`<button class="dact da-ok" onclick="markOk('${cellKey}','${cellMo}')">✓ Ödendi</button>`:''}
+    ${s==='partial'?`<button class="dact da-part" onclick="resetPartial('${cellKey}','${cellMo}')">↺ Sıfırla</button>`:''}
+    ${(s==='pending'||s==='overdue')?`<button class="dact da-part" onclick="openKM('${cellKey}','${cellMo}')">½ Kısmi</button>`:''}
+    ${s==='partial'?`<button class="dact da-part" onclick="openKM('${cellKey}','${cellMo}')">+ Ekle</button>`:''}
+    ${(s==='paid'||s==='partial')?`<button class="dact da-undo" onclick="undoCell('${cellKey}','${cellMo}')">↩ Geri Al</button>`:''}
+    ${editBtn}${delBtn}
+    <button class="dact da-del" onclick="delByKey('${cellKey}')" style="font-size:10px">Tümünü Sil</button>
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
-  </div>\`;
+  </div>`;
   document.getElementById('DC').innerHTML=h;
   ModalManager.open('DV');
 }
