@@ -146,6 +146,7 @@ function render() {
   // Bu hafta widget'ı
   renderHaftaWidget(all, now, soon7);
   if (window.renderSiradaki) window.renderSiradaki();
+  if (window.renderCredSummary) window.renderCredSummary();
 }
 
 function renderGecWidget(all) {
