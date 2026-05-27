@@ -52,12 +52,15 @@ function savePay() {
     if(p) Object.assign(p,{name,amount,currency,date,category});
   } else {
     const groupId=String(Date.now());
+    // personId: kişiler listesinden eşleşen kişinin id'si (varsa)
+    const _matchedPerson=(window.persons||[]).find(p=>p.name.trim().toLocaleLowerCase('tr')===name.trim().toLocaleLowerCase('tr'));
+    const personId=_matchedPerson?.id||null;
     const[py,pm,pd]=date.split('-').map(Number);
     for(let i=0;i<=copyMonths;i++){
       const totalMo=(pm-1)+i;
       const yr=py+Math.floor(totalMo/12),mo=totalMo%12;
       const lastDay=new Date(yr,mo+1,0).getDate();
-      window.pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
+      window.pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0,...(personId?{personId}:{})});
     }
   }
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz

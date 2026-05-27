@@ -12,8 +12,9 @@ function buildMx(all) {
   all.forEach(p => {
     const d = window.parseLocalDate(p.date);
     const mk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    const rawKey = p._cid ? 'cred_'+p._cid : (p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id))));
-    if (!mx[rawKey]) mx[rawKey] = {_name:p.name};
+    // personId varsa aynı kişinin tüm groupId'leri tek satırda birleşir
+    const rawKey = p._cid ? 'cred_'+p._cid : (p.personId ? 'pid_'+p.personId : (p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)))));
+    if (!mx[rawKey]) mx[rawKey] = {_name:p.name, _personId:p.personId||null};
     if (!mx[rawKey][mk]) mx[rawKey][mk] = {items:[], status:'pending', try:0};
     mx[rawKey][mk].items.push(p);
     mx[rawKey][mk].try += window.toTRY(p.amount, p.currency||'TRY');
@@ -110,9 +111,24 @@ function render() {
   rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
   const nameIdxMap={};
   rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=n+' '+nameIdxMap[n];}else{mx[k]._displayName=n;}});
-  // Base name gruplarını hesapla
+  // personId bazlı display name: aynı personId'ye ait kaç rowKey var?
+  // Yoksa eski davranış: nameCountMap ile sayısal suffix
+  const personIdCount={}; // personId → rowKey sayısı
+  rowKeys.forEach(k=>{const pid=mx[k]._personId;if(pid){personIdCount[pid]=(personIdCount[pid]||0)+1;}});
+  // Display name ata: personId varsa suffix yok (zaten tek satır), yoksa eski mantık
+  // (personId varsa birden fazla groupId tek pid_* satırda birleşti — suffix gereksiz)
+  rowKeys.forEach(k=>{
+    const pid=mx[k]._personId;
+    if(pid){
+      // personId'ye ait kişinin adı persons listesinden al
+      const person=(window.persons||[]).find(p=>p.id===pid);
+      mx[k]._displayName=person?person.name:(mx[k]._name||k);
+    }
+    // personId yoksa nameCountMap ile eski davranış korunur (zaten atandı yukarıda)
+  });
+  // Base name gruplarını hesapla (personId'siz kayıtlar için)
   const baseGroups={}; // baseName → [rowKey, ...]
-  rowKeys.forEach(k=>{const bn=getBaseName(mx[k]._name||k);if(!baseGroups[bn])baseGroups[bn]=[];baseGroups[bn].push(k);});
+  rowKeys.forEach(k=>{const bn=getBaseName(mx[k]._displayName||mx[k]._name||k);if(!baseGroups[bn])baseGroups[bn]=[];baseGroups[bn].push(k);});
   // Expand state
   let _expandedGroups={};
   try{_expandedGroups=JSON.parse(localStorage.getItem('ip-expanded-groups')||'{}');}catch(e){}

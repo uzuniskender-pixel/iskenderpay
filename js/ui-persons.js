@@ -66,7 +66,7 @@ function savePerson() {
     let finalName = name;
     const existing = window.persons.map(p => p.name);
     if (existing.includes(name)) { let i=2; while(existing.includes(name+' '+i)) i++; finalName=name+' '+i; }
-    window.persons.push({name:finalName, desc});
+    window.persons.push({id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name:finalName, desc});
   }
   window.savePersons(); window.closeMov('PRM'); renderPersons();
 }
