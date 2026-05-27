@@ -136,6 +136,13 @@ function render() {
   let html='<table class="mtbl"><thead><tr><th class="rh">Ödeme</th><th style="min-width:32px;max-width:36px;width:32px">Gün</th>';
   months.forEach((m,i)=>html+=`<th${m===curMK?' style="color:var(--acc);font-weight:700"':''}>${mLbls[i]}</th>`);
   html+='<th>Toplam</th></tr></thead><tbody>';
+  // Kişiler listesindeki isimler (base isim karşılaştırması)
+  const knownPersonNames=(window.persons||[]).map(p=>p.name.trim().toLocaleLowerCase('tr'));
+  function isUnknownPerson(rowName) {
+    if(!window.persons||!window.persons.length) return false;
+    const lower=(rowName||'').trim().toLocaleLowerCase('tr');
+    return !knownPersonNames.some(kn=>lower===kn||lower.startsWith(kn+' ')||kn.startsWith(lower+' '));
+  }
   // ── Satır render — gruplama destekli ─────────────────────────────────────
   const renderedBases=new Set();
   function renderRow(k, isChild) {
@@ -143,7 +150,7 @@ function render() {
     const _firstMk=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort()[0];
     const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?window.parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
     const indent=isChild?'padding-left:18px;font-size:12px;color:var(--muted)':'';
-    html+=`<tr${isChild?' style="background:rgba(255,255,255,.03)"':''}><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}" style="${indent}">${isChild?'└ ':''} ${window.esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
+    html+=`<tr${isChild?' style="background:rgba(255,255,255,.03)"':''}><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}" style="${indent}">${isChild?'└ ':''} ${window.esc(dispName)}${(!k.startsWith('cred_')&&isUnknownPerson(mx[k]._name||k))?' <span title="Bu isim Kişiler listesinde yok" style="color:#fbbf24;font-size:11px;cursor:help">⚠</span>':''}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
     months.forEach(m=>{
       const c=mx[k]?.[m];
       if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
