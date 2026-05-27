@@ -156,7 +156,7 @@ function render() {
   document.getElementById('OHS').textContent = `Bu ay ${pct}% ödendi · ${fmt(tot)} toplam`;
   document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   const mx = buildMx(all);
-  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'6');
+  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'24');
   const monthSet = new Set();
   const nowY=now.getFullYear(), nowM=now.getMonth();
   for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}

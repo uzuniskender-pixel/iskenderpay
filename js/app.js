@@ -115,7 +115,7 @@ function addLog(type, title, detail, navTab) {
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 function initApp() {
-  const ah = localStorage.getItem('v5-ahead') || '6';
+  const ah = localStorage.getItem('v5-ahead') || '24';
   document.getElementById('AH').value = ah;
   const sortEl = document.getElementById('SORT');
   if (sortEl) sortEl.value = window.sortMode;

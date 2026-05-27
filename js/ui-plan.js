@@ -83,7 +83,7 @@ function render() {
   </div>`;
   document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   const mx = buildMx(all);
-  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'6');
+  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'24');
   const monthSet = new Set();
   const nowY=now.getFullYear(), nowM=now.getMonth();
   for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
@@ -464,7 +464,7 @@ function saveCellAmt(keyEnc,month) {
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
     else{const orig=window.findPayById(p.id);if(orig)orig.amount=v;}
   });
-  window.save().then(()=>{render();openCell(keyEnc,month);});
+  window.save().then(()=>{closeDV();render();});
 }
 
 function resetPartial(keyEnc,month) {

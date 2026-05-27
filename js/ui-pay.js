@@ -33,6 +33,19 @@ function savePay() {
   const category=document.getElementById('PK').value;
   const copyMonths=parseInt(document.getElementById('COPYMO').value)||0;
   if(!name||!amount||!date){alert('Ad, tutar ve tarih zorunlu');return;}
+  // Kişiler zorunluluğu — düzenleme modunda (eid dolu) kontrol yapma
+  const _eid=document.getElementById('EID').value;
+  if(!_eid && window.persons && window.persons.length > 0) {
+    // Kişiler listesi dolu ama girilen isim listede yok
+    const knownNames = window.persons.map(p => p.name.trim().toLocaleLowerCase('tr'));
+    // "Denizbank 1", "Denizbank 2" gibi numaralı varyantlar da kabul — base isim eşleşmesine bak
+    const inputLower = name.trim().toLocaleLowerCase('tr');
+    const matched = knownNames.some(kn => inputLower === kn || inputLower.startsWith(kn+' ') || kn.startsWith(inputLower+' '));
+    if (!matched) {
+      alert('"' + name + '" kişiler listesinde yok.\nÖnce Kişiler sayfasından ekleyin.');
+      return;
+    }
+  }
   const eid=document.getElementById('EID').value;
   if(eid){
     const p=window.findPayById(eid);
