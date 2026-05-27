@@ -99,7 +99,7 @@ function render() {
   if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
   // ── Gruplama: "Denizbank 1" + "Denizbank 2" → "Denizbank" grup satırı ───────
   // Base isim: trailing " N" suffix'i çıkar (sadece rakam olanlar)
-  function getBaseName(n) { return (n||'').replace(/\s+\d+$/, '').trim() || n; }
+  // Gruplama: aynı _name olanlar birleşir (suffix dahil tam isim eşleşmesi)
   // Her satıra displayName ata (eski davranış korunur, gruplama üstünde)
   const nameCountMap={};
   rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
@@ -121,8 +121,8 @@ function render() {
     // personId yoksa nameCountMap ile eski davranış korunur (zaten atandı yukarıda)
   });
   // Base name gruplarını hesapla (personId'siz kayıtlar için)
-  const baseGroups={}; // baseName → [rowKey, ...]
-  rowKeys.forEach(k=>{const bn=getBaseName(mx[k]._displayName||mx[k]._name||k);if(!baseGroups[bn])baseGroups[bn]=[];baseGroups[bn].push(k);});
+  const baseGroups={}; // name → [rowKey, ...] (tam isim eşleşmesi)
+  rowKeys.forEach(k=>{const bn=mx[k]._displayName||mx[k]._name||k;if(!baseGroups[bn])baseGroups[bn]=[];baseGroups[bn].push(k);});
   // Expand state
   let _expandedGroups={};
   try{_expandedGroups=JSON.parse(localStorage.getItem('ip-expanded-groups')||'{}');}catch(e){}
@@ -179,7 +179,7 @@ function render() {
     html+=`<td style="font-weight:600;color:${rKalan===0?'var(--ok)':'var(--txt)'}">${rKalan===0?'✓':window.fmt(rKalan)}</td></tr>`;
   }
   rowKeys.forEach(k=>{
-    const bn=getBaseName(mx[k]._name||k);
+    const bn=mx[k]._displayName||mx[k]._name||k;
     const grpKeys=baseGroups[bn]||[k];
     if(grpKeys.length<=1){
       // Grup yok — normal satır
