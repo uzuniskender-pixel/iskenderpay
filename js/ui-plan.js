@@ -380,7 +380,7 @@ function openCell(keyEnc,month) {
   h+=`<div class="dedit">
     <div class="dedit-lbl">Bu Ayın Tutarını Düzenle${orig?' ('+orig.currency+')':' (₺)'}</div>
     <div class="dedit-row">
-      <input class="fi mono-inp" id="CEA" type="number" value="${orig?orig.amount:Math.round(c.try)}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
+      <input class="fi mono-inp" id="CEA" type="number" value="${orig?orig.amount:(c.items[0]?._cid?c.items[0].amount:Math.round(c.try))}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
       <button onclick="saveCellAmt('${encodeURIComponent(key)}','${month}')" class="btn bs" style="flex:none;padding:10px 13px;font-size:12px">Kaydet</button>
     </div>
     ${orig&&window.rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?window.fmt(window.rates.EUR):window.fmt(window.rates.GOLD)}</div>`:''}
@@ -389,7 +389,11 @@ function openCell(keyEnc,month) {
   const isSingleItem=c.items.length===1&&!c.items[0]._cid;
   const delBtn=isSingleItem?`<button class="dact da-del" onclick="delMonthEntry('${encodeURIComponent(String(c.items[0].id))}')">Bu Ayı Sil</button>`:`<button class="dact da-del" onclick="delCellItems('${cellKey}','${cellMo}')">Bu Ayı Sil</button>`;
   const editItem=c.items.find(x=>!x._cid);
-  const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>window.editPay('${editItem.id}'),50)">Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
+  const isCredCell=c.items.some(x=>x._cid);
+  const editBtn=isCredCell
+    ?`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Tüm Krediyi Düzenle</button>`
+    :editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>window.editPay('${editItem.id}'),50)">Düzenle</button>`
+    :`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
   // Geçmiş ödemeler
   const cellPaidHistory = (window.paidItems||[]).filter(pi =>
     c.items.some(x => String(x.id) === String(pi.id) || (x.name === pi.name && pi.date && pi.date.startsWith(month.slice(0,7))))
@@ -483,7 +487,7 @@ function markOk(keyEnc,month) {
   const all=getAllItems(),mx=buildMx(all);
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
-    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
+    if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}} // i.amount zaten TRY (override dahil)
     else{const orig=window.findPayById(p.id);if(orig){orig.status='paid';orig.paid=window.toTRY(orig.amount,orig.currency||'TRY');}}
     window.paidItems.push({...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:window.toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
     try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
