@@ -102,10 +102,22 @@ function render() {
     });
   }
   if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+  // ── Gruplama: "Denizbank 1" + "Denizbank 2" → "Denizbank" grup satırı ───────
+  // Base isim: trailing " N" suffix'i çıkar (sadece rakam olanlar)
+  function getBaseName(n) { return (n||'').replace(/\s+\d+$/, '').trim() || n; }
+  // Her satıra displayName ata (eski davranış korunur, gruplama üstünde)
   const nameCountMap={};
   rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
   const nameIdxMap={};
   rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=n+' '+nameIdxMap[n];}else{mx[k]._displayName=n;}});
+  // Base name gruplarını hesapla
+  const baseGroups={}; // baseName → [rowKey, ...]
+  rowKeys.forEach(k=>{const bn=getBaseName(mx[k]._name||k);if(!baseGroups[bn])baseGroups[bn]=[];baseGroups[bn].push(k);});
+  // Expand state
+  let _expandedGroups={};
+  try{_expandedGroups=JSON.parse(localStorage.getItem('ip-expanded-groups')||'{}');}catch(e){}
+  function toggleGroup(baseName){_expandedGroups[baseName]=!_expandedGroups[baseName];localStorage.setItem('ip-expanded-groups',JSON.stringify(_expandedGroups));render();}
+  window.toggleGroup=toggleGroup;
   const allMonths=Array.from(monthSet).sort();
   const showPaid = localStorage.getItem('v8-show-paid') === '1';
   const months = showPaid
@@ -124,11 +136,14 @@ function render() {
   let html='<table class="mtbl"><thead><tr><th class="rh">Ödeme</th><th style="min-width:32px;max-width:36px;width:32px">Gün</th>';
   months.forEach((m,i)=>html+=`<th${m===curMK?' style="color:var(--acc);font-weight:700"':''}>${mLbls[i]}</th>`);
   html+='<th>Toplam</th></tr></thead><tbody>';
-  rowKeys.forEach(k=>{
-    const dispName=mx[k]._displayName||mx[k]._name||k;
+  // ── Satır render — gruplama destekli ─────────────────────────────────────
+  const renderedBases=new Set();
+  function renderRow(k, isChild) {
+    const dispName=isChild?(mx[k]._displayName||mx[k]._name||k):(mx[k]._displayName||mx[k]._name||k);
     const _firstMk=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort()[0];
     const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?window.parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
-    html+=`<tr><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}">${window.esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
+    const indent=isChild?'padding-left:18px;font-size:12px;color:var(--muted)':'';
+    html+=`<tr${isChild?' style="background:rgba(255,255,255,.03)"':''}><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}" style="${indent}">${isChild?'└ ':''} ${window.esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
     months.forEach(m=>{
       const c=mx[k]?.[m];
       if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
@@ -145,6 +160,44 @@ function render() {
     });
     const rKalan=months.reduce((acc,m)=>{const c=mx[k]?.[m];if(!c)return acc;if(c.status==='paid')return acc;if(c.status==='partial')return acc+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return acc+c.try;},0);
     html+=`<td style="font-weight:600;color:${rKalan===0?'var(--ok)':'var(--txt)'}">${rKalan===0?'✓':window.fmt(rKalan)}</td></tr>`;
+  }
+  rowKeys.forEach(k=>{
+    const bn=getBaseName(mx[k]._name||k);
+    const grpKeys=baseGroups[bn]||[k];
+    if(grpKeys.length<=1){
+      // Grup yok — normal satır
+      renderRow(k, false);
+      return;
+    }
+    // Grup var
+    if(renderedBases.has(bn)) return; // zaten render edildi
+    renderedBases.add(bn);
+    const expanded=!!_expandedGroups[bn];
+    const arrow=expanded?'▾':'▸';
+    // Grup toplamlarını hesapla
+    const grpColTot=months.map(m=>grpKeys.reduce((s,gk)=>{const c=mx[gk]?.[m];if(!c)return s;if(c.status==='paid')return s;if(c.status==='partial')return s+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s+c.try;},0));
+    const grpRKalan=grpColTot.reduce((a,b)=>a+b,0);
+    // Grup satırının durum rengi
+    const grpAllPaid=grpKeys.every(gk=>months.every(m=>{const c=mx[gk]?.[m];return !c||c.status==='paid';}));
+    const grpHasOverdue=grpKeys.some(gk=>months.some(m=>{const c=mx[gk]?.[m];return c&&c.status==='overdue';}));
+    const grpHasPartial=grpKeys.some(gk=>months.some(m=>{const c=mx[gk]?.[m];return c&&c.status==='partial';}));
+    const grpHasSoon=grpKeys.some(gk=>months.some(m=>{const c=mx[gk]?.[m];return c&&c.status!=='paid'&&c.items.some(p=>{const d=window.parseLocalDate(p.date);return d>=today0&&d<=soon7;});}));
+    html+=`<tr style="background:rgba(192,132,252,.06);cursor:pointer" onclick="window.toggleGroup('${window.esc(bn)}')">`;
+    html+=`<td class="rh" style="font-weight:700;color:var(--acc2)">${arrow} ${window.esc(bn)}</td>`;
+    html+=`<td></td>`;
+    months.forEach((m,mi)=>{
+      const t=grpColTot[mi];
+      const anyPaid=grpKeys.some(gk=>{const c=mx[gk]?.[m];return c&&c.status==='paid';});
+      const anyPending=grpKeys.some(gk=>{const c=mx[gk]?.[m];return c&&c.status!=='paid';});
+      if(!t&&!anyPaid){html+=`<td></td>`;return;}
+      const cls=t===0?'cp':grpHasOverdue?'cg':grpHasPartial?'ck':grpHasSoon?'cy':'cb';
+      html+=`<td class="${cls}">${t===0?'✓':window.fmt(t)}</td>`;
+    });
+    html+=`<td style="font-weight:700;color:${grpRKalan===0?'var(--ok)':'var(--acc2)'}">${grpRKalan===0?'✓':window.fmt(grpRKalan)}</td></tr>`;
+    // Alt satırlar (expanded ise)
+    if(expanded){
+      grpKeys.forEach(gk=>renderRow(gk, true));
+    }
   });
   html+=`<tr class="tot"><td class="rh">TOPLAM</td><td></td>`;
   colTot.forEach(t=>html+=`<td>${window.fmt(t)}</td>`);
