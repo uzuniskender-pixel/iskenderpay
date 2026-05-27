@@ -355,8 +355,10 @@ function openRow(keyEnc) {
       </span>
     </div>`;
   });
+  const isCredRow=key.startsWith('cred_');
   h+=`<div class="dacts">
     <button class="dact da-edit" onclick="editByKey('${encodeURIComponent(key)}')">Düzenle</button>
+    ${!isCredRow?`<button class="dact da-part" onclick="convertToCredit('${encodeURIComponent(key)}')">Krediye Dönüştür</button>`:''}
     <button class="dact da-del" onclick="delByKey('${encodeURIComponent(key)}')">Sil</button>
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
   </div>`;
@@ -651,6 +653,33 @@ window.editByKey          = editByKey;
 window.delByKey           = delByKey;
 window.delMonthEntry      = delMonthEntry;
 window.delCellItems       = delCellItems;
+
+// ── KREDİYE DÖNÜŞTÜR ─────────────────────────────────────────────────────────
+function convertToCredit(keyEnc) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const name=mx[key]?._name||key.replace(/^(g_|pay_)/,'');
+  // Referans kayıt: en eski ödeme (ilk taksit tarihi için)
+  const allMks=Object.keys(mx[key]||{}).filter(x=>!x.startsWith('_')).sort();
+  const refItem=allMks.length?mx[key][allMks[0]]?.items?.[0]:null;
+  const refAmt=refItem?refItem.amount:'';
+  const refDate=refItem?refItem.date:'';
+  // Mevcut kaydı sil + kredi modalını doldur
+  closeDV();
+  // Kredi modalını doldur
+  document.getElementById('CEID').value='';
+  document.getElementById('CN').value=name;
+  document.getElementById('CT').value='';
+  document.getElementById('CI').value='';
+  document.getElementById('CM2').value=refAmt||'';
+  document.getElementById('CS').value=refDate||'';
+  document.getElementById('LP').classList.remove('show');
+  // Dönüştürme: kaydet sonrası eski pays grubunu sil
+  // _convertSourceKey: saveCred tamamlanınca bu key silinecek
+  window._convertSourceKey=key;
+  ModalManager.open('CM');
+}
+window.convertToCredit=convertToCredit;
 
 // ── ÖDENDI AY TOGGLE ─────────────────────────────────────────────────────────
 function togglePaidMonths() {

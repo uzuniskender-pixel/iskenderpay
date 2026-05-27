@@ -103,7 +103,25 @@ function saveCred() {
   const eid=document.getElementById('CEID').value;
   if(eid){const c=window.findCredById(eid);if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;} window.addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);}
   else{window.creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr}); window.addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);}
-  window.save().then(()=>{window.closeMov('CM');window.render();});
+  window.save().then(()=>{
+    // Krediye dönüştür: eski pays grubunu sil
+    if(window._convertSourceKey){
+      const srcKey=window._convertSourceKey;
+      window._convertSourceKey=null;
+      if(srcKey.startsWith('g_')){
+        const gid=srcKey.replace('g_','');
+        window.pays=window.pays.filter(p=>p.groupId!==gid);
+      } else if(srcKey.startsWith('pay_')){
+        const pid=srcKey.replace('pay_','');
+        window.pays=window.pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);
+      } else if(srcKey.startsWith('pid_')){
+        const personId=srcKey.replace('pid_','');
+        window.pays=window.pays.filter(p=>p.personId!==personId);
+      }
+      window.saveSecure();
+    }
+    window.closeMov('CM');window.render();
+  });
 }
 
 function updLP() {
