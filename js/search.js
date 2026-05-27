@@ -63,14 +63,22 @@ function renderAI() {
   const paidItems= window.paidItems|| [];
   const rehber   = window.rehber   || [];
 
-  // Merkezi hesap — hesap.js
-  const _oz = window.buAyOzeti();
-  const buAyTot = _oz.tot;
-  const buAyOdendi = _oz.ok;
-  const buAyGec = _oz.gec;
-  const _top = window.toplamOzeti();
-  const toplamBekleyen = _top.paysBekleyen;
-  const krediBekleyen = _top.krediBekleyen;
+  // Bu ay istatistikleri
+  const now  = new Date();
+  const nowY = now.getFullYear(), nowM = now.getMonth();
+  const buAy = window.pays.filter(p => {
+    const d = window.parseLocalDate(p.date);
+    return d.getFullYear()===nowY && d.getMonth()===nowM;
+  });
+  const buAyTot  = buAy.reduce((s,p) => s+window.toTRY(p.amount,p.currency||'TRY'), 0);
+  const buAyOdendi = buAy.filter(p=>(p.status||'pending')==='paid').reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+  const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&window.isOD(p)).reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+
+  // Genel toplam borç (tüm ödenmemiş)
+  const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
+    .reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+  const krediBekleyen = window.creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
+    .reduce((a,p)=>a+p.amount,0),0);
 
   // Son 3 ay ödeme trendi
   const trend = [];

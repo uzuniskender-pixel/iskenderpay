@@ -1,4 +1,4 @@
-// js/ui-plan.js — iskenderpay
+﻿// js/ui-plan.js — iskenderpay
 // Plan matrisi, hücre detayları, ödeme durum aksiyonları
 
 function getAllItems() {
@@ -38,10 +38,16 @@ function render() {
   const all = getAllItems();
   const now = new Date();
   const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  // Merkezi hesap — hesap.js
-  const _oz = window.buAyOzeti();
-  const tot=_oz.tot, ok=_oz.ok, bek=_oz.bek, gec=_oz.gec;
-  const okN=_oz.okN, bekN=_oz.bekN, gecN=_oz.gecN;
+  const buAy = all.filter(p => {
+    const d = window.parseLocalDate(p.date);
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  });
+  let tot=0, ok=0, bek=0, gec=0, okN=0, bekN=0, gecN=0;
+  buAy.forEach(p => {
+    const t = window.toTRY(p.amount, p.currency||'TRY'); tot+=t;
+    const s = p.status||'pending';
+    if(s==='paid'){ok+=t;okN++;}else if(window.isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
+  });
   // Sayfa başlığında geciken ödeme sayısı
   document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
 
@@ -64,7 +70,233 @@ function render() {
   }).length;
 
   document.getElementById('OC').innerHTML=`
-    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${_oz.itemCount} ödeme</div></div>
+    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
+    <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${window.fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
+    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${window.fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
+    <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${window.fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
+  const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
+  const pctColor = pct>=100?'var(--ok)':pct>=60?'var(--blue)':pct>=30?'var(--ora)':'var(--danger)';
+  document.getElementById('OHS').innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+    <div style="flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px;transition:width .4s"></div>
+    </div>
+    <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:${pctColor};font-weight:600;flex-shrink:0">${pct}%</span>
+  </div>`;
+  document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
+  const mx = buildMx(all);
+  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'24');
+  const monthSet = new Set();
+  const nowY=now.getFullYear(), nowM=now.getMonth();
+  for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
+  all.forEach(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const pY=d.getFullYear(),pM=d.getMonth();if(pY<nowY||(pY===nowY&&pM<nowM))monthSet.add(mk);});
+  const fltEl = document.getElementById('FLT');
+  const fltVal = fltEl ? fltEl.value.trim().toLocaleLowerCase('tr') : '';
+  let rowKeys = Object.keys(mx).filter(k=>mx[k]._name!==undefined);
+  if(window.sortMode==='name'){
+    rowKeys.sort((a,b)=>(mx[a]._name||'').localeCompare(mx[b]._name||'','tr'));
+  } else {
+    rowKeys.sort((a,b)=>{
+      const dayOf=k=>{const mks=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort();if(!mks.length)return 99;const items=mx[k][mks[0]]?.items||[];return items[0]?window.parseLocalDate(items[0].date).getDate():99;};
+      const da=dayOf(a),db=dayOf(b);
+      if(da!==db)return da-db;
+      return (mx[a]._name||'').localeCompare(mx[b]._name||'','tr');
+    });
+  }
+  if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+  // ── Gruplama: "Denizbank 1" + "Denizbank 2" → "Denizbank" grup satırı ───────
+  // Base isim: trailing " N" suffix'i çıkar (sadece rakam olanlar)
+  // Gruplama: aynı _name olanlar birleşir (suffix dahil tam isim eşleşmesi)
+  // Her satıra displayName ata (eski davranış korunur, gruplama üstünde)
+  const nameCountMap={};
+  rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
+  const nameIdxMap={};
+  rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=n+' '+nameIdxMap[n];}else{mx[k]._displayName=n;}});
+  // personId bazlı display name: aynı personId'ye ait kaç rowKey var?
+  // Yoksa eski davranış: nameCountMap ile sayısal suffix
+  const personIdCount={}; // personId → rowKey sayısı
+  rowKeys.forEach(k=>{const pid=mx[k]._personId;if(pid){personIdCount[pid]=(personIdCount[pid]||0)+1;}});
+  // Display name ata: personId varsa suffix yok (zaten tek satır), yoksa eski mantık
+  // (personId varsa birden fazla groupId tek pid_* satırda birleşti — suffix gereksiz)
+  rowKeys.forEach(k=>{
+    const pid=mx[k]._personId;
+    if(pid){
+      // personId'ye ait kişinin adı persons listesinden al
+      const person=(window.persons||[]).find(p=>p.id===pid);
+      mx[k]._displayName=person?person.name:(mx[k]._name||k);
+    }
+    // personId yoksa nameCountMap ile eski davranış korunur (zaten atandı yukarıda)
+  });
+  // Base name gruplarını hesapla (personId'siz kayıtlar için)
+  const baseGroups={}; // name → [rowKey, ...] (tam isim eşleşmesi)
+  rowKeys.forEach(k=>{const bn=mx[k]._displayName||mx[k]._name||k;if(!baseGroups[bn])baseGroups[bn]=[];baseGroups[bn].push(k);});
+  // Expand state
+  let _expandedGroups={};
+  try{_expandedGroups=JSON.parse(localStorage.getItem('ip-expanded-groups')||'{}');}catch(e){}
+  function toggleGroup(baseName){_expandedGroups[baseName]=!_expandedGroups[baseName];localStorage.setItem('ip-expanded-groups',JSON.stringify(_expandedGroups));render();}
+  window.toggleGroup=toggleGroup;
+  const allMonths=Array.from(monthSet).sort();
+  const showPaid = localStorage.getItem('v8-show-paid') === '1';
+  const months = showPaid
+    ? allMonths
+    : allMonths.filter(m=>rowKeys.some(k=>{const c=mx[k]?.[m];return c&&c.status!=='paid';}));
+  // Toggle buton görünümü
+  const tb = document.getElementById('PAID_TOGGLE');
+  if (tb) {
+    tb.style.background = showPaid ? 'rgba(74,222,128,.15)' : 'var(--surf2)';
+    tb.style.color = showPaid ? 'var(--ok)' : 'var(--muted)';
+    tb.style.borderColor = showPaid ? 'rgba(74,222,128,.3)' : 'var(--bdr)';
+    tb.textContent = showPaid ? '✓ Ödendiler gizle' : '✓ Ödendiler';
+  }
+  const mLbls=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'short',year:'2-digit'});});
+  const colTot=months.map(m=>rowKeys.reduce((s,k)=>{const c=mx[k]&&mx[k][m];if(!c)return s;if(c.status==='paid')return s;if(c.status==='partial')return s+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s+c.try;},0));
+  let html='<table class="mtbl"><thead><tr><th class="rh">Ödeme</th><th style="min-width:32px;max-width:36px;width:32px">Gün</th>';
+  months.forEach((m,i)=>html+=`<th${m===curMK?' style="color:var(--acc);font-weight:700"':''}>${mLbls[i]}</th>`);
+  html+='<th>Toplam</th></tr></thead><tbody>';
+  // Kişiler listesindeki isimler (base isim karşılaştırması)
+  const knownPersonNames=(window.persons||[]).map(p=>p.name.trim().toLocaleLowerCase('tr'));
+  function isUnknownPerson(rowName) {
+    if(!window.persons||!window.persons.length) return false;
+    const lower=(rowName||'').trim().toLocaleLowerCase('tr');
+    return !knownPersonNames.some(kn=>lower===kn||lower.startsWith(kn+' ')||kn.startsWith(lower+' '));
+  }
+  // ── Satır render — gruplama destekli ─────────────────────────────────────
+  const renderedBases=new Set();
+  function renderRow(k, isChild) {
+    const dispName=isChild?(mx[k]._displayName||mx[k]._name||k):(mx[k]._displayName||mx[k]._name||k);
+    const _firstMk=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort()[0];
+    const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?window.parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
+    const indent=isChild?'padding-left:18px;font-size:12px;color:var(--muted)':'';
+    html+=`<tr${isChild?' style="background:rgba(255,255,255,.03)"':''}><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}" style="${indent}">${isChild?'└ ':''} ${window.esc(dispName)}${(!k.startsWith('cred_')&&isUnknownPerson(mx[k]._name||k))?' <span title="Bu isim Kişiler listesinde yok" style="color:#fbbf24;font-size:11px;cursor:help">⚠</span>':''}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
+    months.forEach(m=>{
+      const c=mx[k]?.[m];
+      if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}
+      const isSoon=c.status!=='paid'&&c.items.some(p=>{const d=window.parseLocalDate(p.date);return d>=today0&&d<=soon7;});
+      const cls=c.status==='paid'?'cp':c.status==='partial'?'ck':c.status==='overdue'?'cg':isSoon?'cy':'cb';
+      const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
+      const totalPaid=c.items.reduce((a,p)=>a+(p.paid||0),0);
+      const kalan=c.try-totalPaid;
+      let cellContent;
+      if(c.status==='paid'){cellContent=`<span style="font-size:14px">✓</span>`;}
+      else if(c.status==='partial'){const ob2=orig?`<span class="orig-small">${window.fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${window.fmt(kalan)}${ob2}`;}
+      else{const ob2=orig?`<span class="orig-small">${window.fmtA(orig.amount,orig.currency)}</span>`:'';cellContent=`${window.fmt(c.try)}${ob2}`;}
+      html+=`<td class="${cls}" onclick="openCell('${encodeURIComponent(k)}','${m}')">${cellContent}</td>`;
+    });
+    const rKalan=months.reduce((acc,m)=>{const c=mx[k]?.[m];if(!c)return acc;if(c.status==='paid')return acc;if(c.status==='partial')return acc+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return acc+c.try;},0);
+    html+=`<td style="font-weight:600;color:${rKalan===0?'var(--ok)':'var(--txt)'}">${rKalan===0?'✓':window.fmt(rKalan)}</td></tr>`;
+  }
+  rowKeys.forEach(k=>{
+    const bn=mx[k]._displayName||mx[k]._name||k;
+    const grpKeys=baseGroups[bn]||[k];
+    if(grpKeys.length<=1){
+      // Grup yok — normal satır
+      renderRow(k, false);
+      return;
+    }
+    // Grup var
+    if(renderedBases.has(bn)) return; // zaten render edildi
+    renderedBases.add(bn);
+    const expanded=!!_expandedGroups[bn];
+    const arrow=expanded?'▾':'▸';
+    // Grup toplamlarını hesapla
+    const grpColTot=months.map(m=>grpKeys.reduce((s,gk)=>{const c=mx[gk]?.[m];if(!c)return s;if(c.status==='paid')return s;if(c.status==='partial')return s+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s+c.try;},0));
+    const grpRKalan=grpColTot.reduce((a,b)=>a+b,0);
+    // Grup satırının durum rengi
+    const grpAllPaid=grpKeys.every(gk=>months.every(m=>{const c=mx[gk]?.[m];return !c||c.status==='paid';}));
+    const grpHasOverdue=grpKeys.some(gk=>months.some(m=>{const c=mx[gk]?.[m];return c&&c.status==='overdue';}));
+    const grpHasPartial=grpKeys.some(gk=>months.some(m=>{const c=mx[gk]?.[m];return c&&c.status==='partial';}));
+    const grpHasSoon=grpKeys.some(gk=>months.some(m=>{const c=mx[gk]?.[m];return c&&c.status!=='paid'&&c.items.some(p=>{const d=window.parseLocalDate(p.date);return d>=today0&&d<=soon7;});}));
+    html+=`<tr style="background:rgba(192,132,252,.06);cursor:pointer" onclick="window.toggleGroup('${window.esc(bn)}')">`;
+    html+=`<td class="rh" style="font-weight:700;color:var(--acc2)">${arrow} ${window.esc(bn)}</td>`;
+    html+=`<td></td>`;
+    months.forEach((m,mi)=>{
+      const t=grpColTot[mi];
+      const anyPaid=grpKeys.some(gk=>{const c=mx[gk]?.[m];return c&&c.status==='paid';});
+      const anyPending=grpKeys.some(gk=>{const c=mx[gk]?.[m];return c&&c.status!=='paid';});
+      if(!t&&!anyPaid){html+=`<td></td>`;return;}
+      const cls=t===0?'cp':grpHasOverdue?'cg':grpHasPartial?'ck':grpHasSoon?'cy':'cb';
+      html+=`<td class="${cls}">${t===0?'✓':window.fmt(t)}</td>`;
+    });
+    html+=`<td style="font-weight:700;color:${grpRKalan===0?'var(--ok)':'var(--acc2)'}">${grpRKalan===0?'✓':window.fmt(grpRKalan)}</td></tr>`;
+    // Alt satırlar (expanded ise)
+    if(expanded){
+      grpKeys.forEach(gk=>renderRow(gk, true));
+    }
+  });
+  html+=`<tr class="tot"><td class="rh">TOPLAM</td><td></td>`;
+  colTot.forEach(t=>html+=`<td>${window.fmt(t)}</td>`);
+  html+=`<td>${window.fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;plan.js — iskenderpay
+// Plan matrisi, hücre detayları, ödeme durum aksiyonları
+
+function getAllItems() {
+  const credPays = [];
+  window.creds.forEach(c => c.pays.forEach((p,ii) => credPays.push({...p, name:c.name, currency:'TRY', _cid:c.id, _ii:p.idx})));
+  return [...window.pays, ...credPays];
+}
+
+function buildMx(all) {
+  const mx = {};
+  all.forEach(p => {
+    const d = window.parseLocalDate(p.date);
+    const mk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    // personId varsa aynı kişinin tüm groupId'leri tek satırda birleşir
+    const rawKey = p._cid ? 'cred_'+p._cid : (p.personId ? 'pid_'+p.personId : (p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)))));
+    if (!mx[rawKey]) mx[rawKey] = {_name:p.name, _personId:p.personId||null};
+    if (!mx[rawKey][mk]) mx[rawKey][mk] = {items:[], status:'pending', try:0};
+    mx[rawKey][mk].items.push(p);
+    mx[rawKey][mk].try += window.toTRY(p.amount, p.currency||'TRY');
+  });
+  // Durum hesabı düzeltme (item bazlı)
+  Object.keys(mx).forEach(rk => {
+    Object.keys(mx[rk]).filter(k=>!k.startsWith('_')).forEach(mk => {
+      const cell = mx[rk][mk];
+      const items = cell.items;
+      if (items.every(p => (p.status||'pending')==='paid')) cell.status='paid';
+      else if (items.some(p => (p.status||'pending')==='partial')) cell.status='partial';
+      else if (items.some(p => (p.status||'pending')!=='paid' && window.isOD(p))) cell.status='overdue';
+      else cell.status='pending';
+    });
+  });
+  return mx;
+}
+
+function render() {
+  window.invalidateLookups();
+  const all = getAllItems();
+  const now = new Date();
+  const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const buAy = all.filter(p => {
+    const d = window.parseLocalDate(p.date);
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  });
+  let tot=0, ok=0, bek=0, gec=0, okN=0, bekN=0, gecN=0;
+  buAy.forEach(p => {
+    const t = window.toTRY(p.amount, p.currency||'TRY'); tot+=t;
+    const s = p.status||'pending';
+    if(s==='paid'){ok+=t;okN++;}else if(window.isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
+  });
+  // Sayfa başlığında geciken ödeme sayısı
+  document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
+
+  // Mobil nav badge — Plan butonuna gecikmiş sayısı
+  const navPlan = document.getElementById('m0');
+  if (navPlan) {
+    navPlan.innerHTML = gecN > 0
+      ? `📊 Plan <span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:3px">${gecN}</span>`
+      : '📊 Plan';
+  }
+
+  // 7 gün içi yaklaşan ödemeleri hesapla
+  const today0 = window.todayMidnight();
+  const soon7 = new Date(today0.getTime() + 7*24*60*60*1000);
+  const yaklaşanN = all.filter(p => {
+    if((p.status||'pending')==='paid') return false;
+    if(p._cid) return false;
+    const d = window.parseLocalDate(p.date);
+    return d >= today0 && d <= soon7;
+  }).length;
+
+  document.getElementById('OC').innerHTML=`
+    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
     <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${window.fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
     <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${window.fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
     <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${window.fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
