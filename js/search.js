@@ -74,11 +74,11 @@ function renderAI() {
   const buAyOdendi = buAy.filter(p=>(p.status||'pending')==='paid').reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
   const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&window.isOD(p)).reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
 
-  // Genel toplam borç — partial'da kalan miktar doğru hesaplanır, krediler ayrı
+  // Genel toplam borç (tüm ödenmemiş)
   const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
-    .reduce((s,p)=>s+Math.max(0,window.toTRY(p.amount,p.currency||'TRY')-(p.paid||0)),0);
+    .reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
   const krediBekleyen = window.creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
-    .reduce((a,p)=>a+Math.max(0,p.amount-(p.paid||0)),0),0);
+    .reduce((a,p)=>a+p.amount,0),0);
 
   // Son 3 ay ödeme trendi
   const trend = [];

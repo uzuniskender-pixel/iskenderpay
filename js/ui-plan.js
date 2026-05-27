@@ -222,11 +222,9 @@ function render() {
       grpKeys.forEach(gk=>renderRow(gk, true));
     }
   });
-  // Grand total: allMonths üzerinden, sadece pays (cred_ satırları hariç)
-  const grandTotal=allMonths.reduce((s,m)=>s+rowKeys.filter(k=>!k.startsWith('cred_')).reduce((s2,k)=>{const c=mx[k]&&mx[k][m];if(!c)return s2;if(c.status==='paid')return s2;if(c.status==='partial')return s2+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s2+c.try;},0),0);
   html+=`<tr class="tot"><td class="rh">TOPLAM</td><td></td>`;
   colTot.forEach(t=>html+=`<td>${window.fmt(t)}</td>`);
-  html+=`<td>${window.fmt(grandTotal)}</td></tr></tbody></table>`;
+  html+=`<td>${window.fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
   document.getElementById('MAT').innerHTML = rowKeys.length ? html : '<div class="empty"><div class="ico">📋</div><p>Henüz ödeme yok.<br>+ butonuyla ekleyin.</p></div>';
 
   // Mevcut aya scroll
