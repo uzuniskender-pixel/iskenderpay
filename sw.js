@@ -22,6 +22,7 @@ const STATIC = [
   './js/kur.js',
   './js/backup.js',
   './js/version.js',
+  './js/hesap.js',
   './js/ui-plan.js',
   './js/ui-pay.js',
   './js/ui-persons.js',

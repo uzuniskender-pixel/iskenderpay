@@ -38,16 +38,10 @@ function render() {
   const all = getAllItems();
   const now = new Date();
   const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const buAy = all.filter(p => {
-    const d = window.parseLocalDate(p.date);
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-  });
-  let tot=0, ok=0, bek=0, gec=0, okN=0, bekN=0, gecN=0;
-  buAy.forEach(p => {
-    const t = window.toTRY(p.amount, p.currency||'TRY'); tot+=t;
-    const s = p.status||'pending';
-    if(s==='paid'){ok+=t;okN++;}else if(window.isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
-  });
+  // Merkezi hesap — hesap.js
+  const _oz = window.buAyOzeti();
+  const tot=_oz.tot, ok=_oz.ok, bek=_oz.bek, gec=_oz.gec;
+  const okN=_oz.okN, bekN=_oz.bekN, gecN=_oz.gecN;
   // Sayfa başlığında geciken ödeme sayısı
   document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
 
@@ -222,9 +216,11 @@ function render() {
       grpKeys.forEach(gk=>renderRow(gk, true));
     }
   });
+  // Grand total: allMonths üzerinden, sadece pays (cred_ satırları hariç)
+  const grandTotal=allMonths.reduce((s,m)=>s+rowKeys.filter(k=>!k.startsWith('cred_')).reduce((s2,k)=>{const c=mx[k]&&mx[k][m];if(!c)return s2;if(c.status==='paid')return s2;if(c.status==='partial')return s2+(c.try-c.items.reduce((a,p)=>a+(p.paid||0),0));return s2+c.try;},0),0);
   html+=`<tr class="tot"><td class="rh">TOPLAM</td><td></td>`;
   colTot.forEach(t=>html+=`<td>${window.fmt(t)}</td>`);
-  html+=`<td>${window.fmt(colTot.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
+  html+=`<td>${window.fmt(grandTotal)}</td></tr></tbody></table>`;
   document.getElementById('MAT').innerHTML = rowKeys.length ? html : '<div class="empty"><div class="ico">📋</div><p>Henüz ödeme yok.<br>+ butonuyla ekleyin.</p></div>';
 
   // Mevcut aya scroll
