@@ -1,6 +1,6 @@
 # DEVAM NOTU — sonraki oturum için brief
 
-_Son oturum başı: 2026-05-29 · son code commit: **v8.160 / 20260528-78** (40d8fc8) · version.json: v8.161 / 20260529-01_
+_Son oturum: 2026-05-29 · son code commit: **v8.165 / 20260529-05** (c08ddd7) · **v8.166-stable** tag yeni baseline_
 
 CLAUDE.md = canonical referans (versiyon geçmişi, mimari notlar, dosya yapısı).
 Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
@@ -9,8 +9,8 @@ Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
 
 ## TL;DR
 
-Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler + **log UI olgunlaşması** + **plan matrisi bug fix** + **ui-plan.js 3 dosyaya bölündü** + **legacy actLog backfill** + **detail panel zenginleşmesi** + **kredi kart paneli geliştirildi** + **actLog group filter** oldu.
-v8.95'te başlayan Hesap modülünden v8.160'a kadar 65+ patch. On ana hat:
+Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler + **log UI olgunlaşması** + **plan matrisi bug fix** + **ui-plan.js 3 dosyaya bölündü** + **legacy actLog backfill** + **detail panel zenginleşmesi** + **kredi kart paneli geliştirildi** + **actLog group filter** + **boş ay sütunları gizlendi** + **kişi özet kartı** + **cred kart → DV re-route** + **notes/persons event delegation** oldu.
+v8.95'te başlayan Hesap modülünden v8.166'a kadar 70+ patch. On bir ana hat:
 1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
 2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135), **ui-plan.js → render/detail/actions** (v8.150), **integrity.js** (v8.155).
 3. Ölü kod toplu temizliği (v8.128-v8.133): persist alias'ları, firestore salt helper'ları, util artıkları, UI handler'ları, Firebase window expose'ları — toplam ~70 satır.
@@ -21,6 +21,7 @@ v8.95'te başlayan Hesap modülünden v8.160'a kadar 65+ patch. On ana hat:
 8. **rehber.js event delegation tamamlandı** (v8.151): v8.121 pattern devam ettirildi — kalan 6 inline `onclick` handler container delegation'a çevrildi; 6 window export silindi.
 9. **Detail panel zenginleşmesi** (v8.152 + v8.159): `convertToCredit` + `editByKey` actions.js'ten **detail.js**'e (mantıksal sahiplik); openRow DV paneline kişi adı rozeti + actLog history (son 10 entry groupId match) eklendi — DV artık zenginleşmiş kontekstte açılır.
 10. **Kredi kart paneli geliştirildi** (v8.158): `Hesap.krediler()` `remaining` / `nextDays` / `overdueCount` / `lastDate` alanları ekledi; UI panel kalan taksit/gün hesabı + gecikme uyarısı + son taksit tarihiyle zenginleşti.
+11. **UX iyileştirmeleri** (v8.163-v8.166): plan matrisi boş ay sütunları gizlendi (v8.163); persons modal'a kişi-bazlı toplam borç/ödeme/gecikmiş özet kartı eklendi (v8.164); kredi özet kartları tıklanabilir → openRow DV taksit takvimi modal'ı (v8.165); ui-notes + ui-persons inline onclick'leri event delegation pattern'ına çevrildi (v8.166 — v8.121/v8.151 devamı).
 
 ---
 
@@ -73,6 +74,11 @@ v8.95'te başlayan Hesap modülünden v8.160'a kadar 65+ patch. On ana hat:
 | **Kredi kart paneli zenginleştirildi** | v8.158 | `Hesap.krediler()` API genişletildi: `remaining` (kalan taksit), `nextDays` (sonraki ödenmemiş taksite gün farkı), `overdueCount` (gecikmiş taksit sayısı), `lastDate` (son taksit tarihi). UI panel buna göre güncellendi — kalan taksit / gün bilgisi + gecikmiş varsa kırmızı sayaç + son taksit tarihi gösterilir. `ui-pay.js#renderCredSummary` consume eder. |
 | **openRow DV: kişi adı + actLog history** | v8.159 | **(A)** DV detail panelinin title altına `👤 AHMET` rozetli satır — ilk pay item'ından `personId` çözülür, `persons.find(p=>p.id===pid).name` ile lookup. personId yok / silinmiş → satır render edilmez. **(B)** Aylar listesi sonrası, dacts'tan önce **actLog history section** — `key.startsWith('g_')` → `groupId`; `pay_*` → ilk item.groupId; `cred_*` → null (skip). `actLog.filter(e => e.groupId === groupId).slice(0, 10)` ile son 10 entry: title + ` · ` + detail (tek satır ellipsis) + `fmtLogTime` time. Davranış değişikliği yok — info-only öğeler. |
 | **actLog groupId bazlı filtre** | v8.160 | v8.145 person-filter pattern'ı groupId için aynen klonlandı. **Yeni state**: `_logGroupFilter`. **Yeni helper**: `_passesGroupFilter`. **Yeni dropdown**: `_renderLogGroupFilterOptions` (actLog'taki benzersiz groupId'ler × `findPaysByGroup(gid)[0].name` join + count; silinmiş grup "(silinmiş grup)"). **Yeni setter**: `setLogGroupFilter`. renderActLog üç filter combine: `date && person && group` AND. Empty message öncelik: group > person > date. **HTML**: LOG_FILT_BAR içine `LOG_FILT_GROUP <select>` (margin-top 6px). Cred entry'leri (groupId yok) grup filter aktifken görünmez. v8.139 öncesi entry'ler eşleşmez. Net Δ: log.js +~40, index.html +1. |
+| **Ayarlar T5 compact grid** | v8.161-v8.162 | Ayarlar sekmesi tek-kolon ardışık `.acard` yapısı → `.acard-grid` 2-kolon (`repeat(auto-fit, minmax(280px, 1fr))` + `align-items:start`). 6 kart (Şifre/Kur/Yedek/Güncelleme/Oturum/Bilgi) responsive grid içinde; 4 sub-açıklama kısaltıldı. JS dokunulmadı. |
+| **Boş ay sütunları gizlendi** | v8.163 | `ui-plan-render.js#render` `monthSet`'in gelecek `aheadVal` ay padding'i koşulsuzdu (boş aylar görünüyordu). Fix: `rowKeys` finalize edildikten sonra `allMonths.filter(m => rowKeys.some(k => mx[k]?.[m]?.items?.length > 0))` ile sadece kayıtlı aylar görünür. **UX trade-off (kabul edildi)**: empty cell "+" affordance gider — yeni ay eklemek için `openRow` detail panel veya üst "+Ekle" butonu. Net Δ: 2 satır. **NOT**: SW cache nedeniyle gerçek tarayıcı testi yapılamadı, gizli sekme/hard reload gerekir. |
+| **openPersonHist özet kartı** | v8.164 | `ui-persons.js#openPersonHist` modal başlığın altına 2-kolon özet bloğu eklendi: **BEKLEYEN** (orange, tutar + sayım, gecikme dahil) \| **ÖDENEN** (green, tutar + sayım); gecikmiş>0 ise alt satır `⚠ kırmızı gecikmiş tutar + sayım`. Yeni helper `_buildPersonSummary(personId, personName)`: pays + paidItems filtre (personId > name fallback) + `Hesap.toplamOzeti` pattern'iyle tutarlı tanım (paysBekleyen = gecikme dahil). Empty state'ten önce gösterilir. |
+| **Cred özet kart → DV re-route** | v8.165 | `ui-pay.js#renderCredSummary` kredi kartları artık tıklanabilir → `openRow('cred_<credId>')` çağrısıyla DV modal (ui-plan-detail.js) açılır: ay-ay taksit listesi + tarih + tutar + status badge + işlem butonları (markOk/openKM/resetPartial/undoCell). Kredi paneli (info) → DV (action) kısa yolu. |
+| **ui-notes + ui-persons event delegation** | v8.166 | v8.121/v8.151 event delegation pattern'ı devamı. **renderNotes (NL)**: `data-note-edit`/`data-note-del` (nid) + `_nlHandlersAttached` one-shot. **renderPaid (PL)**: `data-paid-edit`/`data-paid-del` (paidId) + `_plHandlersAttached`. **Window export temizliği**: `editNote`/`delNote`/`openPaidEdit`/`delPaidItem` silindi (NL/PL delegation'dan çağrılır, statik caller yok). Korundu: `renderNotes`/`openNoteModal`/`saveNote`/`renderPaid`/`savePaidItem`. ui-persons.js paralel delegation v8.164 commit'inde (e53bb7d) bundle edilmişti — v8.166 ui-notes parçasını tamamlar. |
 
 ---
 
@@ -89,6 +95,8 @@ v8.95'te başlayan Hesap modülünden v8.160'a kadar 65+ patch. On ana hat:
 5. **Log "Grup" silme modu** (v8.160'tan kalan) — actLog groupId filter dropdown eklendi ama `LOG_DEL_BAR`'da `person` modunun simetriği olan `group` mode eklenmedi. v8.143 person-mode pattern'i klonlanabilir: dropdown `_populateLogGroupSelect` + `doLogDelByGroup` (`Store.removeWhere('actLog', e => e.groupId===gid)`).
 6. **integrity.js genişletme adayları** (v8.155'te header'da not edildi): deduplicate (aynı id'li paid item'lar), orphan reference temizliği (silinmiş person/cred'e referans veren entry'ler) — sonraki temizlik turunda.
 7. **v8.153/v8.157 atlanmış versiyon numaraları** — git log'da v8.152 → v8.154 → v8.155 → v8.156 → v8.158 → v8.159 → v8.152 (gecikmeli) → v8.160 sırası var; v8.153/v8.157 yok. Linter/parallel commit yarışı sonucu numara boşluğu. Kozmetik, davranış etkilenmez.
+8. **QNB benzeri çoklu-grup kişilerde özet görünmüyor** (v8.164 follow-up) — `openPersonHist` özet kartı tek bir kişi için tüm pays/paidItems'i topluyor, ama bir kişinin **birden çok groupId'si** varsa (örn QNB cred + QNB pay grupları) özet kartında bunlar görünmeyebilir. `_buildPersonSummary` personId filter > name fallback yapıyor; multi-group durumunda hangi groupId'lerin person'a ait olduğunu net çözmüyor olabilir. Reprodüksiyon: aynı kişiye birden fazla farklı `groupId`'li pay → özet kartı kayıp/eksik gösterir. Tanı + fix bir sonraki oturuma.
+9. **v8.163 boş ay sütun gizleme SW cache nedeniyle test edilemedi** — kod doğru görünüyor (`grep "filter(m =>"` ui-plan-render.js'te 1 sonuç), ama tarayıcıda service worker eski versiyonu cache'te tutuyor. Test için: gizli sekme aç + hard reload (Ctrl+Shift+R) + `caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())` konsola yapıştır. SW cache `ip-static-v9` (v8.126'da bumped) — yeni CACHE bump gerekirse `sw.js#CACHE` artırılmalı.
 
 ---
 
@@ -131,12 +139,75 @@ Yeni filter eklemek için aynı pattern: state + predicate + setter + dropdown p
 
 ---
 
+## Mimari Kararlar ve Gerekçeler
+
+Bu bölüm "ne yapıldı" değil **"neden öyle yapıldı"** anlatır — gelecek refactor'lar bu kararları aynen mi tutsun yoksa revize etsin sorusunu netleştirmek için.
+
+### 1. Store pattern (v8.92)
+**Karar:** `window.pays` direkt array erişimi yerine merkezi `js/store.js` Store.
+**Gerekçe:** 5 farklı dosya (`db.js`, `ui.js`, `ui-data.js`, `ui-misc.js`, `ui-plan.js`) aynı array'i farklı şekillerde bozuyordu — biri `.push`, biri `.splice`, biri `=` ile reassignment. `dirty` flag senkronize değildi; aynı tick'te çoklu mutation'lar tek save'e batch'lenmiyordu. Store ile tek mutation API (`push/removeWhere/spliceAt/mutateItem/replace`) + otomatik `_dirty=true` + `saveSecure()` debounce + lookup invalidate.
+
+### 2. localStorage önce, Firebase sonra (v8.89)
+**Karar:** `_doSave` `localStorage.setItem` → `_fbSave` (önce-sonra sırası).
+**Gerekçe:** Firebase çağrısı network hatası veya quota dolması ile fail olunca veri **kaybediliyordu** — `_doSave` exception fırlatıyordu, localStorage'a hiç yazmıyordu. Sıra ters çevrildi: önce localStorage (sync, hata vermez), sonra Firebase (async, fail durumunda `_fbSyncNeeded=true` ile retry işaretlenir). Tek nokta hata = sıfır veri kaybı.
+
+### 3. firebase.js ana modül bloğuna taşındı (v8.113)
+**Karar:** `index.html`'in ayrı `<script type="module">` bloğundaki `firebase.js` import'u ana bloğa (store.js'ten **hemen sonra**) taşındı.
+**Gerekçe:** ES modules iki ayrı `<script type="module">` bloğunu bağımsız evaluate eder. firebase.js önce blokta olduğundan, `getRedirectResult` ve `onAuthStateChanged` callback'leri **cached auth** durumunda anında fire ediyordu — store.js henüz yüklenmediği için `window.Store.fbUid = uid` set'i `TypeError` atıyordu (v8.100 defensive guard'la maskelenmişti). Tek bloğa alınca sıra deterministik: store → firebase → state → ... Race kalıcı çözüldü, v8.100 guard kaldırıldı.
+
+### 4. Store.session (v8.115)
+**Karar:** `window._cryptoKey` / `_dataKeyRaw` / `_plainPin` → `Store.session.cryptoKey/dataKeyRaw/plainPin`.
+**Gerekçe:** Bu değerler `window.*` üzerinde olduğundan **console attacker** veya 3rd party script direkt okuyabiliyordu. Store'a taşıyarak **sahiplik konsolide edildi** (tek yer, tek API). **NOT: security hardening değil** — `window.Store.session` hâlâ console-erişilebilir; sadece organizational netleşme. Gerçek hardening için closure scope + ephemeral key wrap gerekir (gelecek karar).
+
+### 5. Event-based render (v8.100)
+**Karar:** Store mutation API'leri `store:change` CustomEvent dispatch eder; render'lar listener'larla otomatik tetiklenir.
+**Gerekçe:** Mutation sonrası `render()` çağrısı manuel idi — 22+ caller arasında bazıları unutuluyor, UI stale kalıyordu. Microtask-coalesced event ile aynı tick'teki çoklu mutation tek render'a indirgenir. `Store._affects(detail, watched)` helper ile listener selektif (`ui-plan.js` curTab=0 + `pays/creds/paidItems` → render). Manuel render kaldırıldı (ui-plan.js: 9 CRUD, ui-pay.js: 2, ui-persons.js: 1).
+
+### 6. hesap.js (v8.95)
+**Karar:** "Bu ay özeti", "toplam bekleyen borç", "kredi listesi", "trend" hesapları `js/hesap.js`'te tek otorite.
+**Gerekçe:** Plan matrisi (`ui-plan.js#render`), ayarlar paneli (`search.js#renderAI`), kredi kart paneli (`ui-pay.js#renderCredSummary`) üç farklı yerde **aynı kavramı farklı formüllerle** hesaplıyordu — sonuçlar tutarsızdı (örn `bekleyenBorc` üç yerde farklı sayı). Hepsi `Hesap.X()` API'sine yönlendirildi; tek mantık, üç tüketici, tutarlı sonuç.
+
+### 7. personId gruplama (v8.109)
+**Karar:** Pay/cred satırlarını isim suffix'i ("AHMET 1", "AHMET 2") yerine `personId` (UUID) ile grupla.
+**Gerekçe:** "AHMET 1/AHMET 2" mantığı **trigger-based confusing** — aynı kişi için iki ayrı pay grubu eklenince hangisi "1" hangisi "2" olacak belirsizdi; rename'de suffix'ler kayıyordu. `personId` ile kişi nesnesine kanonik bağlantı + display name `"AHMET (Kira)"` / `"AHMET (Elektrik)"` (`desc` veya `category` tag'iyle disambiguation). Self-cleaning backfill (v8.111/v8.112/v8.148) eski entry'leri retroactive bağlar.
+
+### 8. integrity.js + validate.js ayrımı (v8.135 + v8.155)
+**Karar:** `persist.js#_doSave`'in `try/catch` blokları iki ayrı modüle: `validate.js` (read-only schema check) + `integrity.js` (mutation/normalize).
+**Gerekçe:** `_doSave` 60+ satır integrity + validate inline kodu içeriyordu — concern karışıktı, test edilemezdi. Mutation (groupId tutarsızlığı düzeltme) ve read-only audit (tip/varlık kontrolü) **farklı sorumluluklar**. Sıra: `normalizeBeforeSave()` (fix first) → `validateBeforeSave()` (audit after) → encrypt. Genişleme adayları: `integrity.js`'e dedupe + orphan ref temizliği (header'da not).
+
+### 9. db.js → firestore.js + persist.js (v8.127)
+**Karar:** 274 satırlık `db.js` iki dosyaya: `firestore.js` (saf Firestore I/O: 11 helper) + `persist.js` (encrypt + localStorage + migration: 5 fn).
+**Gerekçe:** Auth zaten `firebase.js`'e taşınmıştı (v8.103). Kalan db.js'te **3 farklı concern karışmıştı**: Firestore CRUD, AES encrypt/decrypt, migration script'leri. Sahiplik haritası: `firebase.js` (auth init/listener) → `firestore.js` (data I/O) → `persist.js` (encrypt/storage/migration) → `auth-pin.js` (PIN doğrulama). 0 caller değişikliği (window.* API yüzeyi korundu).
+
+### 10. CSS → app.css (v8.126)
+**Karar:** `index.html`'in `<style>` bloğu (278 satır) ayrı `app.css` dosyasına.
+**Gerekçe:** index.html %39'u CSS'ti — Python ile düzenliyorduk (PowerShell Türkçe karakter bozar kuralı). Her CSS değişikliğinde **encoding riski**: `/* GOOGLE GİRİŞ */` gibi Türkçe yorumlar utf-8 hatasına yol açabiliyordu. Ayrı dosyada bu risk yok + dev tools'ta CSS source map daha temiz. Critical CSS (12 satır, FOUC önleyici) inline kaldı. sw.js `cache:'no-cache'` ile CSS network-first (JS pattern'iyle aynı).
+
+### 11. ui-plan.js → 3 dosya (v8.150)
+**Karar:** 612 satırlık `ui-plan.js` → `ui-plan-render.js` (272) + `ui-plan-detail.js` (156) + `ui-plan-actions.js` (208).
+**Gerekçe:** Render + detail panel + CRUD aynı dosyada — bir bug fix'i diğer bölümleri etkileme riski yüksekti. **Concern ayrımı**: render = read-only HTML üretme; detail = modal açma; actions = CRUD + dialog-flow. v8.152'de iki dialog-flow (`convertToCredit` + `editByKey`) actions'tan detail'e taşındı (sahiplik düzeltmesi). v8.154 helper extraction render içinde.
+
+### 12. Event delegation pattern (v8.121 + v8.151 + v8.166)
+**Karar:** Inline `onclick="..."` handler'lar → container `addEventListener` + `data-*` attribute.
+**Gerekçe:** Inline `onclick` **her render'da yeniden bind** ediyordu — büyük listede memory pressure + window export şişmesi (her caller window.X = X ile bind ediliyordu). Container delegation `_xHandlersAttached` one-shot flag ile **tek bağlama, tüm event'lere bakar**. Yan kazanım: window export'lar silinebildi (`editNote`/`delNote`/`openPaidEdit`/`delPaidItem` vb.) — global namespace temizlendi. Yeni element ekleme delegation içinde otomatik çalışır.
+
+### 13. addLog ctx (v8.136)
+**Karar:** `addLog(type, title, detail, navTab)` → `addLog(type, title, detail, navTab, ctx = {personId, groupId, credId})`.
+**Gerekçe:** actLog kayıtları **kişi/gruba bağlı değildi** — kullanıcı "AHMET'in tüm log'larını filtrele" diyemiyordu, sadece text search vardı. Yeni opsiyonel `ctx` 5. parametresi backward compat (mevcut 12 caller `undefined` geçer, entry kirletmez). v8.140'ta caller'lar bağlandı, v8.143-v8.145'te filter UI eklendi. Sonuç: actLog tam observability — 3 dropdown filter (date + person + group).
+
+### 14. actLog backfill Pass 3 (v8.148)
+**Karar:** `_backfillPersonIds`'a 3. pass: v8.140 öncesi entry'lere `detail`'in ilk segmentinden isim eşleşmesiyle retroactive `personId` atanır.
+**Gerekçe:** v8.140 yeni log'ları zenginleştirdi ama **eski log'lar kişi-bağımsız** kalıyordu — person filter dropdown'da görünmüyorlardı. Pass 3 `detail.split(' · ')[0]` → `Hesap._baseOf` → `persons` Map lookup ile eşleştirme yapar. Skip kuralları (rhb_*, cred_add, taksit içeren) false positive azaltır. İdempotent (mutateItem'da `e.personId` set'liyse skip) + self-cleaning (sonraki açılışta no-op).
+
+---
+
 ## Restore points
 
 | Tag | Commit | Notlar |
 |---|---|---|
-| **`v8.160-stable`** _(öneri)_ | `40d8fc8` | En zengin baseline. v8.150 ui-plan modülerleştirmesi + v8.151 rehber event delegation + v8.152 actions/detail sahiplik düzeltmesi + v8.154/v8.155 helper extraction + integrity.js ayrımı + v8.156 saveCred credId + v8.158 kredi paneli zenginleştirme + v8.159 DV kişi+history + v8.160 group filter dahil. **Üç filter tam aktif** (date + person + group), **DV zenginleşmiş** (kişi rozeti + log history), **kredi paneli olgun** (kalan/gün/gecikme/son tarih). |
-| `v8.150-stable` _(önceki)_ | `19f0b90` | ui-plan.js 3 dosyaya bölünmüş (render/detail/actions ayrımı) + actLog personId backfill Pass 3 (v8.148) tamamlanmış baseline. Önceki baseline'lardan farkı: modül haritası daha temiz (626 satırlık monolitik dosya gitti) + eski actLog entry'leri person-filter'a görünür. |
+| **`v8.166-stable`** _(öneri)_ | `c08ddd7` | En zengin baseline. v8.160 (group filter) sonrası UX dalgası: v8.161-v8.162 Ayarlar grid, v8.163 boş ay sütun gizleme, v8.164 kişi özet kartı, v8.165 cred kart → DV re-route, v8.166 notes/persons event delegation. **Plan matrisi clean** (boş sütun yok), **persons modal'ı zengin** (özet kartı), **kredi panel + DV bağlandı**, **delegation pattern ui-notes/persons'a yayıldı**. |
+| `v8.160-stable` _(önceki)_ | `40d8fc8` | v8.150 ui-plan modülerleştirmesi + v8.151 rehber event delegation + v8.152 actions/detail sahiplik düzeltmesi + v8.154/v8.155 helper extraction + integrity.js ayrımı + v8.156 saveCred credId + v8.158 kredi paneli zenginleştirme + v8.159 DV kişi+history + v8.160 group filter dahil. **Üç filter tam aktif** (date + person + group), **DV zenginleşmiş** (kişi rozeti + log history), **kredi paneli olgun** (kalan/gün/gecikme/son tarih). |
+| `v8.150-stable` | `19f0b90` | ui-plan.js 3 dosyaya bölünmüş (render/detail/actions ayrımı) + actLog personId backfill Pass 3 (v8.148) tamamlanmış baseline. Modül haritası temiz; eski actLog entry'leri person-filter'a görünür. |
 | `v8.147-stable` | `41a938f` | Log UI olgunlaşması (silme/jump/date+person filter) + ui-plan personId genişlemesi + paid rows hide bug fix dahil önceki baseline; ui-plan.js hâlâ monolitik (626 satır); actLog backfill Pass 3 yok |
 | `v8.140-stable` | `f9d7fb5` | addLog ctx caller bağlama tamamlandı — addLog zenginleştirme paketi (v8.136 + v8.139 + v8.140) + validate.js ayrımı + warn-toast mobil fix dahil baseline; log UI henüz olgunlaşmamış |
 | `v8.139-stable` | `73f9374` | actLog ctx render dahil ama caller'lar henüz bağlanmamış |
@@ -144,18 +215,19 @@ Yeni filter eklemek için aynı pattern: state + predicate + setter + dropdown p
 | `v8.120-stable` | `b99e570` | Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline |
 | `v8.112-stable` | `d03d5bc` | Daha eski — personId backfill öncesi |
 
-**Öneri:** v8.160 yeni baseline. Detail panel + kredi panel + log filter trio (date+person+group) ile en olgun UI state. Tag oluştur:
+**Öneri:** v8.166 yeni baseline. UX iyileştirme dalgası (boş ay temizlik + kişi özet + cred→DV + delegation) v8.160 üzerine kuruldu. Tag zaten oluşturuldu:
 ```
-git tag v8.160-stable 40d8fc8 -m "Stable: log triple-filter + DV kisi+history + kredi paneli olgunlasmasi"
-git push origin v8.160-stable
+git tag v8.166-stable c08ddd7   # zaten yapıldı
+git push origin v8.166-stable    # zaten yapıldı
 ```
 
 Geri dönüş (önceki baseline'a):
 ```
-git reset --hard v8.150-stable
+git reset --hard v8.160-stable
 ```
 
 Daha eski baseline'a geri dönmek için:
 ```
-git reset --hard v8.140-stable
+git reset --hard v8.150-stable    # ui-plan modülerleştirmesi öncesi
+git reset --hard v8.140-stable    # log UI olgunlaşması öncesi
 ```
