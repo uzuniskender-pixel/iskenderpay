@@ -201,13 +201,30 @@ function renderCredSummary() {
   }
   // Tum hesap + display name Hesap.krediler'a delege (plan matrisiyle tutarli)
   const list = window.Hesap.krediler();
-  const cards = list.map(({cred, dispName, paid, total, bekleyen, pct, nextPay, done}) => {
+  const cards = list.map(({dispName, remaining, bekleyen, pct, nextPay, nextDays, overdueCount, lastDate, done}) => {
     const pctColor = pct>=80?'var(--ok)':pct>=50?'var(--blue)':'var(--ora)';
     const nextStr  = nextPay?window.fmtD(nextPay.date):'✓';
+    // Sayac badge: done > overdue > yaklasan(<=7) > uzak (v8.158)
+    let badge = '';
+    if (done) {
+      badge = '<span style="color:var(--ok);font-weight:600">✓ Tamamlandı</span>';
+    } else if (overdueCount > 0) {
+      badge = '<span style="color:var(--danger);font-weight:600">⚠ '+overdueCount+' gecikti</span>';
+    } else if (nextDays !== null && nextDays >= 0 && nextDays <= 7) {
+      badge = '<span style="color:#fcd34d;font-weight:600">⚡ '+(nextDays===0?'Bugün':nextDays===1?'Yarın':nextDays+' gün')+'</span>';
+    } else if (nextDays !== null && nextDays > 7) {
+      badge = '<span style="color:var(--muted)">'+nextDays+' gün sonra</span>';
+    }
+    // Kredi bitis: son taksitin "Ay YYYY" formatinda (Ara 27 gibi)
+    let lastStr = '';
+    if (lastDate) {
+      const d = window.parseLocalDate(lastDate);
+      lastStr = d.toLocaleDateString('tr-TR',{month:'short'}) + ' ' + String(d.getFullYear()).slice(-2);
+    }
     return `<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(dispName)}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0">${paid}/${total}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0">${done?'✓':remaining+' kaldı'}</div>
       </div>
       <div style="height:3px;background:var(--surf);border-radius:2px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px"></div>
@@ -216,6 +233,10 @@ function renderCredSummary() {
         <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${done?'var(--ok)':'var(--danger)'}">${done?'✓':window.fmt(bekleyen)}</div>
         <div style="font-size:10px;color:var(--muted)">${nextStr}</div>
       </div>
+      ${(lastStr||badge)?`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:6px;min-width:0">
+        <div style="color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lastStr?(done?'Bitti: '+lastStr:'Bitiş: '+lastStr):''}</div>
+        <div style="flex-shrink:0">${badge}</div>
+      </div>`:''}
     </div>`;
   }).join('');
   el.style.display = '';

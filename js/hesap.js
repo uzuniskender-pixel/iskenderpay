@@ -6,7 +6,7 @@
 // API:
 //   Hesap.buAyOzeti({all?, refDate?}) -> { tot, ok, bek, gec, okN, bekN, gecN, itemCount }
 //   Hesap.toplamOzeti()               -> { paysBekleyen, krediBekleyen, toplam }
-//   Hesap.krediler()                  -> [{ cred, dispName, paid, total, bekleyen, pct, nextPay, done }]
+//   Hesap.krediler()                  -> [{ cred, dispName, paid, total, remaining, bekleyen, pct, nextPay, nextDays, overdueCount, lastDate, done }]
 //   Hesap.trend(n)                    -> [{ lbl, tot, monthKey, count }]
 //
 // Display name yardimcilari (paylasilan):
@@ -158,19 +158,31 @@ export const Hesap = {
   krediler() {
     const mx = _mx();
     const dnMap = _displayNames(mx);
+    const today = window.todayMidnight ? window.todayMidnight() : (() => { const t = new Date(); t.setHours(0,0,0,0); return t; })();
     return (window.creds || []).map(cr => {
       const credKey = 'cred_' + cr.id;
       const dispName = dnMap[credKey] || _baseOf(cr.name);
       const items = cr.pays || [];
       const paid = items.filter(p => (p.status || 'pending') === 'paid').length;
       const total = items.length;
+      const remaining = total - paid;
       const bekleyen = items
         .filter(p => (p.status || 'pending') !== 'paid')
         .reduce((s, p) => s + p.amount, 0);
       const pct = total > 0 ? Math.round((paid / total) * 100) : 0;
       const nextPay = items.find(p => (p.status || 'pending') !== 'paid');
       const done = paid === total;
-      return { cred: cr, dispName, paid, total, bekleyen, pct, nextPay, done };
+      const lastDate = items.length ? items[items.length - 1].date : null;
+      // Gecikmiş taksit sayısı: status!=='paid' && tarih < bugün
+      const overdueCount = items.filter(p =>
+        (p.status || 'pending') !== 'paid' &&
+        p.date && window.parseLocalDate(p.date) < today
+      ).length;
+      // Bir sonraki ödenmemiş taksit için gün farkı (negatif=geçmiş, 0=bugün, pozitif=gelecek)
+      const nextDays = nextPay && nextPay.date
+        ? Math.round((window.parseLocalDate(nextPay.date) - today) / 86400000)
+        : null;
+      return { cred: cr, dispName, paid, total, remaining, bekleyen, pct, nextPay, nextDays, overdueCount, lastDate, done };
     });
   },
 
