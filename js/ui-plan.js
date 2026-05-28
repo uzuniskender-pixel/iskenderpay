@@ -1,6 +1,7 @@
 // js/ui-plan.js — iskenderpay
 // Plan matrisi, hücre detayları, ödeme durum aksiyonları
 
+// ── DATA / HESAPLAMA ─────────────────────────────────────────────────────
 function getAllItems() {
   const credPays = [];
   window.creds.forEach(c => c.pays.forEach((p,ii) => credPays.push({...p, name:c.name, currency:'TRY', _cid:c.id, _ii:p.idx})));
@@ -32,6 +33,7 @@ function buildMx(all) {
   return mx;
 }
 
+// ── ANA RENDER ───────────────────────────────────────────────────────────
 function render() {
   const all = getAllItems();
   const now = new Date();
@@ -159,6 +161,7 @@ function render() {
   // renderCredSummary decoupled (v9.0): ui-pay.js listener cagiriyor
 }
 
+// ── HAFTA WİDGET ─────────────────────────────────────────────────────────
 function renderGecWidget(all) {
   const el = document.getElementById('HAFTA');
   if (!el) return null; // HAFTA elementini paylaşıyoruz, gecikmiş önce render edilecek
@@ -248,6 +251,7 @@ function renderHaftaWidget(all, now, soon7) {
   </div>` : '');
 }
 
+// ── DETAIL PANEL (DV) ────────────────────────────────────────────────────
 function openRow(keyEnc) {
   const key=decodeURIComponent(keyEnc), all=getAllItems(), mx=buildMx(all);
   const dispName=mx[key]?._displayName||mx[key]?._name||key;
@@ -408,6 +412,7 @@ function openEmptyCell(keyEnc,month) {
   setTimeout(()=>document.getElementById('ECA')?.focus(),100);
 }
 
+// ── HÜCRE CRUD ───────────────────────────────────────────────────────────
 function addToMonth(keyEnc,month) {
   const amt=parseFloat(document.getElementById('ECA').value)||0;
   const cur=document.getElementById('ECC').value;
@@ -501,6 +506,7 @@ function resetPartial(keyEnc,month) {
   window.Store.touch(); closeDV();
 }
 
+// ── SATIR / AY CRUD ──────────────────────────────────────────────────────
 function editByKey(keyEnc) {
   const key=decodeURIComponent(keyEnc);
   closeDV();
@@ -571,7 +577,7 @@ function delCellItems(keyEnc,month) {
 
 
 
-// ── STORE EVENT LISTENER (v9.0) ─────────────────────────────────────────────
+// ── EVENT + TOGGLE ───────────────────────────────────────────────────────
 // Store mutation -> 'store:change' event -> active tab 0 ise render
 window.addEventListener('store:change', e => {
   if (window.curTab !== 0) return;

@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.123 / 20260528-48
+## Mevcut Durum (28 Mayıs 2026) — v8.124 / 20260528-49
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.124 | 20260528-49 | **`ui-plan.js` section header'ları**: 612 satırlık dosyaya 7 section header eklendi (kod düzeni değişmedi, sadece görsel navigasyon): `DATA / HESAPLAMA` (getAllItems, buildMx), `ANA RENDER` (render), `HAFTA WİDGET` (renderGecWidget, renderHaftaWidget), `DETAIL PANEL (DV)` (openRow, convertToCredit, openCell, closeDV, closeRDET, openEmptyCell), `HÜCRE CRUD` (addToMonth, markOk, undoCell, openKM, doPartial, saveCellAmt, resetPartial), `SATIR / AY CRUD` (editByKey, delByKey, delMonthEntry, delCellItems), `EVENT + TOGGLE` (store:change listener + togglePaidMonths). Mevcut `// ── STORE EVENT LISTENER (v9.0) ──` yorumu `EVENT + TOGGLE` ile replace edildi. 6 fonksiyon zaten doğru sırada, 2 küçük çelişki (convertToCredit DETAIL section'a, openKM HÜCRE CRUD section'a düştü — fiziksel sıra korundu). Bölme yok — v9.0'da modal HTML extraction'la birlikte ui-plan-detail/actions ayrımı düşünülebilir. |
 | v8.123 | 20260528-48 | **`_doSave` veri integrity check'i** (`db.js`): kayıt öncesi tip/varlık doğrulama, hata yakalanır ama save iptal EDİLMEZ — sadece `console.error` ile loglanır (forensic için). Kontroller: (1) **pays**: `id` (undefined/null değil), `name` (string), `amount` (number + NaN değil), `date` (string), `groupId` (truthy). (2) **creds**: `id`, `name` (string), `monthly` (number + NaN değil — "amount" konseptinin karşılığı). (3) **persons**: `id` (truthy), `name` (string). Sayım: her hata `errN++`, toplam sıfır değilse `console.warn('[integrity] toplam N veri hatasi tespit edildi — kayit yine de yapiliyor')`. Mevcut groupId tutarlılık check'inden **sonra**, encrypt'ten **önce** çalışır (silent fix önce, sonra validation). notes/paidItems/rehber/hist/actLog kapsanmadı (user talebi 3 ana koleksiyon). |
 | v8.122 | 20260528-47 | **`window.debugState()` konsol debug helper'ı eklendi** (`app.js`): 5 `console.table` grubu — (1) **Store flags**: dirty, saveTimer, syncTimer, fbSyncNeeded, lastUpdated (ISO formatlı), planId, fbUid. (2) **Session**: cryptoKey/dataKeyRaw varlığı (boolean), plainPin uzunluğu (cleartext loglamamak için sadece length). (3) **Veri sayıları**: 8 dizinin (pays/creds/hist/persons/notes/paidItems/rehber/actLog) length değerleri. (4) **Kur cache**: EUR/USD/GOLD + `_fetchedAt`. (5) **Service Worker**: `navigator.serviceWorker.controller` boolean. Başlıkta `APP_VERSION` + `APP_BUILD` colored log. Çağrı: konsoldan `debugState()` — production deploy'da kalır (sadece geliştirici tetikler). |
 | v8.121 | 20260528-46 | **rehber.js event delegation refactor**: `renderRhbPhones`'taki 3 inline handler (`onchange/oninput/onclick="_rhbPhones[i]..."`) kaldırıldı, container `#RMOD_PHONES`'a tek seferlik event delegation bağlandı (module-local `_phoneHandlersAttached` flag). Phone row template `data-i="${i}"` attribute taşır; CSS class'lar (`rhb-phone-lbl`, `rhb-phone-num`, `rhb-phone-del`) listener'larda target match için. Delegated listener mantığı: target sınıf kontrolü → `closest('.rhb-phone-row').dataset.i` → mutate. **`window._rhbPhones` export silindi** (LOAD-BEARING yorum bloğu + v8.117 in-place mutation yorumları da temizlendi — kısıt artık yok). `_rhbPhones` saf module-local state oldu. v8.117'deki splice pattern korundu (gereksiz değil, sadece reassignment kullanımına dönüş için ek değer yok). **Listener accumulation:** `_phoneHandlersAttached` flag tek bind garantisi — modal close/reopen cycle'da container element sabit kalır, listener persistent. Doğrulama: `grep "window._rhbPhones"` aktif kodda 0 sonuç; `grep "_rhbPhones\["` index.html'de 0 sonuç. |
@@ -134,6 +135,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.124 | 20260528-49 | ui-plan.js section header'ları (7 başlık) — kod düzeni değişmedi, sadece görsel navigasyon |
 | v8.123 | 20260528-48 | `_doSave` veri integrity check (db.js) — pays/creds/persons için tip+varlık doğrulama; hata yakalanır ama save iptal EDİLMEZ, console.error + toplam errN warn'i |
 | v8.122 | 20260528-47 | `window.debugState()` konsol debug helper'ı (app.js) — 5 console.table grubu: Store flags, session (PIN length only), 8 veri sayısı, kur cache, SW controller |
 | v8.121 | 20260528-46 | rehber.js event delegation refactor — 3 inline handler `_rhbPhones[i]...` yerine container'a tek bind; `window._rhbPhones` export silindi (load-bearing kısıt kalktı), `_rhbPhones` saf module-local |
