@@ -145,7 +145,6 @@ function openRhbAdd() {
   document.getElementById('RMOD_ID').value='';
   document.getElementById('RMOD_T').innerHTML='Kişi <span>Ekle</span>';
   ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_NOTE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  // v8.117: in-place mutation — inline handler'lar window._rhbPhones'tan okur, reassignment yapılırsa stale kalır
   _rhbPhones.splice(0,_rhbPhones.length,{lbl:'Cep',num:''});renderRhbPhones();
   ModalManager.open('RMOD');
 }
@@ -159,22 +158,45 @@ function openRhbEdit(id) {
   const coEl=document.getElementById('RMOD_COMPANY');if(coEl)coEl.value=p.company||'';
   document.getElementById('RMOD_EMAIL').value=p.email||'';
   document.getElementById('RMOD_NOTE').value=p.note||'';
-  // v8.117: in-place mutation — inline handler'lar window._rhbPhones'tan okur, reassignment yapılırsa stale kalır
   _rhbPhones.splice(0,_rhbPhones.length, ...(p.phones?.length?p.phones.map(x=>({...x})):[{lbl:'',num:''}]));
   renderRhbPhones();
   setTimeout(()=>ModalManager.open('RMOD'),100);
 }
 
+let _phoneHandlersAttached = false;
+
 function renderRhbPhones() {
-  document.getElementById('RMOD_PHONES').innerHTML=_rhbPhones.map((ph,i)=>{
-    const cur=ph.lbl||'Cep';
-    const opts=RHB_LBL_OPTS.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
-    return `<div class="rhb-phone-row">
-      <select class="fi" onchange="_rhbPhones[${i}].lbl=this.value" style="flex:0.65;padding:9px 8px;font-size:13px">${opts}</select>
-      <input class="fi mono-inp" type="tel" placeholder="05XX XXX XX XX" value="${window.esc(ph.num)}" oninput="_rhbPhones[${i}].num=this.value" style="flex:1">
-      ${_rhbPhones.length>1?`<button onclick="_rhbPhones.splice(${i},1);renderRhbPhones()" style="background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>`:''}
+  const cont = document.getElementById('RMOD_PHONES');
+  if (!cont) return;
+  cont.innerHTML = _rhbPhones.map((ph,i) => {
+    const cur = ph.lbl || 'Cep';
+    const opts = RHB_LBL_OPTS.map(o => `<option${o===cur?' selected':''}>${o}</option>`).join('');
+    return `<div class="rhb-phone-row" data-i="${i}">
+      <select class="fi rhb-phone-lbl" style="flex:0.65;padding:9px 8px;font-size:13px">${opts}</select>
+      <input class="fi mono-inp rhb-phone-num" type="tel" placeholder="05XX XXX XX XX" value="${window.esc(ph.num)}" style="flex:1">
+      ${_rhbPhones.length>1?`<button class="rhb-phone-del" style="background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>`:''}
     </div>`;
   }).join('');
+  if (_phoneHandlersAttached) return;
+  // Event delegation: tek bir kez container'a bagli. Modal close/reopen'da
+  // innerHTML degisir ama container element sabit, listener'lar persistent.
+  cont.addEventListener('change', e => {
+    if (!e.target.classList.contains('rhb-phone-lbl')) return;
+    const i = +e.target.closest('.rhb-phone-row').dataset.i;
+    _rhbPhones[i].lbl = e.target.value;
+  });
+  cont.addEventListener('input', e => {
+    if (!e.target.classList.contains('rhb-phone-num')) return;
+    const i = +e.target.closest('.rhb-phone-row').dataset.i;
+    _rhbPhones[i].num = e.target.value;
+  });
+  cont.addEventListener('click', e => {
+    if (!e.target.classList.contains('rhb-phone-del')) return;
+    const i = +e.target.closest('.rhb-phone-row').dataset.i;
+    _rhbPhones.splice(i, 1);
+    renderRhbPhones();
+  });
+  _phoneHandlersAttached = true;
 }
 
 function rhbAddPhone() { _rhbPhones.push({lbl:'Cep',num:''}); renderRhbPhones(); }
@@ -220,9 +242,3 @@ window.renderRhbPhones    = renderRhbPhones;
 window.rhbAddPhone        = rhbAddPhone;
 window.rhbSavePerson      = rhbSavePerson;
 window.rhbDel             = rhbDel;
-// LOAD-BEARING: inline handler'lar (line 171-173 `onchange/oninput/onclick="_rhbPhones[i]..."`)
-// ES module scope'una erişemez — `_rhbPhones` referansını window üzerinden çözerler.
-// Silmek inline handler'ları ReferenceError ile kırar. v8.117'de reassignment'lar splice
-// in-place mutation'a çevrildi → window ve modül-local artık her zaman aynı array (bug fix).
-// Tam temizlik için inline handler'lar event delegation'a çevrilmeli.
-window._rhbPhones = _rhbPhones;

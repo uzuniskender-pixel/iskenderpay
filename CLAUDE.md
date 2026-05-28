@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.120 / 20260528-45
+## Mevcut Durum (28 Mayıs 2026) — v8.121 / 20260528-46
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.121 | 20260528-46 | **rehber.js event delegation refactor**: `renderRhbPhones`'taki 3 inline handler (`onchange/oninput/onclick="_rhbPhones[i]..."`) kaldırıldı, container `#RMOD_PHONES`'a tek seferlik event delegation bağlandı (module-local `_phoneHandlersAttached` flag). Phone row template `data-i="${i}"` attribute taşır; CSS class'lar (`rhb-phone-lbl`, `rhb-phone-num`, `rhb-phone-del`) listener'larda target match için. Delegated listener mantığı: target sınıf kontrolü → `closest('.rhb-phone-row').dataset.i` → mutate. **`window._rhbPhones` export silindi** (LOAD-BEARING yorum bloğu + v8.117 in-place mutation yorumları da temizlendi — kısıt artık yok). `_rhbPhones` saf module-local state oldu. v8.117'deki splice pattern korundu (gereksiz değil, sadece reassignment kullanımına dönüş için ek değer yok). **Listener accumulation:** `_phoneHandlersAttached` flag tek bind garantisi — modal close/reopen cycle'da container element sabit kalır, listener persistent. Doğrulama: `grep "window._rhbPhones"` aktif kodda 0 sonuç; `grep "_rhbPhones\["` index.html'de 0 sonuç. |
 | v8.120 | 20260528-45 | **`window._planId` → `Store.planId` migrasyonu (10. Store flag)**: v8.108/v8.113'ün doğal devamı. (1) `store.js`: `_persistState.planId: localStorage.getItem('v6-active-plan') \|\| 'plan1'` + `Store.planId` getter/setter — **setter localStorage'a otomatik yazar** (3 yerdeki manuel `localStorage.setItem('v6-active-plan', ...)` redundant). (2) `state.js` L14 ve `firebase.js` L26-28'deki **duplicate init satırları silindi** (Store init eder, çift kaynak gereksiz); state.js header yorumu güncellendi. (3) `plan.js#selectPlan`: `window._planId = planId; localStorage.setItem(...)` → tek satır `window.Store.planId = planId`. (4) `auth-pin.js#chPass`: 3 site (otherPlan çöz, swap, rollback) `Store.planId`'ye geçti; `localStorage.setItem` satırı silindi (setter yazıyor). (5) Read site'leri (16 nokta): `db.js` (×9), `kur.js` (×3), `app.js`, `backup.js`, `firebase.js#_planDoc`, `search.js` — mekanik `window._planId` → `window.Store.planId` replace. **Doğrulama**: `grep "window._planId"` aktif kodda 0 sonuç (2 history yorum satırı kaldı). Geriye uyum yok — `window._planId` artık undefined (v8.108/v8.113 pattern). |
 | v8.119 | 20260528-44 | **Küçük temizlikler (2 madde + 1 deferred)**: (1) `rehber.js`: `_rhbPhones=[...]` reassignment'ları (L148, L161) `splice(0, length, ...)` in-place mutation'a çevrildi. **Sessiz bug fix** — önceden modül-local reassignment yapılıyordu ama inline event handler'lar (L171-173 `onchange/oninput/onclick="_rhbPhones[i]..."`) ES module scope'una erişemediği için `window._rhbPhones` üzerinden okuyordu; reassignment sonrası window stale array'i tutuyordu → kullanıcı edit'leri kaybolabiliyordu. Şimdi window ve modül-local her zaman aynı array. `window._rhbPhones` export'u **load-bearing** (inline handler'lar bağımlı) — yorum eklendi, tam temizlik için event delegation refactor'una not edildi. (2) `app.js`: `window._migrationRunning` → modül-local `let _migrationRunning` (sadece app.js içinde okunup yazılıyordu, window'a çıkma gereği yoktu). **Deferred**: `db.js#L217` ölü `let _migrationRunning = false;` silme planlanmıştı (migrateToV7 body'sinde okuma/yazma yoktu, v8.x boyunca dead) — working tree'de paralel Store migrate işiyle aynı dosyada olduğu için ayrı stage edilemedi; bir sonraki commit'e (Store migrate paketine) devredildi. İsim çakışması yok (app.js ve db.js modül scope'ları ayrı). |
 | v8.118 | 20260528-43 | **`window._knownBuild` → `version.js` modül-private + named export**: `version.js` dosya başına `let _knownBuild = null;` (modül-local) eklendi; 4 site (`initBuild`, `checkVersion` ×2, `manualCheckUpdate`) `window._knownBuild` → `_knownBuild` çevrildi; sonuna `export function getKnownBuild() { return _knownBuild; }` eklendi. `search.js` başına `import { getKnownBuild } from './version.js';`, L80'deki `${window._knownBuild\|\|window.APP_BUILD}` → `${getKnownBuild()\|\|window.APP_BUILD}`. **Orphan temizlik**: `index.html:721-723`'teki `var _knownBuild = null;` + iki yorum satırı silindi — boot'ta `window._knownBuild = null` set edip version.js initBuild'in fetch sonrası override etmesini bekleyen eski yapı; artık module-private alanın side-effect'i yok. Davranış birebir aynı (fallback `\|\|APP_BUILD` korundu). ES modules sequential evaluation garantisi: version.js index.html:312, search.js :320 — named export resolve OK. Doğrulama: aktif kodda `window._knownBuild` 0 sonuç. |
@@ -119,7 +120,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.120", "build": "20260528-45"}
+version.json        {"v": "8.121", "build": "20260528-46"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -131,6 +132,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.121 | 20260528-46 | rehber.js event delegation refactor — 3 inline handler `_rhbPhones[i]...` yerine container'a tek bind; `window._rhbPhones` export silindi (load-bearing kısıt kalktı), `_rhbPhones` saf module-local |
 | v8.120 | 20260528-45 | Bundle commit (5a91596 + b99e570 hotfix): v8.116 + v8.117 + v8.118 değişiklikleri tek commit'te + APP_VERSION/APP_BUILD hizalama hotfix |
 | v8.119 | — | (v8.120 commit'ine bundle edildi — ayrı commit yok) |
 | v8.118 | 20260528-43 | `window._knownBuild` → `version.js` modül-private + `getKnownBuild()` named export; `search.js` import eder; `index.html`'deki orphan `var _knownBuild = null;` (L721-723) silindi — boot-time `window.*` set yan etkisi de kalktı |
