@@ -111,6 +111,7 @@ function saveCred() {
   let monthly=parseFloat(document.getElementById('CM2').value)||0;
   const start=document.getElementById('CS').value;
   if(!name||!inst||!start){alert('Ad, taksit sayısı ve tarih zorunlu');return;}
+  const personId=_resolvePersonId(name);
   if(!monthly&&total) monthly=Math.round(total/inst);
   if(!monthly){alert('Aylık taksit tutarını girin');return;}
   const[startYr,startMo0,startDay]=start.split('-').map(Number);
@@ -137,11 +138,12 @@ function saveCred() {
       // paidItems'daki eski adı güncelle
       if(nameChanged){(window.paidItems||[]).forEach(pi=>{if(pi._cid===cr.id)pi.name=name;});}
     }
-    window.addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
+    window.addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0,{personId,credId:eid});
   }
   else{
-    window.Store.push('creds', {id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr});
-    window.addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
+    const newCred={id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr};
+    window.Store.push('creds', newCred);
+    window.addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0,{personId,credId:newCred.id});
     const srcKey=window._convertSourceKey;
     if(srcKey){
       // Odeme durumlarini yeni kredi taksitlerine isle

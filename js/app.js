@@ -141,7 +141,7 @@ function toggleEye(id) {
 
 
 // ── AKTİVİTE LOGU ────────────────────────────────────────────────────────────
-// ctx (v8.136): opsiyonel {personId, groupId} — sadece truthy alanlar entry'e set edilir
+// ctx (v8.136 + v8.155): opsiyonel {personId, groupId, credId} — sadece truthy alanlar entry'e set edilir
 function addLog(type, title, detail, navTab, ctx) {
   try {
     const entry = {
@@ -152,7 +152,8 @@ function addLog(type, title, detail, navTab, ctx) {
     };
     if (ctx) {
       if (ctx.personId) entry.personId = ctx.personId;
-      if (ctx.groupId) entry.groupId  = ctx.groupId;
+      if (ctx.groupId)  entry.groupId  = ctx.groupId;
+      if (ctx.credId)   entry.credId   = ctx.credId;
     }
     (window.actLog || []).unshift(entry);
     clearTimeout(window.Store.logSaveTimer);
