@@ -65,8 +65,6 @@ function rhbNormalizeCompanies() {
 
 function rhbSave() { saveSecure(); }
 
-function openRehber() { go(6); }
-
 // ── SEKME YÖNETİMİ ───────────────────────────────────────────────────────────
 function go(n) {
   window.curTab = n;
@@ -211,7 +209,6 @@ function debugState() {
 window.enterApp           = enterApp;
 window.rhbNormalizeCompanies = rhbNormalizeCompanies;
 window.rhbSave            = rhbSave;
-window.openRehber         = openRehber;
 window.go                 = go;
 window.chSort             = chSort;
 window.chAhead            = chAhead;

@@ -89,17 +89,6 @@ function savePay() {
   window.closeMov('PM2');
 }
 
-function openCred() {
-  // Önceki convert-to-credit oturumundan stale state kalmış olabilir (modal iptal/ESC/dış-tıklama)
-  window._convertSourceKey=null;
-  window._convertSourcePays=null;
-  document.getElementById('CEID').value='';
-  ['CN','CT','CI','CM2'].forEach(id=>document.getElementById(id).value='');
-  const _cd=new Date();document.getElementById('CS').value=window.toLocalISO(_cd.getFullYear(),_cd.getMonth(),_cd.getDate());
-  document.getElementById('LP').classList.remove('show');
-  ModalManager.open('CM');
-}
-
 function editCred(id) {
   const c=window.findCredById(id);if(!c)return;
   document.getElementById('CEID').value=id;
@@ -193,7 +182,6 @@ function updLP() {
 window.openPay            = openPay;
 window.editPay            = editPay;
 window.savePay            = savePay;
-window.openCred           = openCred;
 window.editCred           = editCred;
 window.saveCred           = saveCred;
 window.updLP              = updLP;
