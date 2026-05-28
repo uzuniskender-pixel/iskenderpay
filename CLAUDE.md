@@ -42,8 +42,9 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **Ölü dosyaları sil** — `ui.js`, `ui-data.js`, `ui-misc.js` FS'ten kaldır (v8.90'da import'tan çıkarıldı ama dosyalar duruyor). Silinince `backup.js:50-57` + `backup.js:76-83` + `sync.js:29-41` içindeki ulaşılamaz `if (window.Store) {} else {}` defensive fallback'lar da sadeleştirilebilir — Store her zaman var, else-branch tamamen ölü.
-2. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
+1. **`onAuthStateChanged` duplikasyonu** — `firebase.js#46-77` ve `db.js#135-168` aynı callback'i kayıt ediyor (UI panel toggle + renderPlanNames). Hangisi önce fire eder belirsiz; davranış üst üste binebilir. Birini sadeleştir/sil.
+2. **Ulaşılamaz `else (Store undefined)` fallback'larını sil** — `backup.js:50-57`, `backup.js:76-83`, `sync.js:29-41`. Store her zaman yüklü; else-branch ölü kod (içindeki manuel `invalidateLookups()`+ atomic atamalar dahil).
+3. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
 
 ---
 
@@ -101,7 +102,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.99", "build": "20260528-27"}
+version.json        {"v": "8.100", "build": "20260528-28"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -113,6 +114,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.100 | 20260528-28 | Hotfix: firebase.js race condition — onAuthStateChanged callback'i plan.js'ten önce fire ederse `renderPlanNames is not a function` hatası; defensive guard eklendi |
 | v8.99 | 20260528-27 | Redundant `window.invalidateLookups()` temizliği — 5 manuel çağrı kaldırıldı (ui-pay.js, ui-plan.js, db.js x2, app.js#genRec tamamen sildi) |
 | v8.98 | 20260528-26 | data.js → Store entegrasyonu — lookup maps + _lookupDirty Store'a taşındı, data.js ince compat katmanına indi |
 | v8.99 | 20260528-27 | Ölü dosyalar silindi: js/ui.js, js/ui-data.js, js/ui-misc.js |
