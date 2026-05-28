@@ -121,7 +121,7 @@ function render() {
     const dispName=mx[k]._displayName||mx[k]._name||k;
     const _firstMk=Object.keys(mx[k]).filter(x=>!x.startsWith('_')).sort()[0];
     const _dayNum=_firstMk&&mx[k][_firstMk]?.items?.[0]?.date?window.parseLocalDate(mx[k][_firstMk].items[0].date).getDate():'';
-    html+=`<tr><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}">${window.esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
+    html+=`<tr data-row-key="${k}"><td class="rh" onclick="openRow('${encodeURIComponent(k)}')" title="${window.esc(dispName)}">${window.esc(dispName)}</td><td style="text-align:center;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;min-width:32px;max-width:36px;width:32px">${_dayNum}</td>`;
     months.forEach(m=>{
       const c=mx[k]?.[m];
       if(!c||!c.items){html+=`<td class="ce" onclick="openEmptyCell('${encodeURIComponent(k)}','${m}')" style="cursor:pointer;opacity:.35" title="Bu aya ekle">+</td>`;return;}

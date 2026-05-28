@@ -265,3 +265,10 @@ select.fi{appearance:none}
 .empty{text-align:center;padding:32px 16px;color:var(--muted)}
 .empty .ico{font-size:36px;margin-bottom:9px}
 .empty p{font-size:13px;line-height:1.6}
+
+/* v8.144: log icon jump highlight */
+.jump-flash { animation: jumpFlash 1.5s ease-out; }
+@keyframes jumpFlash {
+  0% { background-color: rgba(232,192,125,.45); }
+  100% { background-color: transparent; }
+}

@@ -316,6 +316,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
         <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="LOG_CNT"></div></div>
         <button onclick="openLogDel()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">🗑️ Sil</button>
       </div>
+      <div style="padding:0 16px 8px;display:flex;gap:6px;overflow-x:auto">
+        <button id="LOG_FILTER_ALL"   onclick="setLogFilter('all')"   class="btn" style="font-size:11px;font-weight:600;background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)">Hepsi</button>
+        <button id="LOG_FILTER_TODAY" onclick="setLogFilter('today')" class="btn bc" style="font-size:11px;font-weight:600">Bugün</button>
+        <button id="LOG_FILTER_WEEK"  onclick="setLogFilter('week')"  class="btn bc" style="font-size:11px;font-weight:600">Bu hafta</button>
+        <button id="LOG_FILTER_MONTH" onclick="setLogFilter('month')" class="btn bc" style="font-size:11px;font-weight:600">Bu ay</button>
+      </div>
       <div id="LOG_DEL_BAR" style="padding:0 16px 8px;display:none">
         <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
           <!-- Mod seçimi -->
@@ -454,8 +460,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.143';
-var APP_BUILD   = '20260528-65';
+var APP_VERSION = 'v8.145';
+var APP_BUILD   = '20260528-67';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
