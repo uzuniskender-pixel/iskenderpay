@@ -301,10 +301,12 @@ function openCell(keyEnc,month) {
   h+=`<div class="drow"><span class="dk">Durum</span><span class="${window.sCls(s,over)}" style="font-weight:600">${window.sLbl(s,over)}</span></div>`;
   if(s==='partial') h+=`<div class="drow"><span class="dk">Ödenen</span><span class="dv" style="color:var(--ora)">${window.fmt(c.items.reduce((a,p)=>a+(p.paid||0),0))}</span></div>`;
   c.items.forEach(p=>{if(p.date)h+=`<div class="drow"><span class="dk">Tarih</span><span class="dv" style="font-family:'Inter',sans-serif">${window.fmtD(p.date)}</span></div>`;});
+  const isCreditCell = c.items.length > 0 && c.items.every(x => x._cid);
+  const creditAmt = isCreditCell ? (()=>{ const cr=window.findCredById(c.items[0]._cid); const ti=cr&&cr.pays.find(x=>x.idx===c.items[0]._ii); return ti?Math.round(ti.amount):Math.round(c.try); })() : null;
   h+=`<div class="dedit">
-    <div class="dedit-lbl">Bu Ayın Tutarını Düzenle${orig?' ('+orig.currency+')':' (₺)'}</div>
+    <div class="dedit-lbl">${isCreditCell?'Bu Taksiti Düzenle (₺)':'Bu Ayın Tutarını Düzenle'+(orig?' ('+orig.currency+')':' (₺)')}</div>
     <div class="dedit-row">
-      <input class="fi mono-inp" id="CEA" type="number" value="${orig?orig.amount:Math.round(c.try)}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
+      <input class="fi mono-inp" id="CEA" type="number" value="${isCreditCell?creditAmt:(orig?orig.amount:Math.round(c.try))}" inputmode="decimal" style="flex:1;font-size:16px;text-align:center">
       <button onclick="saveCellAmt('${encodeURIComponent(key)}','${month}')" class="btn bs" style="flex:none;padding:10px 13px;font-size:12px">Kaydet</button>
     </div>
     ${orig&&window.rates[orig.currency]?`<div style="font-size:10px;color:var(--muted);margin-top:5px">1 ${orig.currency==='EUR'?'EUR':'gr'} = ${orig.currency==='EUR'?window.fmt(window.rates.EUR):window.fmt(window.rates.GOLD)}</div>`:''}
@@ -313,7 +315,7 @@ function openCell(keyEnc,month) {
   const isSingleItem=c.items.length===1&&!c.items[0]._cid;
   const delBtn=isSingleItem?`<button class="dact da-del" onclick="delMonthEntry('${encodeURIComponent(String(c.items[0].id))}')">Bu Ayı Sil</button>`:`<button class="dact da-del" onclick="delCellItems('${cellKey}','${cellMo}')">Bu Ayı Sil</button>`;
   const editItem=c.items.find(x=>!x._cid);
-  const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>window.editPay('${editItem.id}'),50)">Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
+  const editBtn=editItem?`<button class="dact da-edit" onclick="closeDV();setTimeout(()=>window.editPay('${editItem.id}'),50)">Düzenle</button>`:isCreditCell?`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Tüm Krediyi Düzenle</button>`:`<button class="dact da-edit" onclick="editByKey('${cellKey}')">Düzenle</button>`;
   // Geçmiş ödemeler
   const cellPaidHistory = (window.paidItems||[]).filter(pi =>
     c.items.some(x => String(x.id) === String(pi.id) || (x.name === pi.name && pi.date && pi.date.startsWith(month.slice(0,7))))
