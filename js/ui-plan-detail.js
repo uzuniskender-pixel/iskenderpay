@@ -64,6 +64,41 @@ function openRow(keyEnc) {
   ModalManager.open('DV');
 }
 
+// _buildPersonHistory: o ay öncesi, refItem'ın kişisi/grubunun paidItems özeti (v8.161)
+// Cred cell'lerinde null döner (anlamsız). Öncelik: personId > groupId > name fallback.
+function _buildPersonHistory(refItem, currentMonth) {
+  if (!refItem || refItem._cid) return null;
+  const personId = refItem.personId;
+  const groupId  = refItem.groupId;
+  const name     = refItem.name;
+  const monthStart = currentMonth + '-01';
+  const filtered = (window.paidItems || []).filter(pi => {
+    if (!pi.date || pi.date >= monthStart) return false;
+    if (personId && pi.personId) return pi.personId === personId;
+    if (groupId  && pi.groupId)  return pi.groupId  === groupId;
+    return pi.name === name;
+  });
+  if (!filtered.length) return null;
+  const totalAmt = filtered.reduce((s, pi) => s + (pi.paid || 0), 0);
+  const avgAmt = Math.round(totalAmt / filtered.length);
+  const lateItems = filtered.filter(pi => {
+    if (!pi.paidAt || !pi.date) return false;
+    return new Date(pi.paidAt) > window.parseLocalDate(pi.date);
+  });
+  const avgLate = lateItems.length
+    ? Math.round(lateItems.reduce((s, pi) =>
+        s + (new Date(pi.paidAt) - window.parseLocalDate(pi.date)) / 86400000, 0
+      ) / lateItems.length)
+    : 0;
+  return {
+    items: [...filtered].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5),
+    totalCount: filtered.length,
+    avgAmt,
+    lateCount: lateItems.length,
+    avgLate
+  };
+}
+
 function openCell(keyEnc,month) {
   const key=decodeURIComponent(keyEnc),all=window.getAllItems(),mx=window.buildMx(all);
   const c=mx[key]?.[month];if(!c||!c.items)return;
@@ -105,6 +140,30 @@ function openCell(keyEnc,month) {
         <span style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-weight:600">${window.fmt(pi.paid||0)}</span>
       </div>`;
     });
+    h += `</div>`;
+  }
+
+  // v8.161: o kişinin/grubun bu ay öncesi geçmiş istatistiği
+  const insights = _buildPersonHistory(c.items[0], month);
+  if (insights) {
+    h += `<div style="margin-top:10px;border-top:1px solid var(--bdr);padding-top:8px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">İstatistik (${insights.totalCount} önceki ödeme)</div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">
+        <span style="color:var(--muted)">Ortalama tutar</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">${window.fmt(insights.avgAmt)}</span>
+      </div>`;
+    if (insights.lateCount > 0) {
+      h += `<div style="font-size:11px;color:#fcd34d;margin:4px 0">⚠ ${insights.lateCount}/${insights.totalCount} ödeme geç (ort. ${insights.avgLate} gün)</div>`;
+    }
+    if (insights.items.length) {
+      h += `<div style="font-size:10px;color:var(--muted);margin-top:6px;margin-bottom:3px">Son ${insights.items.length} ödeme:</div>`;
+      insights.items.forEach(pi => {
+        h += `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:var(--muted)">
+          <span>${window.fmtD(pi.date)}</span>
+          <span style="font-family:'IBM Plex Mono',monospace">${window.fmt(pi.paid||0)}</span>
+        </div>`;
+      });
+    }
     h += `</div>`;
   }
 
