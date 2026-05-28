@@ -27,7 +27,15 @@ function editPay(id) {
 
 function _resolvePersonId(name) {
   const base = window.Hesap ? window.Hesap._baseOf(name) : name;
-  return (window.persons || []).find(p => p.name === base)?.id || null;
+  const person = (window.persons || []).find(p => p.name === base);
+  if (!person) return null;
+  // v8.111: legacy person (v8.109 öncesi eklenmiş) id'siz olabilir — lazy üret
+  if (!person.id && window.Store) {
+    window.Store.mutateItem(person, {
+      id: 'per_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)
+    });
+  }
+  return person.id || null;
 }
 
 function savePay() {

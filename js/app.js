@@ -7,6 +7,33 @@
 // ── PLAN SEÇ ─────────────────────────────────────────────────────────────────
 
 // ── APP GİRİŞİ ───────────────────────────────────────────────────────────────
+function _backfillPersonIds() {
+  if (!window.Store) return;
+  let np = 0, npy = 0;
+  // Pass 1: persons'a id ata (v8.111)
+  (window.persons || []).forEach(p => {
+    if (!p.id) {
+      window.Store.mutateItem(p, {
+        id: 'per_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)
+      });
+      np++;
+    }
+  });
+  // Pass 2: pays'a personId ata — isim eşleşmesi (v8.112)
+  const baseOf = window.Hesap ? window.Hesap._baseOf : (n => n);
+  (window.pays || []).forEach(p => {
+    if (p.personId) return;
+    const base = baseOf(p.name);
+    const person = (window.persons || []).find(q => q.name === base);
+    if (person && person.id) {
+      window.Store.mutateItem(p, { personId: person.id });
+      npy++;
+    }
+  });
+  if (np > 0)  console.log('[backfill] ' + np + ' persons id atandı');
+  if (npy > 0) console.log('[backfill] ' + npy + ' pays personId atandı');
+}
+
 function enterApp() {
   document.getElementById('PS').classList.remove('active');
   document.getElementById('PS').style.display = 'none';
@@ -15,6 +42,7 @@ function enterApp() {
   if (!window._migrationRunning) {
     window._migrationRunning = true;
     window.migrateToV7()
+      .then(() => _backfillPersonIds())
       .catch(e => console.warn('Migrasyon hatası:', e))
       .finally(() => { window._migrationRunning = false; });
   }
