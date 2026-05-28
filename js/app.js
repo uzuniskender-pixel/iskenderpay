@@ -7,6 +7,8 @@
 // ── PLAN SEÇ ─────────────────────────────────────────────────────────────────
 
 // ── APP GİRİŞİ ───────────────────────────────────────────────────────────────
+let _migrationRunning = false;  // v8.117: window._migrationRunning yerine modül-local
+
 function _backfillPersonIds() {
   if (!window.Store) return;
   let np = 0, npy = 0;
@@ -39,12 +41,12 @@ function enterApp() {
   document.getElementById('PS').style.display = 'none';
   document.getElementById('APP').style.display = '';
   rhbNormalizeCompanies();
-  if (!window._migrationRunning) {
-    window._migrationRunning = true;
+  if (!_migrationRunning) {
+    _migrationRunning = true;
     window.migrateToV7()
       .then(() => _backfillPersonIds())
       .catch(e => console.warn('Migrasyon hatası:', e))
-      .finally(() => { window._migrationRunning = false; });
+      .finally(() => { _migrationRunning = false; });
   }
   initApp();
   window.startRealtimeSync();
@@ -141,7 +143,7 @@ function initApp() {
   document.getElementById('AH').value = ah;
   const sortEl = document.getElementById('SORT');
   if (sortEl) sortEl.value = window.sortMode;
-  const planName = window.getPlanName(window._planId);
+  const planName = window.getPlanName(window.Store.planId);
   const planBtn = document.getElementById('PLANBTN');
   if (planBtn) planBtn.textContent = '🔄 ' + planName + ' › Değiştir';
   migrateCredDates();
@@ -189,7 +191,7 @@ function readRF(inp) {
   fr.onload = e => {
     try {
       const raw = JSON.parse(e.target.result);
-      const pin = window._plainPin;
+      const pin = window.Store.session.plainPin;
       let data;
       if (raw.enc && raw.data) {
         const dec = window.xDec(raw.data, pin);

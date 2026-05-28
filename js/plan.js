@@ -38,9 +38,8 @@ function renderPlanNames() {
 }
 
 function selectPlan(planId) {
-  window._planId = planId;
-  localStorage.setItem('v6-active-plan', planId);
-  // Veri dizilerini sıfırla — _cryptoKey ve _dataKeyRaw KORUNUYOR
+  window.Store.planId = planId;
+  // Veri dizilerini sıfırla — Store.session KORUNUYOR (Store.clearAll session'a dokunmaz)
   if (window.Store) {
     window.Store.clearAll();
   } else {

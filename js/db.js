@@ -21,7 +21,7 @@ window._fbSave = async function(encData) {
 // _syncTimer / _lastUpdated / _syncCb v8.108'de Store internal'a tasindi (Store.syncTimer vb.)
 
 window._fbStartListen = function(onData) {
-  if (!window.Store.fbUid || !window._planId) return;
+  if (!window.Store.fbUid || !window.Store.planId) return;
   window.Store.syncCb = onData;
   if (window.Store.syncTimer) clearInterval(window.Store.syncTimer);
   window.Store.syncTimer = setInterval(window._fbPoll, 30000);
@@ -30,7 +30,7 @@ window._fbStartListen = function(onData) {
 
 let _pollRunning = false;
 window._fbPoll = async function() {
-  if (!window.Store.fbUid || !window._planId || !window.Store.syncCb) return;
+  if (!window.Store.fbUid || !window.Store.planId || !window.Store.syncCb) return;
   if (window.Store.saveTimer !== null && window.Store.saveTimer !== undefined) return;
   if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync atla
   if (_pollRunning) return;   // Concurrent poll önle
@@ -42,7 +42,7 @@ window._fbPoll = async function() {
     const ts = d.updatedAt || 0;
     // Firebase'e yazılamamış veri varsa önce onu yükle
     if (window.Store.fbSyncNeeded && !window.Store.dirty) {
-      const enc = localStorage.getItem('v5-data-' + window._planId);
+      const enc = localStorage.getItem('v5-data-' + window.Store.planId);
       if (enc) {
         try { await window._fbSave(enc); window.Store.lastUpdated = Date.now(); window.Store.fbSyncNeeded = false; } catch(e) {}
       }
@@ -118,7 +118,7 @@ window._fbLoadWrappedKey = async function() {
 
 async function saveSecure() {
   if (window.Store.suppressSave) return;
-  if (!window._cryptoKey) return;
+  if (!window.Store.session.cryptoKey) return;
   if (window.Store.saveTimer) clearTimeout(window.Store.saveTimer);
   window.Store.dirty = true;  // Bekleyen degisiklik var — sync ezmesin
   window.Store.saveTimer = setTimeout(() => { _doSave(); }, 400);
@@ -126,7 +126,7 @@ async function saveSecure() {
 
 async function _doSave() {
   window.Store.saveTimer = null;
-  if (!window._cryptoKey) return;
+  if (!window.Store.session.cryptoKey) return;
   // GroupId tutarlilik kontrolu: ayni groupId'de farkli isim varsa duzelt
   try {
     const byGroup = {};
@@ -153,10 +153,10 @@ async function _doSave() {
     persons: window.persons, notes: window.notes, paidItems: window.paidItems,
     rehber: window.rehber, actLog: window.actLog
   };
-  const enc = await window.encryptData(data, window._cryptoKey);
+  const enc = await window.encryptData(data, window.Store.session.cryptoKey);
   // localStorage ÖNCE yaz — Firebase başarısız olsa bile veri güvende
-  localStorage.setItem('v5-data-' + window._planId, enc);
-  localStorage.setItem('v5-rates-' + window._planId, JSON.stringify(window.rates));
+  localStorage.setItem('v5-data-' + window.Store.planId, enc);
+  localStorage.setItem('v5-rates-' + window.Store.planId, JSON.stringify(window.rates));
   if (window._fbSave) {
     try {
       await window._fbSave(enc);
@@ -184,10 +184,10 @@ async function loadSecure() {
       fbHadData = (enc !== null);
     } catch(e) { console.warn('Firebase yükleme hatasi:', e); }
   }
-  if (!enc) enc = localStorage.getItem('v5-data-' + window._planId) || localStorage.getItem('v5-data');
+  if (!enc) enc = localStorage.getItem('v5-data-' + window.Store.planId) || localStorage.getItem('v5-data');
   if (!enc) return;
   try {
-    const data = await window.decryptData(enc, window._cryptoKey);
+    const data = await window.decryptData(enc, window.Store.session.cryptoKey);
     // Toplu sessiz atama — saveSecure tetiklenmez (veri zaten kaynak)
     if (window.Store) {
       window.Store.hydrate(data);
@@ -208,16 +208,14 @@ async function loadSecure() {
     throw new Error('decrypt_failed');
   }
   window.Store.dirty = false;  // Yeni veri yüklendi — bekleyen değişiklik yok
-  const r = localStorage.getItem('v5-rates-' + window._planId) || localStorage.getItem('v5-rates');
+  const r = localStorage.getItem('v5-rates-' + window.Store.planId) || localStorage.getItem('v5-rates');
   if (r) try { Object.assign(window.rates, JSON.parse(r)); } catch(e) {}
 }
 
 // ── Migrasyon ─────────────────────────────────────────────────────────────────
 
-let _migrationRunning = false;
-
 async function migrateToV7() {
-  const migKey = 'v7-migrated-' + (window.Store.fbUid||'local') + '-' + window._planId;
+  const migKey = 'v7-migrated-' + (window.Store.fbUid||'local') + '-' + window.Store.planId;
   if (localStorage.getItem(migKey)) return;
   window.Store.suppressSave = true;
   const _migPays = (window.pays||[]).map(p => {

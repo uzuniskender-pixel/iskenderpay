@@ -49,6 +49,18 @@ const _persistState = {
   suppressSave:  false,   // bulk ops / migrasyon sirasinda auto-save'i bastir
   logSaveTimer:  null,    // app.js#addLog debounce timer handle
   fbUid:         null,    // firebase auth UID (v8.113'te firebase.js'in lokal _fbUid'inden tasindi)
+  planId:        localStorage.getItem('v6-active-plan') || 'plan1',  // aktif plan (v8.116)
+};
+
+// ── SESSION STATE (v8.115) ─────────────────────────────────────────────────
+// Ephemeral auth credentials. Eskiden index.html ve crypto.js'te window.* idi —
+// Store.session uzerine tasindi. Tek nokta clear icin Store.clearSession().
+// Security trade-off (cleartext PIN, raw key bytes, CryptoKey window'da erisilebilir)
+// v8.115'te DEGISMEDI — sadece sahiplik konsolide edildi.
+const _sessionState = {
+  cryptoKey:  null,   // CryptoKey (AES-GCM, importDataKey/unwrapDataKey sonuclari)
+  dataKeyRaw: null,   // Uint8Array (32 byte — re-wrap icin chPass'ta gerek)
+  plainPin:   '',     // string — restore xDec icin cleartext PIN (app.js#readRF)
 };
 
 function _markDirty() { _persistState.dirty = true; }
@@ -223,6 +235,21 @@ export const Store = {
   set logSaveTimer(v) { _persistState.logSaveTimer = v; },
   get fbUid()         { return _persistState.fbUid; },
   set fbUid(v)        { _persistState.fbUid = v; },
+  get planId()        { return _persistState.planId; },
+  set planId(v)       {
+    _persistState.planId = v;
+    try { localStorage.setItem('v6-active-plan', v); } catch(e) {}
+  },
+
+  // ── SESSION API (v8.115) ─────────────────────────────────────────────────
+  // Store.session.cryptoKey / dataKeyRaw / plainPin — namespace acilir, mutate
+  // edilebilir obj doner. Clear icin Store.clearSession().
+  get session()       { return _sessionState; },
+  clearSession() {
+    _sessionState.cryptoKey  = null;
+    _sessionState.dataKeyRaw = null;
+    _sessionState.plainPin   = '';
+  },
 
   // ── BATCH ────────────────────────────────────────────────────────────────
   // tx icinde birden fazla mutation -> tek saveSecure (debounce zaten yapiyor

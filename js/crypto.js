@@ -1,15 +1,7 @@
-// js/crypto.js — iskenderpay (v1.0)
-// Birebir index.html'den alındı. Hiçbir satır değiştirilmedi.
-// AES-256-GCM + AES-KW + PBKDF2
-
-let _cryptoKey  = null;
-let _dataKeyRaw = null;
-
-export function getCryptoKey()      { return _cryptoKey; }
-export function setCryptoKey(k)     { _cryptoKey = k; window._cryptoKey = k; }
-export function getDataKeyRaw()     { return _dataKeyRaw; }
-export function setDataKeyRaw(raw)  { _dataKeyRaw = raw; }
-export function clearCryptoSession(){ _cryptoKey = null; _dataKeyRaw = null; window._cryptoKey = null; }
+// js/crypto.js — iskenderpay (v1.1)
+// AES-256-GCM + AES-KW + PBKDF2.
+// Session state (cryptoKey/dataKeyRaw/plainPin) v8.115'te Store.session'a tasindi —
+// module-local mirrors ve get/set/clear export'lari silindi (dead code, caller'i yoktu).
 
 export async function importDataKey(rawBytes) {
   return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -128,8 +120,3 @@ window._getWrappedKey        = _getWrappedKey;
 window._saveWrappedKeyLocal  = _saveWrappedKeyLocal;
 window._saveWrappedKeyFirebase = _saveWrappedKeyFirebase;
 window._loadWrappedKeyFirebase = _loadWrappedKeyFirebase;
-window.getCryptoKey          = getCryptoKey;
-window.setCryptoKey          = setCryptoKey;
-window.getDataKeyRaw         = getDataKeyRaw;
-window.setDataKeyRaw         = setDataKeyRaw;
-window.clearCryptoSession    = clearCryptoSession;

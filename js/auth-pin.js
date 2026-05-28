@@ -9,7 +9,7 @@ async function doLogin() {
   const val = document.getElementById('PI').value;
   if (!val) return;
 
-  if (window._cryptoKey && window._plainPin && window._plainPin === val) {
+  if (window.Store.session.cryptoKey && window.Store.session.plainPin && window.Store.session.plainPin === val) {
     try { await window.loadSecure(); window.enterApp && window.enterApp(); return; } catch(e) {}
   }
 
@@ -28,9 +28,9 @@ async function doLogin() {
     const wrappedB64 = await window.wrapDataKey(dataKeyRaw, val, pinSalt);
     window._saveWrappedKeyLocal(wrappedB64);
     await window._saveWrappedKeyFirebase(wrappedB64);
-    window._dataKeyRaw = dataKeyRaw;
-    window._plainPin   = val;
-    window._cryptoKey  = await window.importDataKey(dataKeyRaw);
+    window.Store.session.dataKeyRaw = dataKeyRaw;
+    window.Store.session.plainPin   = val;
+    window.Store.session.cryptoKey  = await window.importDataKey(dataKeyRaw);
     await window.loadSecure();
     window.enterApp && window.enterApp();
     return;
@@ -52,22 +52,21 @@ async function doLogin() {
   try { unwrapped = await window.unwrapDataKey(wrappedB64, val, pinSalt); }
   catch(e) { window.showPinErr && window.showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return; }
 
-  window._dataKeyRaw = unwrapped.rawBytes;
-  window._plainPin   = val;
-  window._cryptoKey  = unwrapped.cryptoKey;
+  window.Store.session.dataKeyRaw = unwrapped.rawBytes;
+  window.Store.session.plainPin   = val;
+  window.Store.session.cryptoKey  = unwrapped.cryptoKey;
   window._saveWrappedKeyLocal(wrappedB64);
 
   try {
     await window.loadSecure();
   } catch(e) {
-    const otherPlan = window._planId === 'plan1' ? 'plan2' : 'plan1';
-    const origPlan  = window._planId;
-    window._planId  = otherPlan;
+    const otherPlan = window.Store.planId === 'plan1' ? 'plan2' : 'plan1';
+    const origPlan  = window.Store.planId;
+    window.Store.planId = otherPlan;
     try {
       await window.loadSecure();
-      localStorage.setItem('v6-active-plan', otherPlan);
     } catch(e2) {
-      window._planId = origPlan;
+      window.Store.planId = origPlan;
       window.showPinErr && window.showPinErr('Veri çözülemedi. Lütfen tekrar deneyin.'); return;
     }
   }
@@ -99,10 +98,10 @@ async function chPass() {
     try { await window._fbSavePinHash(newHash); } catch(e) {}
   }
 
-  const newWrappedB64 = await window.wrapDataKey(window._dataKeyRaw, nw, pinSalt);
+  const newWrappedB64 = await window.wrapDataKey(window.Store.session.dataKeyRaw, nw, pinSalt);
   window._saveWrappedKeyLocal(newWrappedB64);
   await window._saveWrappedKeyFirebase(newWrappedB64);
-  window._plainPin = nw;
+  window.Store.session.plainPin = nw;
 
   msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
   ['CP','NP','NP2'].forEach(id => document.getElementById(id).value='');

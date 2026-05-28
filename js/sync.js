@@ -21,10 +21,10 @@ async function startRealtimeSync() {
   setSyncDot('connecting');
   window.Store.lastUpdated = 0;
   window._fbStartListen(async encData => {
-    if (!window._cryptoKey) return;
+    if (!window.Store.session.cryptoKey) return;
     if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync ezmesin
     try {
-      const d = await window.decryptData(encData, window._cryptoKey);
+      const d = await window.decryptData(encData, window.Store.session.cryptoKey);
       // Toplu sessiz atama — remote'tan gelen veri, saveSecure tetiklenmez
       window.Store.hydrate(d);
       if (window.render)       window.render();

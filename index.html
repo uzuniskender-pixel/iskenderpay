@@ -696,20 +696,17 @@ select.fi{appearance:none}
 </div>
 
 <script>
-var _cryptoKey  = null;
-var _dataKeyRaw = null;
+// _cryptoKey · _dataKeyRaw · _plainPin → Store.session (v8.115)
 
 // UI state — sadece partialCtx burada (state.js curTab/sortMode yönetiyor)
 var partialCtx=null;
 
 // _suppressSave · _saveTimer · SAVE_DEBOUNCE_MS · _migrationRunning → db.js
 
-var _plainPin   = '';
-
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.114';
-var APP_BUILD   = '20260528-42';
+var APP_VERSION = 'v8.115';
+var APP_BUILD   = '20260528-43';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -718,9 +715,6 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.warn('SW hatası:', err));
 }
 
-// Single source of truth: version.json
-// _knownBuild; initBuild() ile sayfa açılışında set edilir, APP_BUILD'e bağımlılık yok
-var _knownBuild = null;
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkVersion();
