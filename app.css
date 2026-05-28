@@ -255,7 +255,7 @@ select.fi{appearance:none}
 /* SYNC TOAST */
 #sync-toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--surf2);border:1px solid var(--bdr);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:600;color:var(--muted);z-index:8000;transition:transform .3s ease;pointer-events:none;white-space:nowrap}
 #sync-toast.show{transform:translateX(-50%) translateY(0)}
-#warn-toast{position:fixed;top:96px;left:50%;transform:translateX(-50%) translateY(-80px);background:rgba(252,211,77,.18);border:1px solid rgba(252,211,77,.4);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:600;color:#fcd34d;z-index:8001;transition:transform .3s ease;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+#warn-toast{position:fixed;top:96px;left:50%;transform:translateX(-50%) translateY(-160px);background:rgba(252,211,77,.18);border:1px solid rgba(252,211,77,.4);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:600;color:#fcd34d;z-index:8001;transition:transform .3s ease;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
 #warn-toast.show{transform:translateX(-50%) translateY(0)}
 /* GÜNCELLEME BANNER */
 #upd-banner{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#1e3a5f,#1a4a3a);border-top:1px solid rgba(96,165,250,.3);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
