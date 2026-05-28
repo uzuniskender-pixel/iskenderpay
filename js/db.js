@@ -42,7 +42,7 @@ window._fbStartListen = function(onData) {
 
 window._fbPoll = async function() {
   if (!_fbUid || !window._planId || !window._syncCb) return;
-  if (typeof _saveTimer !== 'undefined' && _saveTimer !== null) return;
+  if (window._saveTimer !== null && window._saveTimer !== undefined) return;
   try {
     const snap = await getDoc(_planDoc());
     if (!snap.exists()) { window.setSyncDot && window.setSyncDot('active'); return; }
@@ -179,8 +179,7 @@ async function saveSecure() {
   if (!window._cryptoKey) return;
   if (typeof invalidateLookups === 'function') window.invalidateLookups();
   if (window._saveTimer) clearTimeout(window._saveTimer);
-  window._saveTimer = null;
-  await _doSave();
+  window._saveTimer = setTimeout(() => { _doSave(); }, 400);
 }
 
 async function _doSave() {
@@ -208,8 +207,12 @@ async function saveSecureNow() {
 
 async function loadSecure() {
   let enc = null;
+  let fbHadData = false;
   if (window._fbLoad) {
-    try { enc = await window._fbLoad(); } catch(e) { console.warn('Firebase yükleme hatası:', e); }
+    try {
+      enc = await window._fbLoad();
+      fbHadData = (enc !== null);
+    } catch(e) { console.warn('Firebase yükleme hatasi:', e); }
   }
   if (!enc) enc = localStorage.getItem('v5-data-' + window._planId) || localStorage.getItem('v5-data');
   if (!enc) return;
@@ -223,7 +226,9 @@ async function loadSecure() {
     window.paidItems = data.paidItems || [];
     window.rehber    = data.rehber    || [];
     window.actLog    = data.actLog    || [];
-    if (window._fbSave) { try { await window._fbSave(enc); } catch(e) {} }
+    // Sadece Firebase bos ise localStorage verisini yukle (migration)
+    // Firebase hatali iken localStorage ile ezme - DATA LOSS onlendi
+    if (!fbHadData && window._fbSave) { try { await window._fbSave(enc); } catch(e) {} }
   } catch(e) {
     throw new Error('decrypt_failed');
   }
