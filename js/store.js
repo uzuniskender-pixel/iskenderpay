@@ -68,13 +68,14 @@ export const Store = {
     _invalidate();
   },
 
-  // ── REPLACE (silent — setter ile ayni) ───────────────────────────────────
-  // "window.pays = X" cagrisinin yaptigi ile esdeger.
-  // Cagiran saveSecure'i kendisi yonetir.
+  // ── REPLACE (autoSave tetikler — diger mutation API'leri ile tutarli) ────
+  // Yeni call site'lar icin Store API. Window setter (window.pays = X) silent
+  // kalmaya devam eder (_setSilent), ama Store.replace explicit cagri olduğundan
+  // diger mutation'lar gibi autoSave tetikler.
   replace(key, value) {
     _state[key] = value;
     _invalidate();
-    _markDirty();
+    _autoSave();
   },
 
   // ── MUTATION API (autoSave tetikler) ─────────────────────────────────────

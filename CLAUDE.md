@@ -97,7 +97,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Veri yardımcıları
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.95", "build": "20260528-23"}
+version.json        {"v": "8.97", "build": "20260528-25"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
