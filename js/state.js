@@ -18,14 +18,7 @@ window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 // ── clearState ───────────────────────────────────────────────────────────────
 // Bellegi tamamen temizler — Store veri dizilerini sifirlar.
 export function clearState() {
-  if (window.Store) {
-    window.Store.clearAll();
-  } else {
-    // Fallback (Store yuklenmediyse)
-    window.pays = []; window.creds = []; window.hist = []; window.persons = [];
-    window.notes = []; window.paidItems = []; window.rehber = []; window.actLog = [];
-    window.rates = { EUR: null, USD: null, GOLD: null };
-  }
+  window.Store.clearAll();
   console.log('[State] Bellek tamamen temizlendi.');
 }
 window.clearState = clearState;

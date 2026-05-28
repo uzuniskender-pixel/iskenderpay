@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.103 / 20260528-31
+## Mevcut Durum (28 Mayıs 2026) — v8.105 / 20260528-33
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,8 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.105 | 20260528-33 | **state.js#clearState else fallback temizliği**: `if (window.Store) {...} else {...}` pattern'ındaki else dalı (8 satırlık manuel `window.pays/creds/...=[]`) silindi. Reachability: store.js index.html'de ilk modül import'u, state.js ikinci; ES modules sequential execute olduğundan store.js tamamlanmadan state.js yüklenemez → `window.Store.clearAll()` her zaman güvenli. clearState ayrıca runtime'da (console debug) çağrılır, modül body'sinde çağrılmaz. Aynı pattern v8.102'de backup/sync için yapılmıştı; aile tamamlandı. |
+| v8.105 | 20260528-33 | state.js#clearState else fallback silindi — Store her zaman tanımlı (v8.102 aile tamamlandı) |
 | v8.103 | 20260528-31 | **db.js auth duplikasyonu temizliği**: firebase.js ile birebir aynı olan `onAuthStateChanged` listener, `getRedirectResult`, `doGoogleLogin`, `doGoogleSignOut`, auth import'ları (`GoogleAuthProvider`/`signInWith*`/`signOut`/`onAuthStateChanged`/`getRedirectResult`), `const _auth = window._firebaseAuth`, yerel `let _fbUid` + `window._fbUid = null` (redundant init) db.js'den silindi. Firestore yardımcılarındaki 10 guard (`_fbSave`, `_fbStartListen`, `_fbPoll`, `_fbLoad`, `_fbSaveSalt`, `_fbLoadSalt`, `_fbSavePinHash`, `_fbLoadPinHash`, `_fbSaveWrappedKey`, `_fbLoadWrappedKey`) `if (!_fbUid)` → `if (!window._fbUid)` çevrildi. Ek temizlik: kullanılmayan `const _db = window._firebaseDb` ve `doc` import'u silindi. db.js artık Firestore data ops + PIN doLogin + loadSecure/saveSecure/migrasyon. Auth concern'lerinin tek sahibi: firebase.js. Davranış birebir aynı (önceden listener iki kez fire ediyordu, UI ops idempotent; şimdi bir kez — ufak perf kazancı). |
 | v8.102 | 20260528-30 | **Ulaşılamaz else fallback temizliği**: `backup.js#doRestore` (L50), `backup.js#undoRestore` (L76), `sync.js` (L29) — `if (window.Store) {...} else {...}` pattern'ındaki else dalları silindi. store.js index.html'de **ilk** modül import'u (state.js'den önce); ES modules sequential execute olduğundan store.js tamamlanmadan sync/backup yüklenemez → `window.Store` runtime'da her zaman tanımlı. 3 dead code bloğu (~30 satır) kaldırıldı. |
 | v8.100 | 20260528-28 | **Event-based render**: `store.js`'te microtask-coalesced `store:change` CustomEvent dispatch eklendi (her mutation sonrası). Listener'lar: `ui-plan.js` (curTab=0 + pays/creds/paidItems → `render()`), `search.js` (curTab=5 + pays/creds/paidItems/rehber → `renderAI()`), `ui-pay.js` (curTab=0 + pays/creds → `renderCredSummary()`). `_dispatchChange(keys)`: birden fazla mutation aynı tick'te → tek event (Set coalescing). `Store._affects(detail, watched)` helper. **Decoupling**: `renderCredSummary` çağrısı `render()` içinden çıkarıldı (çift render önleme); `app.js#go(0)` artık her ikisini de explicit çağırıyor. **Manuel render() kaldırma**: ui-plan.js (9 CRUD fonksiyonu), ui-pay.js (savePay/saveCred), ui-persons.js (restoreFromHist). `togglePaidMonths` (localStorage), `chSort`/`chAhead` (sortMode) manuel render kalır (Store mutation yok, event fire olmaz). |
@@ -103,7 +105,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.103", "build": "20260528-31"}
+version.json        {"v": "8.105", "build": "20260528-33"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
