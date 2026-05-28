@@ -175,7 +175,22 @@ function renderCredSummary() {
     if (el) el.style.display = 'none';
     return;
   }
-  const cards = (window.creds || []).map(c => {
+  // Plan matrisindeki gibi base name + suffix hesapla
+  const baseOf = name => name.replace(/ \d+$/, '').trim() || name;
+  const credNames = (window.creds||[]).map(c => c.name);
+  const baseCount = {};
+  credNames.forEach(n => { const b=baseOf(n); baseCount[b]=(baseCount[b]||0)+1; });
+  const baseIdx = {};
+  const displayNames = credNames.map(n => {
+    const b = baseOf(n);
+    if(baseCount[b] > 1){
+      const idx = baseIdx[b] = (baseIdx[b]||0)+1;
+      return idx===1 ? b : b+' '+(idx-1);
+    }
+    return b;
+  });
+  const cards = (window.creds || []).map((c, ci) => {
+    const dispName = displayNames[ci];
     const paid     = (c.pays||[]).filter(p=>(p.status||'pending')==='paid').length;
     const total    = (c.pays||[]).length;
     const bekleyen = (c.pays||[]).filter(p=>(p.status||'pending')!=='paid').reduce((s,p)=>s+p.amount,0);
@@ -186,7 +201,7 @@ function renderCredSummary() {
     const done     = paid===total;
     return `<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(c.name)}</div>
+        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(dispName)}</div>
         <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0">${paid}/${total}</div>
       </div>
       <div style="height:3px;background:var(--surf);border-radius:2px;overflow:hidden">
