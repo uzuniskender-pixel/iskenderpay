@@ -1,5 +1,9 @@
 // js/ui-notes.js — iskenderpay
 // Notlar ve yapılan ödemeler
+// Event delegation (v8.166): NL (not Düzenle/Sil), PL (yapılan ödeme Düzenle/Sil)
+
+let _nlHandlersAttached = false;
+let _plHandlersAttached = false;
 
 function renderNotes() {
   const nl=document.getElementById('NL');
@@ -14,13 +18,23 @@ function renderNotes() {
           <div style="font-size:10px;color:${catColors[n.cat]||'var(--muted)'};font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.8px">${window.esc(n.cat||'')}</div>
         </div>
         <div style="display:flex;gap:6px">
-          <button onclick="editNote('${n.nid}')" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
-          <button onclick="delNote('${n.nid}')" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
+          <button data-note-edit="${n.nid}" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
+          <button data-note-del="${n.nid}" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
         </div>
       </div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt);white-space:pre-wrap;background:var(--surf2);border-radius:7px;padding:10px;line-height:1.7;border:1px solid var(--bdr)">${window.esc(n.content)}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:6px">${new Date(n.at).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})}</div>
     </div>`).join('');
+
+  if (!_nlHandlersAttached) {
+    nl.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('button[data-note-edit]');
+      if (editBtn) { editNote(editBtn.dataset.noteEdit); return; }
+      const delBtn = e.target.closest('button[data-note-del]');
+      if (delBtn) delNote(delBtn.dataset.noteDel);
+    });
+    _nlHandlersAttached = true;
+  }
 }
 
 function openNoteModal() {
@@ -96,13 +110,23 @@ function renderPaid() {
           ${isPartial?`<div style="font-size:10px;color:var(--muted)">${window.fmt(tryAmt-paidAmt)} kaldı</div>`:''}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button onclick="openPaidEdit('${p.paidId}')" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Düzenle</button>
-          <button onclick="delPaidItem('${p.paidId}')" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Sil</button>
+          <button data-paid-edit="${p.paidId}" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Düzenle</button>
+          <button data-paid-del="${p.paidId}" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Sil</button>
         </div>
       </div>`;
     });
   });
   pl.innerHTML=html;
+
+  if (!_plHandlersAttached) {
+    pl.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('button[data-paid-edit]');
+      if (editBtn) { openPaidEdit(editBtn.dataset.paidEdit); return; }
+      const delBtn = e.target.closest('button[data-paid-del]');
+      if (delBtn) delPaidItem(delBtn.dataset.paidDel);
+    });
+    _plHandlersAttached = true;
+  }
 }
 
 function openPaidEdit(paidId) {
@@ -136,12 +160,10 @@ function delPaidItem(paidId) {
 
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
+// editNote/delNote/openPaidEdit/delPaidItem export'ları silindi (v8.166) —
+// yalnız NL/PL event delegation'dan çağrılıyorlar, statik caller yok.
 window.renderNotes        = renderNotes;
 window.openNoteModal      = openNoteModal;
-window.editNote           = editNote;
 window.saveNote           = saveNote;
-window.delNote            = delNote;
 window.renderPaid         = renderPaid;
-window.openPaidEdit       = openPaidEdit;
 window.savePaidItem       = savePaidItem;
-window.delPaidItem        = delPaidItem;
