@@ -29,10 +29,8 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
-| v8.103 | 20260528-31 | **db.js auth duplikasyonu temizliği**: `getAuth`/`GoogleAuthProvider`/`signInWith*`/`onAuthStateChanged`/`getRedirectResult`/`signOut` import'ları ve karşılık gelen kod (auth listener, doGoogleLogin, doGoogleSignOut, `_fbUid` local state) db.js'den silindi — firebase.js zaten bu sorumlulukları üstleniyordu. db.js artık sadece Firestore data ops + doLogin (PIN) + loadSecure/saveSecure/migrasyon içerir. `_fbUid` referansları `window._fbUid`'e çevrildi (firebase.js owns). |
-| v8.103 | 20260528-31 | db.js auth duplikasyonu temizlendi — firebase.js owns auth, db.js sadece Firestore data ops |
+| v8.103 | 20260528-31 | **db.js auth duplikasyonu temizliği**: firebase.js ile birebir aynı olan `onAuthStateChanged` listener, `getRedirectResult`, `doGoogleLogin`, `doGoogleSignOut`, auth import'ları (`GoogleAuthProvider`/`signInWith*`/`signOut`/`onAuthStateChanged`/`getRedirectResult`), `const _auth = window._firebaseAuth`, yerel `let _fbUid` + `window._fbUid = null` (redundant init) db.js'den silindi. Firestore yardımcılarındaki 10 guard (`_fbSave`, `_fbStartListen`, `_fbPoll`, `_fbLoad`, `_fbSaveSalt`, `_fbLoadSalt`, `_fbSavePinHash`, `_fbLoadPinHash`, `_fbSaveWrappedKey`, `_fbLoadWrappedKey`) `if (!_fbUid)` → `if (!window._fbUid)` çevrildi. Ek temizlik: kullanılmayan `const _db = window._firebaseDb` ve `doc` import'u silindi. db.js artık Firestore data ops + PIN doLogin + loadSecure/saveSecure/migrasyon. Auth concern'lerinin tek sahibi: firebase.js. Davranış birebir aynı (önceden listener iki kez fire ediyordu, UI ops idempotent; şimdi bir kez — ufak perf kazancı). |
 | v8.102 | 20260528-30 | **Ulaşılamaz else fallback temizliği**: `backup.js#doRestore` (L50), `backup.js#undoRestore` (L76), `sync.js` (L29) — `if (window.Store) {...} else {...}` pattern'ındaki else dalları silindi. store.js index.html'de **ilk** modül import'u (state.js'den önce); ES modules sequential execute olduğundan store.js tamamlanmadan sync/backup yüklenemez → `window.Store` runtime'da her zaman tanımlı. 3 dead code bloğu (~30 satır) kaldırıldı. |
-| v8.102 | 20260528-30 | Ulaşılamaz else fallback temizliği: backup.js (×2), sync.js (×1) |
 | v8.100 | 20260528-28 | **Event-based render**: `store.js`'te microtask-coalesced `store:change` CustomEvent dispatch eklendi (her mutation sonrası). Listener'lar: `ui-plan.js` (curTab=0 + pays/creds/paidItems → `render()`), `search.js` (curTab=5 + pays/creds/paidItems/rehber → `renderAI()`), `ui-pay.js` (curTab=0 + pays/creds → `renderCredSummary()`). `_dispatchChange(keys)`: birden fazla mutation aynı tick'te → tek event (Set coalescing). `Store._affects(detail, watched)` helper. **Decoupling**: `renderCredSummary` çağrısı `render()` içinden çıkarıldı (çift render önleme); `app.js#go(0)` artık her ikisini de explicit çağırıyor. **Manuel render() kaldırma**: ui-plan.js (9 CRUD fonksiyonu), ui-pay.js (savePay/saveCred), ui-persons.js (restoreFromHist). `togglePaidMonths` (localStorage), `chSort`/`chAhead` (sortMode) manuel render kalır (Store mutation yok, event fire olmaz). |
 | v8.100 | 20260528-28 | **Hotfix: `firebase.js` race condition** — `firebase.js` `index.html:17-19`'da ayrı bir `<script type="module">` bloğunda yüklü, plan.js ise main blokta (`index.html:297-320`). İki blok bağımsız evaluation; auth-state cached olduğunda `onAuthStateChanged` callback'i plan.js daha yüklenmeden fire edebilir → `window.renderPlanNames is not a function`. Fix: firebase.js:63'e `if (typeof window.renderPlanNames === 'function')` defensive guard (db.js:152'deki aynı handler'da zaten vardı). Yan bulgu: `firebase.js` VE `db.js` her ikisi de `onAuthStateChanged` register ediyor — kod tekrarı, sıradaki adıma not edildi. |
 | v8.99 | 20260528-27 | **Ölü dosya temizliği**: `js/ui.js`, `js/ui-data.js`, `js/ui-misc.js` FS'ten silindi (v8.90'da import listesinden çıkarılmıştı, dosyalar duruyordu). Grep/search sonuçları artık temiz. |
@@ -47,9 +45,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **`onAuthStateChanged` duplikasyonu** — `firebase.js#46-77` ve `db.js#135-168` aynı callback'i kayıt ediyor (UI panel toggle + renderPlanNames). Hangisi önce fire eder belirsiz; davranış üst üste binebilir. Birini sadeleştir/sil.
-2. **Ulaşılamaz `else (Store undefined)` fallback'larını sil** — `backup.js:50-57`, `backup.js:76-83`, `sync.js:29-41`. Store her zaman yüklü; else-branch ölü kod (içindeki manuel `invalidateLookups()`+ atomic atamalar dahil).
-3. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
+1. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
 
 ---
 
@@ -119,6 +115,8 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.103 | 20260528-31 | db.js auth duplikasyonu temizliği — firebase.js owns auth, db.js sadece Firestore data ops |
+| v8.102 | 20260528-30 | Ulaşılamaz else fallback temizliği: backup.js (×2), sync.js (×1) — Store her zaman tanımlı |
 | v8.100 | 20260528-28 | Hotfix: firebase.js race condition — onAuthStateChanged callback'i plan.js'ten önce fire ederse `renderPlanNames is not a function` hatası; defensive guard eklendi |
 | v8.99 | 20260528-27 | Redundant `window.invalidateLookups()` temizliği — 5 manuel çağrı kaldırıldı (ui-pay.js, ui-plan.js, db.js x2, app.js#genRec tamamen sildi) |
 | v8.98 | 20260528-26 | data.js → Store entegrasyonu — lookup maps + _lookupDirty Store'a taşındı, data.js ince compat katmanına indi |
