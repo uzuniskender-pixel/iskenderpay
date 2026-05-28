@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.95 / 20260528-23
+## Mevcut Durum (28 Mayıs 2026) — v8.96 / 20260528-24
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.96 | 20260528-24 | **Store Aşama 3 temizlik + bug fix**. (1) Store mutation API'leri zaten debounce save tetiklediği için redundant olan ~22 manuel `saveSecure()`/`save()`/`savePersons()`/`saveNotes()`/`rhbSave()` çağrısı kaldırıldı (log.js × 3, rehber.js × 3, ui-pay.js × 2, ui-plan.js × 9, ui-persons.js × 6, ui-notes.js × 4). Item-level mutation içeren fonksiyonlar (`saveCred`, `markOk`, `undoCell`, `doPartial`, `saveCellAmt`, `resetPartial`) için `Store.touch()` eklendi. `state.js` minimale indirildi — kullanılmayan setter'lar (`setState`, `setStateMany`, `setPlanId`, `setSortMode/CurTab/PartialCtx/SuppressSave/SaveTimer/LookupDirty/Rates`, `SAVE_DEBOUNCE_MS`) ve veri dizisi `let` bildirimleri (Store'a taşındı) silindi. Korunan: `addLog` 800ms timer (kasıtlı farklı zamanlama), `backup.js#saveSecureNow().then(...)` (senkronizasyon gerekli). (2) **Bug fix: convert-to-credit stale state** (`ui-pay.js#openCred`): Pays grubunu krediye dönüştürme akışında CM modal iptal/ESC/dış-tıklama ile kapatılırsa `window._convertSourceKey` ve `_convertSourcePays` window'da kalıyordu — sonraki "Yeni Kredi" kaydında stale kaynağa ait pays grubu silinebiliyordu. `openCred()` başına temizleme eklendi. |
 | v8.95 | 20260528-23 | **Merkezi Hesap modülü** (`js/hesap.js`): `Hesap.buAyOzeti({all,refDate})` / `Hesap.toplamOzeti()` / `Hesap.krediler()` / `Hesap.trend(n)` + paylaşılan `_baseOf` / `_displayNames(mx,keys?)`. Üç dosyada (`ui-plan.js#render`, `search.js#renderAI`, `ui-pay.js#renderCredSummary`) duplicate hesap+display name kodları Hesap çağrılarıyla değiştirildi — tutarsızlık çözüldü. |
 | v8.94 | 20260528-22 | `sync.js` realtime callback'ine `renderActLog` çağrısı eklendi — uzak sekmeden gelen actLog değişiklikleri artık aktivite log sekmesinde de yansıyor |
 | v8.93 | 20260528-21 | **Merkezi Store pattern (Aşama 2)**: CRUD mutation site'ları Store API'ye geçirildi — `log.js` (actLog filter/clear → `removeWhere`/`replace`), `rehber.js` (push/filter/Object.assign → `push`/`removeWhere`/`mutateItem`), `ui-pay.js` (savePay/saveCred push'ları + convert-source filter), `ui-plan.js` (10+ site: addToMonth/markOk/undoCell/doPartial/resetPartial/delByKey/delMonthEntry/delCellItems), `ui-persons.js` (savePerson/delPerson/restoreFromHist/delHist/clrHist + saveHistItem mutateItem), `ui-notes.js` (saveNote/delNote/savePaidItem/delPaidItem). Manuel `window.saveSecure()`/`window.save()` çağrıları KORUNDU (debounce sayesinde çift yazma olmuyor — Aşama 3'te temizlenecek). Ölü dosyalar `ui.js`/`ui-data.js`/`ui-misc.js` (v8.90'da kaldırıldı, FS'te artık) atlandı. |
@@ -36,8 +37,9 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **Store Aşama 3 (temizlik)** — artık gereksiz olan manuel `window.saveSecure()` / `window.save()` / `window.savePersons()` / `window.saveNotes()` / `window.rhbSave()` çağrılarını CRUD'lardan kaldır (Store mutation API'leri zaten debounce save tetikliyor). `data.js`'in `_lookupDirty` flag'i Store'a taşı (state duplication). Ölü dosyalar (`ui.js`, `ui-data.js`, `ui-misc.js`) FS'ten sil
-2. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
+1. **data.js → Store entegrasyonu** — `data.js`'in kendi `_lookupDirty` flag'i Store'a taşı (state duplication)
+2. **Ölü dosyaları sil** — `ui.js`, `ui-data.js`, `ui-misc.js` FS'ten kaldır (v8.90'da import'tan çıkarıldı ama dosyalar duruyor)
+3. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
 
 ---
 
@@ -73,7 +75,7 @@ Firebase (Firestore) ←→ loadSecure/saveSecure (db.js) ←→ window.pays/cre
 ```
 index.html          Ana uygulama — tüm JS import ile yükleniyor
 js/store.js         Merkezi Store — 8 dizi + rates tek otorite, window.* getter/setter köprüsü
-js/state.js         Global state, clearState() (Store.clearAll'a delege)
+js/state.js         UI durumu (curTab, sortMode, partialCtx) + _planId + clearState() — veri dizileri Store'da
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
 js/db.js            Firebase köprüsü + doLogin/loadSecure/saveSecure/migrasyon
@@ -107,6 +109,8 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.96 | 20260528-24 | Bug fix: convert-to-credit modal iptal sonrası stale `_convertSourceKey` → openCred başında temizleme |
+| v8.96 | 20260528-24 | Store Aşama 3 temizlik (manuel saveSecure çağrıları + state.js dead setter'lar) + convert-to-credit bug fix |
 | v8.95 | 20260528-23 | Merkezi Hesap modülü — js/hesap.js + ui-plan.js/search.js/ui-pay.js duplicate hesaplar kaldırıldı |
 | v8.94 | 20260528-22 | sync.js callback'ine renderActLog eklendi |
 | v8.93 | 20260528-21 | Merkezi Store pattern Aşama 2 — tüm CRUD mutation site'ları Store API'ye geçirildi |

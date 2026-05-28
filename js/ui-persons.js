@@ -69,13 +69,13 @@ function savePerson() {
     if (existing.includes(name)) { let i=2; while(existing.includes(name+' '+i)) i++; finalName=name+' '+i; }
     window.Store.push('persons', {name:finalName, desc});
   }
-  window.savePersons(); window.closeMov('PRM'); renderPersons();
+  window.closeMov('PRM'); renderPersons();
 }
 
 function delPerson(i) {
   if (!confirm('Bu kişiyi silmek istiyor musunuz?')) return;
   window.Store.spliceAt('persons', i, 1);
-  window.savePersons(); renderPersons();
+  renderPersons();
 }
 
 function renderHist() {
@@ -112,19 +112,19 @@ function saveHistItem() {
   if(!isNaN(newAmt)&&newAmt>0) _patch.amount=newAmt;
   if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) _patch.date=newDate;
   if(Object.keys(_patch).length) window.Store.mutateItem(p, _patch);
-  window.saveSecure(); ModalManager.close('HIMOD'); renderHist();
+  ModalManager.close('HIMOD'); renderHist();
 }
 
 function restoreFromHist(i) {
   const p=window.hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
   window.Store.push('pays', restored);window.Store.spliceAt('hist', i, 1);
-  window.save().then(()=>{renderHist();window.render();});
+  renderHist(); window.render();
 }
 
-function delHist(i) { window.Store.spliceAt('hist', i, 1); save().then(()=>renderHist()); }
+function delHist(i) { window.Store.spliceAt('hist', i, 1); renderHist(); }
 
-function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.Store.replace('hist', []); save().then(()=>renderHist()); }
+function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.Store.replace('hist', []); renderHist(); }
 
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────

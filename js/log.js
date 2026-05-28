@@ -105,7 +105,7 @@ function doLogDel() {
   const before=window.actLog.length;
   window.Store.removeWhere('actLog', e => { const t=new Date(e.at).getTime(); return !(t<from||t>to); });
   const deleted=before-window.actLog.length;
-  window.saveSecure();renderActLog();closeLogDel();
+  renderActLog();closeLogDel();
   if(deleted>0)alert(deleted+' kayıt silindi.');else alert('Bu aralıkta kayıt bulunamadı.');
 }
 
@@ -113,12 +113,12 @@ function doLogDelSelected() {
   if(!_logSelected.size){alert('Önce silinecek kayıtları seçin.');return;}
   if(!confirm(_logSelected.size+' kayıt silinecek. Emin misin?'))return;
   window.Store.removeWhere('actLog', (_, i) => _logSelected.has(i));
-  _logSelected.clear();window.saveSecure();renderActLog();closeLogDel();
+  _logSelected.clear();renderActLog();closeLogDel();
 }
 
 function doLogDelAll() {
   if(!confirm('Tüm log silinecek. Emin misin?'))return;
-  window.Store.replace('actLog', []);window.saveSecure();renderActLog();closeLogDel();
+  window.Store.replace('actLog', []);renderActLog();closeLogDel();
 }
 
 

@@ -58,10 +58,13 @@ function savePay() {
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz
   if(eid){ window.addLog('plan_edit','Kayıt düzenlendi', name+' · '+window.fmtAmt(amount,currency), 0); }
   else   { window.addLog('plan_add', 'Kayıt eklendi',    name+' · '+window.fmtAmt(amount,currency), 0); }
-  window.saveSecure(); window.closeMov('PM2'); window.render();
+  window.closeMov('PM2'); window.render();
 }
 
 function openCred() {
+  // Önceki convert-to-credit oturumundan stale state kalmış olabilir (modal iptal/ESC/dış-tıklama)
+  window._convertSourceKey=null;
+  window._convertSourcePays=null;
   document.getElementById('CEID').value='';
   ['CN','CT','CI','CM2'].forEach(id=>document.getElementById(id).value='');
   const _cd=new Date();document.getElementById('CS').value=window.toLocalISO(_cd.getFullYear(),_cd.getMonth(),_cd.getDate());
@@ -139,7 +142,7 @@ function saveCred() {
       if(window.invalidateLookups)window.invalidateLookups();
     }
   }
-  window.save().then(()=>{window.closeMov('CM');window.render();});
+  window.Store.touch(); window.closeMov('CM'); window.render();
 }
 
 function updLP() {

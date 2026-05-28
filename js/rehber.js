@@ -90,7 +90,7 @@ function rhbImport() {
       const existKey=new Set(window.rehber.map(p=>rhbGetName(p)+'|'+(p.phones?.[0]?.num||'')));
       let added=0,skipped=0;
       data.forEach(p=>{const key=rhbGetName(p)+'|'+(p.phones?.[0]?.num||'');if(existKey.has(key)){skipped++;return;}p.id=p.id||Date.now()+added;window.Store.push('rehber', p);added++;existKey.add(key);});
-      window.rhbSave();renderRhb();
+      renderRhb();
       if(added>0)window.addLog('rhb_import','Rehber içe aktarıldı',added+' kişi eklendi'+(skipped>0?', '+skipped+' atlandı':''),6);
       alert(added+' kişi eklendi'+(skipped>0?', '+skipped+' zaten mevcut':'')+'.');
     }catch(err){alert('Dosya okunamadı: '+err.message);}
@@ -187,7 +187,7 @@ function rhbSavePerson() {
   const eid=document.getElementById('RMOD_ID').value;
   if(eid){const p=window.rehber.find(x=>String(x.id)===String(eid));if(p)window.Store.mutateItem(p,{name,company,phones,email,note});window.addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
   else{window.Store.push('rehber',{id:Date.now(),name,company,phones,email,note});window.addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
-  window.rhbSave();window.closeMov('RMOD');renderRhb();
+  window.closeMov('RMOD');renderRhb();
 }
 
 function rhbDel(id) {
@@ -195,7 +195,7 @@ function rhbDel(id) {
   if(!confirm(rhbGetName(p)+' silinecek. Emin misin?'))return;
   window.addLog('rhb_del','Kişi silindi',rhbGetName(p||{})+(p?.company?' · '+p.company:''),6);
   window.Store.removeWhere('rehber', x => String(x.id)===String(id));
-  window.rhbSave();window.closeRDET();renderRhb();
+  window.closeRDET();renderRhb();
 }
 
 

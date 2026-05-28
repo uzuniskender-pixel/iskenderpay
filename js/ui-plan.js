@@ -421,7 +421,7 @@ function addToMonth(keyEnc,month) {
   const refItem=groupId?window.findPaysByGroup(groupId)[0]:window.pays.find(p=>p.name===name);
   window.Store.push('pays', {id:Date.now()+Math.random(), groupId:groupId||String(Date.now()), name, amount:amt, currency:cur, date, category:refItem?refItem.category||'Diğer':'Diğer', status:'pending', paid:0});
   window.addLog('plan_add', 'Kayıt eklendi', name+' · '+window.fmtAmt(amt,cur), 0);
-  window.saveSecure(); closeDV(); render();
+  closeDV(); render();
 }
 
 function markOk(keyEnc,month) {
@@ -434,7 +434,7 @@ function markOk(keyEnc,month) {
     window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:window.toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
     try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
   });
-  window.save().then(()=>{closeDV();render();});
+  window.Store.touch(); closeDV(); render();
 }
 
 function undoCell(keyEnc,month) {
@@ -447,7 +447,7 @@ function undoCell(keyEnc,month) {
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
   });
-  window.save().then(()=>{closeDV();render();});
+  window.Store.touch(); closeDV(); render();
 }
 
 function openKM(keyEnc,month) {
@@ -473,7 +473,7 @@ function doPartial() {
     if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=window.toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
     else{window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'partial', paid:amt, paidAt:new Date().toISOString()});}
   });
-  window.save().then(()=>{window.closeMov('KM');render();});
+  window.Store.touch(); window.closeMov('KM'); render();
 }
 
 function saveCellAmt(keyEnc,month) {
@@ -486,7 +486,7 @@ function saveCellAmt(keyEnc,month) {
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
     else{const orig=window.findPayById(p.id);if(orig)orig.amount=v;}
   });
-  window.save().then(()=>{render();openCell(keyEnc,month);});
+  window.Store.touch(); render(); openCell(keyEnc, month);
 }
 
 function resetPartial(keyEnc,month) {
@@ -499,7 +499,7 @@ function resetPartial(keyEnc,month) {
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
   });
-  window.save().then(()=>{closeDV();render();});
+  window.Store.touch(); closeDV(); render();
 }
 
 function editByKey(keyEnc) {
@@ -546,7 +546,7 @@ function delByKey(keyEnc) {
     try{if(toDelete.length)window.addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+window.fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0);}catch(e){}
     window.Store.removeWhere('pays', p => String(Math.floor(Number(p.id)))===pid);
   }
-  window.saveSecure(); closeDV(); render();
+  closeDV(); render();
 }
 
 function delMonthEntry(idEnc) {
@@ -554,7 +554,7 @@ function delMonthEntry(idEnc) {
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
   const p=window.findPayById(id);
   if(p){try{window.addLog('plan_del','Kayıt silindi',p.name+' · '+window.fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};window.Store.unshift('hist',{...p,delAt:new Date().toISOString()});window.Store.removeWhere('pays', x => String(x.id)===id);}
-  window.saveSecure(); closeDV(); render();
+  closeDV(); render();
 }
 
 function delCellItems(keyEnc,month) {
@@ -567,7 +567,7 @@ function delCellItems(keyEnc,month) {
     window.Store.unshift('hist',{...p,delAt:new Date().toISOString()});
     window.Store.removeWhere('pays', x => String(x.id)===String(p.id));
   });
-  window.saveSecure(); closeDV(); render();
+  closeDV(); render();
 }
 
 
