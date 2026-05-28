@@ -21,14 +21,15 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.126 / 20260528-51
+## Mevcut Durum (28 Mayıs 2026) — v8.127 / 20260528-52
 
-Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
+Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
 ### Tamamlanan (bu oturum — 28 Mayıs)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.127 | 20260528-52 | **`db.js` → `firestore.js` + `persist.js` ayrımı**: v8.110 (auth-pin.js ayrımı) ve v8.126 (CSS ayrımı) pattern'ı sürdürüldü; `db.js` (274 satır) iki dosyaya bölündü. (1) **`js/firestore.js`** (~110 satır): saf Firestore I/O — 11 fonksiyon (`_fbSave/_fbLoad/_fbStartListen/_fbStopListen/_fbPoll/_fbSaveSalt/_fbLoadSalt/_fbSavePinHash/_fbLoadPinHash/_fbSaveWrappedKey/_fbLoadWrappedKey`) + module-local `let _pollRunning = false;` + `getDoc/setDoc` SDK import + `_planDoc/_metaDoc` closure (firebase.js'in expose ettiği). Auth/encrypt/schema bilmez. (2) **`js/persist.js`** (~140 satır): encrypt + storage + migration — 5 fonksiyon (`saveSecure/_doSave/saveSecureNow/loadSecure/migrateToV7`) + window export'lar + alias shim'ler (`save/savePersons/saveNotes/loadNotes`). `_doSave` içindeki integrity check (v8.123, 40+ satır) korundu — sonraki refactor adayı (`validate.js`). (3) **`db.js` silindi**. (4) **index.html**: `import './js/db.js';` → `firestore.js` + `persist.js` (sıra: store → firebase → state → util → compat → crypto → **firestore → persist** → auth-pin → modal → ...). Python ile güncellendi. (5) **sw.js**: `'./js/db.js'` silindi, `'./js/firestore.js'` + `'./js/persist.js'` eklendi. `CACHE = 'ip-static-v9'` **olduğu gibi kalır** (v8.126 ile bundled deploy — kullanıcılar v9'u ilk kez bu pakette görür). (6) **`auth-pin.js:4`** bağımlılık yorumu güncellendi (`db.js` → `persist.js (loadSecure), firestore.js (PIN/wrappedKey helpers)`). **Caller değişikliği: SIFIR** — tüm fonksiyonlar `window.*` export'unu koruyor; sync.js/backup.js/crypto.js/auth-pin.js/app.js hiçbir satır değişmedi. Davranış birebir aynı; sahiplik haritası daha net (firebase.js auth → firestore.js data I/O → persist.js encrypt/storage → auth-pin.js PIN/chPass). Doğrulama: aktif kodda `db.js` referansı sadece tarihi yorumlarda. |
 | v8.126 | 20260528-51 | **CSS → `app.css` ayrımı**: `index.html` `<style>` bloğu (L18-L295, 278 satır) ayrı `app.css` dosyasına taşındı. **Critical CSS inline kaldı** (FOUC önleyici genişletilmiş kapsam, 12 satır): `:root` (CSS değişkenleri 8 satır) + `*{margin:0;...}` (universal reset) + `html{overflow-x:hidden}` + `body{font-family:'Inter';background:var(--bg);...}` (full body kuralı) + `body::before{...gradient}`. app.css ilk satır `.mono` → son satır `.empty p` (264 satır component CSS). `<link rel="stylesheet" href="./app.css">` `<style>` bloğunun hemen ardına eklendi (`<head>` içinde, `<script type="module">` öncesi). **sw.js**: (1) `CACHE = 'ip-static-v8'` → `'ip-static-v9'` — activate'te eski cache silinir, mevcut SW_UPDATED akışı (v8.79) tek seferlik reload tetikler. (2) STATIC listesine `'./app.css'` eklendi (index.html'in hemen ardına). (3) Fetch handler `/js/` koşulu CSS ile birleştirildi: `if (url.includes('/js/') \|\| url.endsWith('.css'))` → `cache:'no-cache'` network-first, JS pattern'iyle aynı disiplin. **index.html boyut**: 888 → 620 satır (%30 küçüldü). Python ile düzenlendi (Türkçe karakter güvenliği — CSS yorumlarında `/* GOOGLE GİRİŞ */` vb. var). **Cascade**: app.css'in `body{...}` kuralı inline'ı override eder (specificity aynı, son kazanır) — stil sonucu birebir aynı. |
 | v8.125 | 20260528-50 | **cred rowKey "(Kredi)" suffix** (`hesap.js#_displayNames`): cred satırları (`k.startsWith('cred_')`) display name'inin sonuna `(Kredi)` post-processing eklendi. Mevcut suffix mantığı (personId tag, legacy isim-suffix) **append** mode'da korunur — disambiguation kaybolmaz: "QNB" cred → `QNB (Kredi)`; iki cred aynı isimde → `QNB (Kredi)` + `QNB 1 (Kredi)` (legacy numeric suffix önce, sonra "(Kredi)"); cred + personId tag (rare) → `QNB (Kira) (Kredi)` (çift paren kabul). Defensive fallback: `dnMap[k]` set değilse `_baseOf(mx[k]._name)` kullanılır. Etki: plan matrisi (`ui-plan.js#render`), kredi kart paneli (`ui-pay.js#renderCredSummary` → `Hesap.krediler()`), arama (`search.js#renderAI`) — üç tüketici de aynı suffix'i görür. |
 | v8.124 | 20260528-49 | **`ui-plan.js` section header'ları**: 612 satırlık dosyaya 7 section header eklendi (kod düzeni değişmedi, sadece görsel navigasyon): `DATA / HESAPLAMA` (getAllItems, buildMx), `ANA RENDER` (render), `HAFTA WİDGET` (renderGecWidget, renderHaftaWidget), `DETAIL PANEL (DV)` (openRow, convertToCredit, openCell, closeDV, closeRDET, openEmptyCell), `HÜCRE CRUD` (addToMonth, markOk, undoCell, openKM, doPartial, saveCellAmt, resetPartial), `SATIR / AY CRUD` (editByKey, delByKey, delMonthEntry, delCellItems), `EVENT + TOGGLE` (store:change listener + togglePaidMonths). Mevcut `// ── STORE EVENT LISTENER (v9.0) ──` yorumu `EVENT + TOGGLE` ile replace edildi. 6 fonksiyon zaten doğru sırada, 2 küçük çelişki (convertToCredit DETAIL section'a, openKM HÜCRE CRUD section'a düştü — fiziksel sıra korundu). Bölme yok — v9.0'da modal HTML extraction'la birlikte ui-plan-detail/actions ayrımı düşünülebilir. |
@@ -75,7 +76,7 @@ _Liste boş — Store internal'a taşıma ailesi (`_dirty`/`_saveTimer`/... → 
 
 ### Veri Akışı
 ```
-Firebase (Firestore) ←→ loadSecure/saveSecure (db.js) ←→ window.pays/creds/...
+Firebase (Firestore) ←→ loadSecure/saveSecure (persist.js → firestore.js) ←→ window.pays/creds/...
                                                         ↑
                                               400ms debounce ile yazılır
 ```
@@ -105,7 +106,8 @@ js/store.js         Merkezi Store — 8 dizi + rates + lookup maps (pays/creds) 
 js/state.js         UI durumu (curTab, sortMode, partialCtx) + clearState() — veri dizileri ve _planId Store'da
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
-js/db.js            Firestore data ops + loadSecure/saveSecure/migrasyon
+js/firestore.js     Firestore I/O katmanı — _fbSave/_fbLoad/_fbPoll/_fbStartListen/_fbStopListen + PIN/salt/wrappedKey helpers (v8.127'de db.js'ten ayrıştırıldı)
+js/persist.js       Encrypt + storage hybrid + migration — saveSecure/_doSave/saveSecureNow/loadSecure/migrateToV7 + alias shim'ler (v8.127'de db.js'ten ayrıştırıldı)
 js/auth-pin.js      PIN doğrulama (doLogin) + şifre değiştir (chPass) — v8.110'da db.js'ten ayrıştırıldı
 js/app.js           enterApp, initApp, go, sekme yönetimi
 js/plan.js          Plan adı, plan seçimi, plan geçişi
@@ -126,7 +128,7 @@ js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (wind
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
 app.css             Component CSS (v8.126'da index.html <style>'dan ayrıldı, 264 satır)
-version.json        {"v": "8.126", "build": "20260528-51"}
+version.json        {"v": "8.127", "build": "20260528-52"}
 sw.js               Service Worker — ip-static-v9
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -138,6 +140,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.127 | 20260528-52 | db.js → firestore.js + persist.js ayrımı: 11 Firestore I/O fonksiyonu firestore.js'e, 5 persist/migration fonksiyonu + alias'lar persist.js'e; window.* API yüzeyi korundu (0 caller değişikliği); sw.js STATIC güncel, CACHE v9 (v8.126 ile bundled) |
 | v8.126 | 20260528-51 | CSS → app.css ayrımı: index.html <style> bloğu (278 satır) ayrıldı; critical CSS (12 satır) inline kaldı; sw.js CACHE v8 → v9, CSS network-first; index.html %30 küçüldü (888 → 620 satır) |
 | v8.125 | 20260528-50 | cred rowKey "(Kredi)" suffix (hesap.js#_displayNames) — append, mevcut suffix korunur; plan matrisi + kredi paneli + arama'da tutarlı |
 | v8.124 | 20260528-49 | ui-plan.js section header'ları (7 başlık) — kod düzeni değişmedi, sadece görsel navigasyon |

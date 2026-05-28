@@ -1,118 +1,7 @@
-// js/db.js — iskenderpay (v1.3)
-// Firestore data ops, loadSecure, saveSecure, migrasyon.
-// Auth concern'leri (init, listener, getRedirectResult, doGoogleLogin/SignOut)
-// firebase.js'in sahipliğinde. PIN akışları (doLogin, chPass) auth-pin.js'in
-// sahipliğinde — v8.110'da ayrıştırıldı.
-
-import { getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-// ── Firestore yardımcıları ───────────────────────────────────────────────────
-// _planDoc / _metaDoc firebase.js'de tanımlı, _db'yi closure'la, Store.fbUid'i runtime'da okur
-
-const _planDoc = window._planDoc;
-const _metaDoc = window._metaDoc;
-
-
-window._fbSave = async function(encData) {
-  if (!window.Store.fbUid) return;
-  await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
-};
-
-// _syncTimer / _lastUpdated / _syncCb v8.108'de Store internal'a tasindi (Store.syncTimer vb.)
-
-window._fbStartListen = function(onData) {
-  if (!window.Store.fbUid || !window.Store.planId) return;
-  window.Store.syncCb = onData;
-  if (window.Store.syncTimer) clearInterval(window.Store.syncTimer);
-  window.Store.syncTimer = setInterval(window._fbPoll, 30000);
-  setTimeout(window._fbPoll, 5000);
-};
-
-let _pollRunning = false;
-window._fbPoll = async function() {
-  if (!window.Store.fbUid || !window.Store.planId || !window.Store.syncCb) return;
-  if (window.Store.saveTimer !== null && window.Store.saveTimer !== undefined) return;
-  if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync atla
-  if (_pollRunning) return;   // Concurrent poll önle
-  _pollRunning = true;
-  try {
-    const snap = await getDoc(_planDoc());
-    if (!snap.exists()) { window.setSyncDot && window.setSyncDot('active'); return; }
-    const d = snap.data();
-    const ts = d.updatedAt || 0;
-    // Firebase'e yazılamamış veri varsa önce onu yükle
-    if (window.Store.fbSyncNeeded && !window.Store.dirty) {
-      const enc = localStorage.getItem('v5-data-' + window.Store.planId);
-      if (enc) {
-        try { await window._fbSave(enc); window.Store.lastUpdated = Date.now(); window.Store.fbSyncNeeded = false; } catch(e) {}
-      }
-      return;
-    }
-    if (ts > window.Store.lastUpdated && window.Store.lastUpdated > 0) {
-      window.Store.lastUpdated = ts;
-      if (d.data) window.Store.syncCb(d.data);
-    } else if (window.Store.lastUpdated === 0) {
-      window.Store.lastUpdated = ts;
-    }
-    window.setSyncDot && window.setSyncDot('active');
-  } catch(e) {
-    console.warn('Sync poll hatası:', e.message || e);
-  } finally {
-    _pollRunning = false;
-  }
-};
-
-window._fbStopListen = function() {
-  if (window.Store.syncTimer) { clearInterval(window.Store.syncTimer); window.Store.syncTimer = null; }
-  window.Store.syncCb = null;
-};
-
-window._fbLoad = async function() {
-  if (!window.Store.fbUid) return null;
-  const snap = await getDoc(_planDoc());
-  return snap.exists() ? snap.data().data : null;
-};
-
-window._fbSaveSalt = async function(saltKey, saltVal) {
-  if (!window.Store.fbUid) return;
-  const update = {};
-  update['salts.' + saltKey] = saltVal;
-  await setDoc(_planDoc(), update, { merge: true });
-};
-
-window._fbLoadSalt = async function(saltKey) {
-  if (!window.Store.fbUid) return null;
-  const snap = await getDoc(_planDoc());
-  if (!snap.exists()) return null;
-  const salts = snap.data().salts || {};
-  return salts[saltKey] || null;
-};
-
-window._fbSavePinHash = async function(hash) {
-  if (!window.Store.fbUid) return;
-  await setDoc(_planDoc(), { pinHash: hash }, { merge: true });
-};
-
-window._fbLoadPinHash = async function() {
-  if (!window.Store.fbUid) return null;
-  const snap = await getDoc(_planDoc());
-  return snap.exists() ? (snap.data().pinHash || null) : null;
-};
-
-window._fbSaveWrappedKey = async function(wrappedB64) {
-  if (!window.Store.fbUid) return;
-  await setDoc(_metaDoc(), { wrappedKey: wrappedB64 }, { merge: true });
-};
-
-window._fbLoadWrappedKey = async function() {
-  if (!window.Store.fbUid) return null;
-  try {
-    const snap = await getDoc(_metaDoc());
-    return snap.exists() ? (snap.data().wrappedKey || null) : null;
-  } catch(e) { return null; }
-};
-
-// Auth (init + listener + doGoogleLogin/SignOut) firebase.js'in sahipliğinde.
+// js/persist.js — iskenderpay (v1.0)
+// Encrypt + storage (localStorage + Firestore hybrid) + schema migration.
+// firestore.js'ten window._fbSave/_fbLoad'i, crypto.js'ten encryptData/decryptData'yi tuketir.
+// v8.127'de db.js'ten ayristirildi.
 
 // ── saveSecure / loadSecure ───────────────────────────────────────────────────
 
@@ -259,8 +148,6 @@ async function migrateToV7() {
   localStorage.setItem(migKey, '1');
   console.log('v7 migrasyon tamamlandı');
 }
-
-// doLogin / chPass auth-pin.js'in sahipliğinde (v8.110'da ayrıştırıldı).
 
 // ── Global compat ─────────────────────────────────────────────────────────────
 window.saveSecure    = saveSecure;

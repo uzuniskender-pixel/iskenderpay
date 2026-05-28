@@ -37,7 +37,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     import './js/util.js';
     import './js/compat.js';
     import './js/crypto.js';
-    import './js/db.js';
+    import './js/firestore.js';
+    import './js/persist.js';
     import './js/auth-pin.js';
     import './js/modal.js';
     import './js/data.js';
@@ -442,8 +443,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.126';
-var APP_BUILD   = '20260528-51';
+var APP_VERSION = 'v8.127';
+var APP_BUILD   = '20260528-52';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

@@ -1,7 +1,7 @@
 // js/auth-pin.js — iskenderpay (v1.0)
 // PIN dogrulama (doLogin) + sifre degistir (chPass) akislari.
 // db.js'ten ayristirildi (v8.110) — auth concern'leri tek dosyada.
-// Bagimliliklar: crypto.js, compat.js, db.js (loadSecure + Firestore PIN/wrappedKey helpers).
+// Bagimliliklar: crypto.js, compat.js, persist.js (loadSecure), firestore.js (PIN/wrappedKey helpers).
 
 // ── doLogin ───────────────────────────────────────────────────────────────────
 

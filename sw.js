@@ -1,4 +1,4 @@
-// sw.js — iskenderpay PWA cache (v8.126: CSS app.css'e ayrildi, CACHE v9)
+// sw.js — iskenderpay PWA cache (v8.127: db.js -> firestore.js + persist.js)
 
 const CACHE = 'ip-static-v9';
 const STATIC = [
@@ -17,7 +17,8 @@ const STATIC = [
   './js/crypto.js',
   './js/modal.js',
   './js/data.js',
-  './js/db.js',
+  './js/firestore.js',
+  './js/persist.js',
   './js/auth-pin.js',
   './js/app.js',
   './js/plan.js',
