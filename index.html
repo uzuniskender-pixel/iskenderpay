@@ -333,6 +333,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <div id="LOG_FILT_BAR" style="padding:0 16px 8px">
         <select id="LOG_FILT_PERSON" class="fi" onchange="setLogPersonFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px"></select>
         <select id="LOG_FILT_GROUP" class="fi" onchange="setLogGroupFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
+        <select id="LOG_FILT_CRED" class="fi" onchange="setLogCredFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
       </div>
       <div id="LOG_DEL_BAR" style="padding:0 16px 8px;display:none">
         <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
@@ -341,6 +342,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
             <button id="LOG_MODE_RANGE" onclick="setLogDelMode('range')" class="btn" style="flex:1;font-size:11px;font-weight:700;background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)">📅 Saat</button>
             <button id="LOG_MODE_SEL" onclick="setLogDelMode('select')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">☑️ Seç</button>
             <button id="LOG_MODE_PERSON" onclick="setLogDelMode('person')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">👤 Kişi</button>
+            <button id="LOG_MODE_GROUP" onclick="setLogDelMode('group')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">📋 Grup</button>
           </div>
           <!-- Saat aralığı paneli -->
           <div id="LOG_RANGE_PANEL">
@@ -375,6 +377,15 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
             <select id="LOG_PERSON_SEL" class="fi" style="width:100%;padding:7px 10px;font-size:12px;margin-bottom:8px"></select>
             <div style="display:flex;gap:6px">
               <button onclick="doLogDelByPerson()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Kişinin Log'larını Sil</button>
+              <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+            </div>
+          </div>
+          <!-- Kayıt grubu bazlı silme paneli -->
+          <div id="LOG_GROUP_PANEL" style="display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Bu kayıt grubunun tüm log'ları silinecek</div>
+            <select id="LOG_GROUP_SEL" class="fi" style="width:100%;padding:7px 10px;font-size:12px;margin-bottom:8px"></select>
+            <div style="display:flex;gap:6px">
+              <button onclick="doLogDelByGroup()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Grubun Log'larını Sil</button>
               <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
             </div>
           </div>

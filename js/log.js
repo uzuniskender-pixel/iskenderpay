@@ -20,6 +20,7 @@ let _logSelected = new Set();
 let _logFilter = 'all'; // 'all' | 'today' | 'week' | 'month'
 let _logPersonFilter = ''; // '' = tum kisiler; personId = sadece o kisi (v8.141)
 let _logGroupFilter = '';  // '' = tum gruplar;  groupId  = sadece o grup  (v8.156)
+let _logCredFilter = '';   // '' = tum krediler; credId   = sadece o kredi
 
 function _passesPersonFilter(entry) {
   return !_logPersonFilter || entry.personId === _logPersonFilter;
@@ -27,6 +28,49 @@ function _passesPersonFilter(entry) {
 
 function _passesGroupFilter(entry) {
   return !_logGroupFilter || entry.groupId === _logGroupFilter;
+}
+
+function _passesCredFilter(entry) {
+  return !_logCredFilter || entry.credId === _logCredFilter;
+}
+
+// Dropdown options'i actLog'taki benzersiz credId'ler + Hesap dispName join ile uret
+// groupId filter pattern'inin aynisi — isim + count
+function _renderLogCredFilterOptions() {
+  const sel = document.getElementById('LOG_FILT_CRED');
+  if (!sel) return;
+  const credIdsInLog = new Set();
+  (window.actLog || []).forEach(e => { if (e.credId) credIdsInLog.add(e.credId); });
+  const credLabel = new Map();
+  let krediler = [];
+  try { krediler = (window.Hesap && typeof window.Hesap.krediler === 'function') ? window.Hesap.krediler() : []; }
+  catch (e) { krediler = []; }
+  const dispByCid = new Map(krediler.map(k => [k.cred && k.cred.id, k.dispName]));
+  credIdsInLog.forEach(cid => {
+    let name = dispByCid.get(cid);
+    if (!name) {
+      const c = (window.creds || []).find(cr => cr.id === cid);
+      name = c ? c.name : '(silinmiş kredi)';
+    }
+    credLabel.set(cid, name);
+  });
+  const sortedCids = [...credIdsInLog].sort((a, b) =>
+    (credLabel.get(a) || '~').localeCompare(credLabel.get(b) || '~', 'tr'));
+  const opts = ['<option value=""' + (!_logCredFilter ? ' selected' : '') + '>Tüm krediler / loglar</option>'];
+  sortedCids.forEach(cid => {
+    const name = credLabel.get(cid);
+    const count = (window.actLog || []).filter(e => e.credId === cid).length;
+    const isSel = cid === _logCredFilter ? ' selected' : '';
+    opts.push('<option value="' + window.esc(cid) + '"' + isSel + '>' + window.esc(name) + ' (' + count + ')</option>');
+  });
+  sel.innerHTML = opts.join('');
+}
+
+function setLogCredFilter(cid) {
+  _logCredFilter = cid || '';
+  // Filter degisince stale index'leri temizle (gorunmez kayitlarda selection olmasin)
+  _logSelected.clear();
+  renderActLog();
 }
 
 // Dropdown options'i actLog'taki benzersiz groupId'ler + pays.name join ile uret (v8.156)
@@ -128,11 +172,12 @@ function renderActLog() {
   const el=document.getElementById('ACT_LOG_LIST');if(!el)return;
   _renderLogPersonFilterOptions();
   _renderLogGroupFilterOptions();
+  _renderLogCredFilterOptions();
   const total=window.actLog.length;
-  // Date + person + group filter birlikte uygulanir (v8.141 + v8.156, AND-combine)
-  const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e));
+  // Date + person + group + cred filter birlikte uygulanir (v8.141 + v8.156, AND-combine)
+  const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e));
   const shown=entries.length;
-  const filterActive=(_logFilter!=='all')||!!_logPersonFilter||!!_logGroupFilter;
+  const filterActive=(_logFilter!=='all')||!!_logPersonFilter||!!_logGroupFilter||!!_logCredFilter;
   const cntEl=document.getElementById('LOG_CNT');
   if(cntEl){
     cntEl.textContent=(!filterActive||shown===total)
@@ -141,7 +186,7 @@ function renderActLog() {
   }
   if(!total){el.innerHTML='<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';return;}
   if(!shown){
-    const msg=_logGroupFilter?'Bu kayıt grubuna ait kayıt yok.':_logPersonFilter?'Bu kişiye ait kayıt yok.':'Bu aralıkta kayıt yok.';
+    const msg=_logCredFilter?'Bu krediye ait kayıt yok.':_logGroupFilter?'Bu kayıt grubuna ait kayıt yok.':_logPersonFilter?'Bu kişiye ait kayıt yok.':'Bu aralıkta kayıt yok.';
     el.innerHTML='<div class="empty"><div class="ico">🔍</div><p>'+msg+'</p></div>';return;
   }
   const selMode=_logDelMode==='select';
@@ -208,6 +253,8 @@ function setLogDelMode(mode) {
   document.getElementById('LOG_SEL_PANEL').style.display=mode==='select'?'':'none';
   const personPanel=document.getElementById('LOG_PERSON_PANEL');
   if(personPanel) personPanel.style.display=mode==='person'?'':'none';
+  const groupPanel=document.getElementById('LOG_GROUP_PANEL');
+  if(groupPanel) groupPanel.style.display=mode==='group'?'':'none';
   // Mod butonu stilleri
   const setBtnStyle=(id,active)=>{
     const el=document.getElementById(id); if(!el) return;
@@ -218,7 +265,9 @@ function setLogDelMode(mode) {
   setBtnStyle('LOG_MODE_RANGE', mode==='range');
   setBtnStyle('LOG_MODE_SEL',   mode==='select');
   setBtnStyle('LOG_MODE_PERSON',mode==='person');
+  setBtnStyle('LOG_MODE_GROUP', mode==='group');
   if(mode==='person') _populateLogPersonSelect();
+  if(mode==='group') _populateLogGroupSelect();
   if(mode==='select'){_logSelected.clear();renderActLog();}else{renderActLog();}
 }
 
@@ -236,8 +285,35 @@ function _populateLogPersonSelect() {
     persons.map(p => '<option value="'+p.id+'">'+window.esc(p.name)+'</option>').join('');
 }
 
+function _populateLogGroupSelect() {
+  const sel=document.getElementById('LOG_GROUP_SEL'); if(!sel) return;
+  // actLog'taki benzersiz groupId'ler — pays.name ile etiketle
+  const groupIdsInLog=new Set();
+  (window.actLog||[]).forEach(e => { if(e.groupId) groupIdsInLog.add(e.groupId); });
+  const groupLabel=new Map();
+  groupIdsInLog.forEach(gid => {
+    const first=(typeof window.findPaysByGroup==='function')
+      ? window.findPaysByGroup(gid)[0]
+      : (window.pays||[]).find(p => p.groupId===gid);
+    groupLabel.set(gid, first?first.name:'(silinmiş grup)');
+  });
+  const sortedGids=[...groupIdsInLog].sort((a,b) =>
+    (groupLabel.get(a)||'~').localeCompare(groupLabel.get(b)||'~','tr'));
+  if(!sortedGids.length){
+    sel.innerHTML='<option value="">Loglarda kayıt grubu yok</option>';
+    sel.disabled=true;
+    return;
+  }
+  sel.disabled=false;
+  sel.innerHTML='<option value="">— Kayıt grubu seçin —</option>'+
+    sortedGids.map(gid => {
+      const count=(window.actLog||[]).filter(e => e.groupId===gid).length;
+      return '<option value="'+window.esc(gid)+'">'+window.esc(groupLabel.get(gid))+' ('+count+')</option>';
+    }).join('');
+}
+
 function toggleSelectAllLogs(checked) {
-  if(checked){window.actLog.forEach((e,i)=>{if(_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e))_logSelected.add(i);});}else{_logSelected.clear();}
+  if(checked){window.actLog.forEach((e,i)=>{if(_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e))_logSelected.add(i);});}else{_logSelected.clear();}
   renderActLog();_updateLogSelCount();
 }
 
@@ -247,7 +323,7 @@ function toggleLogItem(idx) {
   const cb=document.getElementById('LOG_CB_'+idx);if(cb)cb.checked=_logSelected.has(idx);
   const allCb=document.getElementById('LOG_SEL_ALL');
   if(allCb){
-    const visibleCount=window.actLog.filter(e=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)).length;
+    const visibleCount=window.actLog.filter(e=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e)).length;
     allCb.checked=_logSelected.size===visibleCount && visibleCount>0;
   }
 }
@@ -310,12 +386,29 @@ function doLogDelByPerson() {
   if(deleted>0)alert(deleted+' kayıt silindi.');else alert('Bu kişiye ait kayıt bulunamadı.');
 }
 
+function doLogDelByGroup() {
+  const sel=document.getElementById('LOG_GROUP_SEL');
+  const gid=sel?sel.value:'';
+  if(!gid){alert('Kayıt grubu seçin');return;}
+  const first=(typeof window.findPaysByGroup==='function')
+    ? window.findPaysByGroup(gid)[0]
+    : (window.pays||[]).find(p => p.groupId===gid);
+  const name=first?first.name:'(?)';
+  if(!confirm('"'+name+'" kayıt grubunun tüm log\'ları silinecek. Emin misin?'))return;
+  const before=window.actLog.length;
+  window.Store.removeWhere('actLog', e => e.groupId===gid);
+  const deleted=before-window.actLog.length;
+  renderActLog();closeLogDel();
+  if(deleted>0)alert(deleted+' kayıt silindi.');else alert('Bu kayıt grubuna ait kayıt bulunamadı.');
+}
+
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.renderActLog       = renderActLog;
 window.setLogFilter       = setLogFilter;
 window.setLogPersonFilter = setLogPersonFilter;
 window.setLogGroupFilter  = setLogGroupFilter;
+window.setLogCredFilter   = setLogCredFilter;
 window.logNav             = logNav;
 window.logJumpGroup       = logJumpGroup;
 window.logJumpPerson      = logJumpPerson;
@@ -329,4 +422,6 @@ window.doLogDel           = doLogDel;
 window.doLogDelSelected   = doLogDelSelected;
 window.doLogDelAll        = doLogDelAll;
 window.doLogDelByPerson   = doLogDelByPerson;
+window.doLogDelByGroup    = doLogDelByGroup;
 window._populateLogPersonSelect = _populateLogPersonSelect;
+window._populateLogGroupSelect  = _populateLogGroupSelect;
