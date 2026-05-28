@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.90 / 20260528-18
+## Mevcut Durum (28 Mayıs 2026) — v8.91 / 20260528-19
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -102,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.91 | 20260528-19 | fix.py, fix_ver.py geçici dosyalar silindi |
 | v8.90 | 20260528-18 | Dead code silindi: ui.js, ui-data.js, ui-misc.js kaldırıldı |
 | v8.89 | 20260528-17 | localStorage önce yaz; _fbPoll concurrent guard + _fbSyncNeeded retry; backup.js saveSecureNow |
 | v8.88 | 20260528-16 | kur.js: 30 dakika içinde çekildiyse API atlanır; 🔄 butonu force=true ile zorunlu yeniler |
