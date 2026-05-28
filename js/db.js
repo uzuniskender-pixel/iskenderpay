@@ -258,7 +258,7 @@ async function migrateToV7() {
   console.log('v7 migrasyon tamamlandı');
 }
 
-async function migrateToV7b() {
+async function migrateToV7b() { return; // v8.73: devre disi - fix_groupids.js kullan
   const migKey = 'v7b-migrated-' + (window._fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
   window._suppressSave = true;
