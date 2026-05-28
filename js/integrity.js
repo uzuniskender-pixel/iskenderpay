@@ -26,6 +26,44 @@ function normalizeBeforeSave() {
       }
     });
   } catch(e) { console.warn('[integrity] normalize hatasi:', e); }
+
+  // (A) paidItems dedupe: ayni paidId'ye sahip mukerrer kayitlari tekille (ilkini tut).
+  // paidId yoksa atla (silme). Idempotent: ikinci cagrida mukerrer kalmadigi icin no-op.
+  try {
+    const items = window.paidItems;
+    if (Array.isArray(items)) {
+      const seen = new Set();
+      let removed = 0;
+      const deduped = items.filter(it => {
+        if (!it || !it.paidId) return true; // paidId yoksa dokunma
+        if (seen.has(it.paidId)) { removed++; return false; }
+        seen.add(it.paidId);
+        return true;
+      });
+      if (removed > 0) {
+        window.paidItems = deduped;
+        console.log('[integrity]', removed, 'mukerrer paidItem temizlendi');
+      }
+    }
+  } catch(e) { console.warn('[integrity] paidItems dedupe hatasi:', e); }
+
+  // (B) orphan reference temizligi: actLog entry'lerindeki personId/credId silinmis bir
+  // kayda isaret ediyorsa o ALANI sil (entry'yi degil). Idempotent: kirik referans
+  // kaldigi surece silinir, sonraki cagrida alan yoksa no-op.
+  try {
+    const log = window.actLog;
+    if (Array.isArray(log)) {
+      const personIds = new Set((window.persons||[]).map(p => p && p.id).filter(Boolean));
+      const credIds = new Set((window.creds||[]).map(c => c && c.id).filter(Boolean));
+      let fixed = 0;
+      log.forEach(e => {
+        if (!e) return;
+        if (e.personId && !personIds.has(e.personId)) { delete e.personId; fixed++; }
+        if (e.credId && !credIds.has(e.credId)) { delete e.credId; fixed++; }
+      });
+      if (fixed > 0) console.log('[integrity]', fixed, 'kirik actLog referansi temizlendi');
+    }
+  } catch(e) { console.warn('[integrity] orphan temizlik hatasi:', e); }
 }
 
 window.normalizeBeforeSave = normalizeBeforeSave;
