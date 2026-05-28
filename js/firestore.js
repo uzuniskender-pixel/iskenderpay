@@ -71,21 +71,6 @@ window._fbLoad = async function() {
   return snap.exists() ? snap.data().data : null;
 };
 
-window._fbSaveSalt = async function(saltKey, saltVal) {
-  if (!window.Store.fbUid) return;
-  const update = {};
-  update['salts.' + saltKey] = saltVal;
-  await setDoc(_planDoc(), update, { merge: true });
-};
-
-window._fbLoadSalt = async function(saltKey) {
-  if (!window.Store.fbUid) return null;
-  const snap = await getDoc(_planDoc());
-  if (!snap.exists()) return null;
-  const salts = snap.data().salts || {};
-  return salts[saltKey] || null;
-};
-
 window._fbSavePinHash = async function(hash) {
   if (!window.Store.fbUid) return;
   await setDoc(_planDoc(), { pinHash: hash }, { merge: true });
