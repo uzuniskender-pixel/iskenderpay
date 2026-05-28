@@ -48,6 +48,14 @@ function savePay() {
   if(!name||!amount||!date){alert('Ad, tutar ve tarih zorunlu');return;}
   const personId=_resolvePersonId(name);
   const eid=document.getElementById('EID').value;
+  // Uyarı: persons'ta eşleşme yok ve (yeni kayıt veya isim değişti) → engelleme, sadece bildir
+  if (!personId && name) {
+    const nameChanged = !eid || (window.findPayById(eid)?.name !== name);
+    if (nameChanged) {
+      console.warn('[savePay] "'+name+'" kişi listesinde yok — kayıt yapıldı ama kişiye bağlanmadı');
+      setTimeout(() => window.showWarnToast && window.showWarnToast('"'+name+'" kişi listesinde yok'), 200);
+    }
+  }
   if(eid){
     const p=window.findPayById(eid);
     if(p){

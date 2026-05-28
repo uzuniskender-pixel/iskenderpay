@@ -47,10 +47,19 @@ document.addEventListener('keydown', e => {
 
 export const ModalManager = { open, close, closeAll };
 
+// ── TOAST: kısa süreli uyarı (engelleyici değil) ────────────────────────────
+// #warn-toast element'ine textContent inject + show class + auto-hide.
+// Rapid-fire safe: önceki timer cleanup.
+function showWarnToast(msg) {
+  const t = document.getElementById('warn-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
 // Global compat — index.html inline kodu ModalManager.open/close/closeAll kullanıyor
 window.ModalManager = ModalManager;
 window.closeMov = (id) => close(id);
-
-// ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
-window.ModalManager = ModalManager;
-window.closeMov     = (id) => close(id);
+window.showWarnToast = showWarnToast;
