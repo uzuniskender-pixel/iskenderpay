@@ -47,14 +47,7 @@ function doRestore() {
   localStorage.setItem('v8-restore-snapshot', JSON.stringify(snapshot));
 
   const d = JSON.parse(st.dataset.d);
-  if (window.Store) {
-    window.Store.hydrate(d);
-  } else {
-    window.pays=d.pays||[]; window.creds=d.creds||[]; window.hist=d.hist||[];
-    window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
-    window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
-    window.invalidateLookups();
-  }
+  window.Store.hydrate(d);
   window.saveSecureNow().then(() => {
     window.migrateCredDates();
     window.closeMov('RM');
@@ -73,14 +66,7 @@ function undoRestore() {
   if (!raw) { alert('Snapshot bulunamadi.'); return; }
   if (!confirm('Geri yukleme oncesindeki veriye donmek istiyor musun?')) return;
   const d = JSON.parse(raw);
-  if (window.Store) {
-    window.Store.hydrate(d);
-  } else {
-    window.pays=d.pays||[]; window.creds=d.creds||[]; window.hist=d.hist||[];
-    window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
-    window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
-    window.invalidateLookups();
-  }
+  window.Store.hydrate(d);
   window.saveSecureNow().then(() => {
     window.migrateCredDates(); window.render();
     localStorage.removeItem('v8-restore-snapshot');
