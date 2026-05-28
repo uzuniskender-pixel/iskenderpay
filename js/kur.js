@@ -3,7 +3,7 @@
 
 async function fetchRates(force=false) {
   if (!window.rates) window.rates = {EUR:null, USD:null, GOLD:null};
-  const s = localStorage.getItem('v5-rates-'+window._planId) || localStorage.getItem('v5-rates');
+  const s = localStorage.getItem('v5-rates-'+window.Store.planId) || localStorage.getItem('v5-rates');
   if (s) try { const parsed = JSON.parse(s); Object.assign(window.rates, parsed); } catch(e) {}
   renderKur();
   // Son 30 dakika içinde çekildiyse API'ye gitme
@@ -24,7 +24,7 @@ async function fetchRates(force=false) {
   } catch(e) { console.warn('gold-api erişim hatası:', e.message); }
   if (anySuccess) {
     window.rates._fetchedAt = new Date().toISOString();
-    localStorage.setItem('v5-rates-'+window._planId, JSON.stringify(window.rates));
+    localStorage.setItem('v5-rates-'+window.Store.planId, JSON.stringify(window.rates));
   }
   renderKur();
   if (window.curTab === 0) window.render();
@@ -65,7 +65,7 @@ function saveRates() {
   const u = parseFloat(document.getElementById('MU').value)||0;
   const g = parseFloat(document.getElementById('MG').value)||0;
   if (e) window.rates.EUR=e; if (u) window.rates.USD=u; if (g) window.rates.GOLD=g;
-  localStorage.setItem('v5-rates-'+window._planId, JSON.stringify(window.rates));
+  localStorage.setItem('v5-rates-'+window.Store.planId, JSON.stringify(window.rates));
   renderKur();
   if (window.curTab === 0) window.render();
   alert('Kurlar kaydedildi!');

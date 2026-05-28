@@ -24,7 +24,7 @@ async function confirmBackup() {
   const payload = JSON.stringify({enc:true, data:enc, v:'7.0', hint:'odeme-takvimi-backup'});
   const blob = new Blob([payload], {type:'application/json;charset=utf-8'});
   const url = URL.createObjectURL(blob);
-  const planName = window.getPlanName(window._planId).replace(/\s+/g, '-');
+  const planName = window.getPlanName(window.Store.planId).replace(/\s+/g, '-');
   const a = document.createElement('a');
   a.href = url;
   a.download = 'yedek-'+planName+'-'+new Date().toISOString().split('T')[0]+'.json';

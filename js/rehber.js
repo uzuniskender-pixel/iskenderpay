@@ -145,7 +145,8 @@ function openRhbAdd() {
   document.getElementById('RMOD_ID').value='';
   document.getElementById('RMOD_T').innerHTML='Kişi <span>Ekle</span>';
   ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_NOTE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  _rhbPhones=[{lbl:'Cep',num:''}];renderRhbPhones();
+  // v8.117: in-place mutation — inline handler'lar window._rhbPhones'tan okur, reassignment yapılırsa stale kalır
+  _rhbPhones.splice(0,_rhbPhones.length,{lbl:'Cep',num:''});renderRhbPhones();
   ModalManager.open('RMOD');
 }
 
@@ -158,7 +159,8 @@ function openRhbEdit(id) {
   const coEl=document.getElementById('RMOD_COMPANY');if(coEl)coEl.value=p.company||'';
   document.getElementById('RMOD_EMAIL').value=p.email||'';
   document.getElementById('RMOD_NOTE').value=p.note||'';
-  _rhbPhones=(p.phones?.length?p.phones.map(x=>({...x})):[{lbl:'',num:''}]);
+  // v8.117: in-place mutation — inline handler'lar window._rhbPhones'tan okur, reassignment yapılırsa stale kalır
+  _rhbPhones.splice(0,_rhbPhones.length, ...(p.phones?.length?p.phones.map(x=>({...x})):[{lbl:'',num:''}]));
   renderRhbPhones();
   setTimeout(()=>ModalManager.open('RMOD'),100);
 }
@@ -218,4 +220,9 @@ window.renderRhbPhones    = renderRhbPhones;
 window.rhbAddPhone        = rhbAddPhone;
 window.rhbSavePerson      = rhbSavePerson;
 window.rhbDel             = rhbDel;
+// LOAD-BEARING: inline handler'lar (line 171-173 `onchange/oninput/onclick="_rhbPhones[i]..."`)
+// ES module scope'una erişemez — `_rhbPhones` referansını window üzerinden çözerler.
+// Silmek inline handler'ları ReferenceError ile kırar. v8.117'de reassignment'lar splice
+// in-place mutation'a çevrildi → window ve modül-local artık her zaman aynı array (bug fix).
+// Tam temizlik için inline handler'lar event delegation'a çevrilmeli.
 window._rhbPhones = _rhbPhones;

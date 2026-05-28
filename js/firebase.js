@@ -21,15 +21,11 @@ const firebaseConfig = {
 const _app    = initializeApp(firebaseConfig);
 const _auth   = getAuth(_app);
 const _db     = getFirestore(_app);
-// _fbUid v8.113'te Store.fbUid'e tasindi — tek otorite Store
-
-// Aktif plan (plan1 veya plan2)
-// [state.js'e taşındı]
-window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
+// _fbUid v8.113'te Store.fbUid'e, _planId v8.116'da Store.planId'ye taşındı — tek otorite Store
 
 // ── FIRESTORE YARDIMCI ────────────────────────────────────────────────────────
 function _planDoc(planId) {
-  return doc(_db, 'users', window.Store.fbUid + '_' + (planId || window._planId));
+  return doc(_db, 'users', window.Store.fbUid + '_' + (planId || window.Store.planId));
 }
 function _metaDoc() {
   return doc(_db, 'users', window.Store.fbUid + '_meta');

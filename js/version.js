@@ -1,12 +1,14 @@
 // js/version.js — iskenderpay
 // Versiyon kontrolü, güncelleme banner
 
+let _knownBuild = null;
+
 async function initBuild() {
   try {
     const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) return;
     const d = await r.json();
-    if (d.build) window._knownBuild = d.build;
+    if (d.build) _knownBuild = d.build;
   } catch(e) {}
 }
 
@@ -15,8 +17,8 @@ async function checkVersion() {
     const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) return;
     const d = await r.json();
-    if (d.build && d.build !== window._knownBuild) {
-      window._knownBuild = d.build;
+    if (d.build && d.build !== _knownBuild) {
+      _knownBuild = d.build;
       showUpdBanner(d.v);
     }
   } catch(e) {}
@@ -44,7 +46,7 @@ async function manualCheckUpdate() {
     const r = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
-    if (d.build && d.build !== window._knownBuild) {
+    if (d.build && d.build !== _knownBuild) {
       if (statusEl) statusEl.textContent = '🔄 Yeni sürüm mevcut: ' + d.v;
       showUpdBanner(d.v);
     } else {
@@ -68,3 +70,7 @@ setInterval(checkVersion, 5 * 60 * 1000);
 window.checkVersion       = checkVersion;
 window.showUpdBanner      = showUpdBanner;
 window.updApply           = updApply;
+
+// ── NAMED EXPORT (v8.118) ──────────────────────────────────────────────────
+// _knownBuild modul-private; ihtiyac duyanlar (search.js) bu fonksiyonla okur.
+export function getKnownBuild() { return _knownBuild; }

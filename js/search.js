@@ -1,6 +1,8 @@
 // js/search.js — iskenderpay
 // Global arama, ayarlar sekmesi
 
+import { getKnownBuild } from './version.js';
+
 function execGlobalSearch() {
   const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
   const resDiv = document.getElementById('SRCHRES');
@@ -77,7 +79,7 @@ function renderAI() {
   document.getElementById('AI').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <span style="color:var(--txt);font-size:14px;font-weight:700">${window.APP_VERSION}</span>
-      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:2px 9px;font-size:11px;font-family:'IBM Plex Mono',monospace">${window._knownBuild||window.APP_BUILD}</span>
+      <span style="background:rgba(96,165,250,.15);color:var(--blue);border-radius:5px;padding:2px 9px;font-size:11px;font-family:'IBM Plex Mono',monospace">${getKnownBuild()||window.APP_BUILD}</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
@@ -106,7 +108,7 @@ function renderAI() {
     </div>
   `;
 
-  const r = JSON.parse(localStorage.getItem('v5-rates-'+window._planId)||localStorage.getItem('v5-rates')||'{}');
+  const r = JSON.parse(localStorage.getItem('v5-rates-'+window.Store.planId)||localStorage.getItem('v5-rates')||'{}');
   if (r.EUR)  document.getElementById('ME').value = r.EUR.toFixed(2);
   if (r.USD)  document.getElementById('MU').value = r.USD.toFixed(2);
   if (r.GOLD) document.getElementById('MG').value = r.GOLD.toFixed(0);
