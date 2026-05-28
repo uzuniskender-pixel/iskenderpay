@@ -201,7 +201,7 @@ function renderCredSummary() {
   }
   // Tum hesap + display name Hesap.krediler'a delege (plan matrisiyle tutarli)
   const list = window.Hesap.krediler();
-  const cards = list.map(({dispName, remaining, bekleyen, pct, nextPay, nextDays, overdueCount, lastDate, done}) => {
+  const cards = list.map(({cred, dispName, remaining, bekleyen, pct, nextPay, nextDays, overdueCount, lastDate, done}) => {
     const pctColor = pct>=80?'var(--ok)':pct>=50?'var(--blue)':'var(--ora)';
     const nextStr  = nextPay?window.fmtD(nextPay.date):'✓';
     // Sayac badge: done > overdue > yaklasan(<=7) > uzak (v8.158)
@@ -221,7 +221,7 @@ function renderCredSummary() {
       const d = window.parseLocalDate(lastDate);
       lastStr = d.toLocaleDateString('tr-TR',{month:'short'}) + ' ' + String(d.getFullYear()).slice(-2);
     }
-    return `<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0">
+    return `<div data-cred-id="${cred.id}" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0;cursor:pointer">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(dispName)}</div>
         <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0">${done?'✓':remaining+' kaldı'}</div>
@@ -241,7 +241,18 @@ function renderCredSummary() {
   }).join('');
   el.style.display = '';
   el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">KREDİLER</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">${cards}</div>`;
+  // v8.165: cred karta click → plan DV modal (openRow) — taksit takvimi zaten orada
+  if (!_credSumHandlerAttached) {
+    el.addEventListener('click', e => {
+      const card = e.target.closest('[data-cred-id]');
+      if (card && card.dataset.credId && window.openRow) {
+        window.openRow(encodeURIComponent('cred_'+card.dataset.credId));
+      }
+    });
+    _credSumHandlerAttached = true;
+  }
 }
+let _credSumHandlerAttached = false;
 window.renderCredSummary = renderCredSummary;
 
 // ── STORE EVENT LISTENER (v9.0) ─────────────────────────────────────────────
