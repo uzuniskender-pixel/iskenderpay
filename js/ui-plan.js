@@ -425,7 +425,7 @@ function addToMonth(keyEnc,month) {
   const refItem=groupId?window.findPaysByGroup(groupId)[0]:window.pays.find(p=>p.name===name);
   const newGroupId=groupId||String(Date.now());
   window.Store.push('pays', {id:Date.now()+Math.random(), groupId:newGroupId, name, amount:amt, currency:cur, date, category:refItem?refItem.category||'Diğer':'Diğer', status:'pending', paid:0});
-  window.addLog('plan_add', 'Kayıt eklendi', name+' · '+window.fmtAmt(amt,cur), 0, {groupId: newGroupId});
+  window.addLog('plan_add', 'Kayıt eklendi', name+' · '+window.fmtAmt(amt,cur), 0, {groupId: newGroupId, personId: refItem && refItem.personId});
   closeDV();
 }
 
@@ -437,7 +437,7 @@ function markOk(keyEnc,month) {
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
     else{const orig=window.findPayById(p.id);if(orig){orig.status='paid';orig.paid=window.toTRY(orig.amount,orig.currency||'TRY');}}
     window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:window.toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
-    try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId});}catch(e){}
+    try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
   });
   window.Store.touch(); closeDV();
 }
@@ -451,7 +451,7 @@ function undoCell(keyEnc,month) {
     else{const orig=window.findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
-    try{window.addLog('plan_undo','Ödeme geri alındı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId});}catch(e){}
+    try{window.addLog('plan_undo','Ödeme geri alındı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
   });
   window.Store.touch(); closeDV();
 }
@@ -544,13 +544,13 @@ function delByKey(keyEnc) {
     const gid=key.replace('g_','');
     const toDelete=window.pays.filter(p=>p.groupId===gid);
     toDelete.forEach(p=>window.Store.unshift('hist',{...p,delAt:new Date().toISOString()}));
-    try{window.addLog('plan_del','Kayıt silindi',dispName+' · '+toDelete.length+' ödeme',0,{groupId:gid});}catch(e){}
+    try{window.addLog('plan_del','Kayıt silindi',dispName+' · '+toDelete.length+' ödeme',0,{groupId:gid, personId:toDelete[0]&&toDelete[0].personId});}catch(e){}
     window.Store.removeWhere('pays', p => p.groupId===gid);
   } else {
     const pid=key.replace('pay_','');
     const toDelete=window.pays.filter(p=>String(Math.floor(Number(p.id)))===pid);
     toDelete.forEach(p=>window.Store.unshift('hist',{...p,delAt:new Date().toISOString()}));
-    try{if(toDelete.length)window.addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+window.fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0,{groupId:toDelete[0].groupId});}catch(e){}
+    try{if(toDelete.length)window.addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+window.fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0,{groupId:toDelete[0].groupId, personId:toDelete[0].personId});}catch(e){}
     window.Store.removeWhere('pays', p => String(Math.floor(Number(p.id)))===pid);
   }
   closeDV();
@@ -560,7 +560,7 @@ function delMonthEntry(idEnc) {
   const id=decodeURIComponent(idEnc);
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
   const p=window.findPayById(id);
-  if(p){try{window.addLog('plan_del','Kayıt silindi',p.name+' · '+window.fmtAmt(p.amount,p.currency||'TRY'),0,{groupId:p.groupId});}catch(e){};window.Store.unshift('hist',{...p,delAt:new Date().toISOString()});window.Store.removeWhere('pays', x => String(x.id)===id);}
+  if(p){try{window.addLog('plan_del','Kayıt silindi',p.name+' · '+window.fmtAmt(p.amount,p.currency||'TRY'),0,{groupId:p.groupId, personId:p.personId});}catch(e){};window.Store.unshift('hist',{...p,delAt:new Date().toISOString()});window.Store.removeWhere('pays', x => String(x.id)===id);}
   closeDV();
 }
 
