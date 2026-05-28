@@ -154,37 +154,30 @@ function renderCredSummary() {
     if (el) el.style.display = 'none';
     return;
   }
-  const now = new Date();
-  const rows = (window.creds || []).map(c => {
-    const paid   = (c.pays||[]).filter(p => (p.status||'pending')==='paid').length;
-    const total  = (c.pays||[]).length;
-    const kalan  = total - paid;
-    const odenen = (c.pays||[]).filter(p=>(p.status||'pending')==='paid')
-                   .reduce((s,p)=>s+p.amount,0);
-    const bekleyen = (c.pays||[]).filter(p=>(p.status||'pending')!=='paid')
-                   .reduce((s,p)=>s+p.amount,0);
-    const pct = total > 0 ? Math.round((paid/total)*100) : 0;
+  const cards = (window.creds || []).map(c => {
+    const paid     = (c.pays||[]).filter(p=>(p.status||'pending')==='paid').length;
+    const total    = (c.pays||[]).length;
+    const bekleyen = (c.pays||[]).filter(p=>(p.status||'pending')!=='paid').reduce((s,p)=>s+p.amount,0);
+    const pct      = total>0?Math.round((paid/total)*100):0;
     const pctColor = pct>=80?'var(--ok)':pct>=50?'var(--blue)':'var(--ora)';
-    const nextPay = (c.pays||[]).find(p=>(p.status||'pending')!=='paid');
-    const nextStr = nextPay ? window.fmtD(nextPay.date) : '✓ Tamamlandı';
-    return `<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:11px 14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-        <div style="font-size:13px;font-weight:700">${window.esc(c.name)}</div>
-        <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${paid}/${total} taksit</div>
+    const nextPay  = (c.pays||[]).find(p=>(p.status||'pending')!=='paid');
+    const nextStr  = nextPay?window.fmtD(nextPay.date):'✓';
+    const done     = paid===total;
+    return `<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(c.name)}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0">${paid}/${total}</div>
       </div>
-      <div style="height:4px;background:var(--surf);border-radius:2px;overflow:hidden;margin-bottom:8px">
-        <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px;transition:width .4s"></div>
+      <div style="height:3px;background:var(--surf);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-        <span>Ödenen: <span style="color:var(--ok);font-weight:600">${window.fmt(odenen)}</span></span>
-        <span>Kalan: <span style="color:${kalan>0?'var(--danger)':'var(--ok)'};font-weight:600">${kalan>0?window.fmt(bekleyen):'✓'}</span></span>
-        <span>Sıradaki: <span style="color:var(--txt)">${nextStr}</span></span>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${done?'var(--ok)':'var(--danger)'}">${done?'✓':window.fmt(bekleyen)}</div>
+        <div style="font-size:10px;color:var(--muted)">${nextStr}</div>
       </div>
     </div>`;
   }).join('');
-
   el.style.display = '';
-  el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">KREDİLER</div>${rows}`;
+  el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">KREDİLER</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">${cards}</div>`;
 }
-
 window.renderCredSummary = renderCredSummary;
