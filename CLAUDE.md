@@ -34,8 +34,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **Krediye Dönüştür** (v8.68 yeniden yazılacak) — normal ödeme satırını krediye çevir; `openRow` modalına buton ekle, `convertToCredit(keyEnc)` fonksiyonu; `saveCred` içinde `_convertSourceKey` varsa eski kaydı sil; sadece `ui-plan.js` değişecek
-2. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
+1. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
 
 ---
 
@@ -103,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.75 | 20260528-03 | Krediye Dönüştür: openRow butonu + convertToCredit() + saveCred sonrası pays temizleme |
 | v8.74 | 20260528-02 | Kredi taksit override UX (openCell isCreditCell) |
 | v8.73 | 20260528-01 | Veri kaybı fix: debounce, loadSecure, _fbPoll guard, migrateToV7b devre dışı, SW v8, search fix |
 | v8.72 | 20260527-15 | search.js buAy getAllItems fix, SW cache v7 |

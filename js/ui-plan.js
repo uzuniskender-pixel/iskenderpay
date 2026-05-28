@@ -279,13 +279,36 @@ function openRow(keyEnc) {
       </span>
     </div>`;
   });
+  const isCredRow = key.startsWith('cred_');
   h+=`<div class="dacts">
     <button class="dact da-edit" onclick="editByKey('${encodeURIComponent(key)}')">Düzenle</button>
+    ${!isCredRow?`<button class="dact da-edit" style="background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc" onclick="convertToCredit('${encodeURIComponent(key)}')">Krediye Dönüştür</button>`:''}
     <button class="dact da-del" onclick="delByKey('${encodeURIComponent(key)}')">Sil</button>
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
   </div>`;
   document.getElementById('DC').innerHTML=h;
   ModalManager.open('DV');
+}
+
+function convertToCredit(keyEnc) {
+  const key=decodeURIComponent(keyEnc);
+  const all=getAllItems(),mx=buildMx(all);
+  const name=mx[key]?._name||'';
+  const months=Object.keys(mx[key]||{}).filter(k=>!k.startsWith('_')).sort();
+  const firstUnpaid=months.find(m=>mx[key][m]?.status!=='paid')||months[0];
+  const cell=firstUnpaid?mx[key][firstUnpaid]:null;
+  const monthly=cell?Math.round(cell.try):0;
+  const date=cell?(cell.items[0]?.date||''):'';
+  window._convertSourceKey=key;
+  document.getElementById('CEID').value='';
+  document.getElementById('CN').value=name;
+  document.getElementById('CT').value='';
+  document.getElementById('CI').value='';
+  document.getElementById('CM2').value=monthly;
+  document.getElementById('CS').value=date;
+  if(typeof window.updLP==='function') window.updLP();
+  closeDV();
+  setTimeout(()=>ModalManager.open('CM'),50);
 }
 
 function openCell(keyEnc,month) {
@@ -558,6 +581,7 @@ window.render             = render;
 window.renderHaftaWidget  = renderHaftaWidget;
 window.renderGecWidget    = renderGecWidget;
 window.openRow            = openRow;
+window.convertToCredit    = convertToCredit;
 window.openCell           = openCell;
 window.closeDV            = closeDV;
 window.closeRDET          = closeRDET;
