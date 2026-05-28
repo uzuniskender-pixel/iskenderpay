@@ -34,6 +34,32 @@ function buildMx(all) {
   return mx;
 }
 
+// ── RENDER HELPER'LARI (v8.154) ──────────
+// Özet bölgesi: OC (4 kart) + OHS (progress bar) + OD (tarih)
+function _renderSummaryCards(ozet, yaklaşanN, now) {
+  const {tot, ok, bek, gec, okN, bekN, gecN, itemCount} = ozet;
+  document.getElementById('OC').innerHTML=`
+    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${itemCount} ödeme</div></div>
+    <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${window.fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
+    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${window.fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
+    <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${window.fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
+  const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
+  const pctColor = pct>=100?'var(--ok)':pct>=60?'var(--blue)':pct>=30?'var(--ora)':'var(--danger)';
+  document.getElementById('OHS').innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+    <div style="flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px;transition:width .4s"></div>
+    </div>
+    <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:${pctColor};font-weight:600;flex-shrink:0">${pct}%</span>
+  </div>`;
+  document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
+}
+
+// Alt widget'lar (hafta + sıradaki)
+function _renderWidgets(all, now, soon7) {
+  renderHaftaWidget(all, now, soon7);
+  if (window.renderSiradaki) window.renderSiradaki();
+}
+
 // ── ANA RENDER ────────────────────────────
 function render() {
   const all = getAllItems();
@@ -63,20 +89,7 @@ function render() {
     return d >= today0 && d <= soon7;
   }).length;
 
-  document.getElementById('OC').innerHTML=`
-    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${ozet.itemCount} ödeme</div></div>
-    <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${window.fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
-    <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${window.fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
-    <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${window.fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
-  const pct = tot>0 ? Math.round((ok/tot)*100) : 0;
-  const pctColor = pct>=100?'var(--ok)':pct>=60?'var(--blue)':pct>=30?'var(--ora)':'var(--danger)';
-  document.getElementById('OHS').innerHTML = `<div style="display:flex;align-items:center;gap:8px">
-    <div style="flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:2px;transition:width .4s"></div>
-    </div>
-    <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:${pctColor};font-weight:600;flex-shrink:0">${pct}%</span>
-  </div>`;
-  document.getElementById('OD').textContent = now.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
+  _renderSummaryCards(ozet, yaklaşanN, now);
   const mx = buildMx(all);
   const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'6');
   const monthSet = new Set();
@@ -162,9 +175,8 @@ function render() {
     }
   });
 
-  // Bu hafta widget'ı
-  renderHaftaWidget(all, now, soon7);
-  if (window.renderSiradaki) window.renderSiradaki();
+  // Alt widget'lar (hafta + sıradaki)
+  _renderWidgets(all, now, soon7);
   // renderCredSummary decoupled (v9.0): ui-pay.js listener cagiriyor
 }
 
