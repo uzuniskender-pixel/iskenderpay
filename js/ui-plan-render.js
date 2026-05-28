@@ -123,7 +123,8 @@ function render() {
   const dnMap = window.Hesap._displayNames(mx, rowKeys);
   rowKeys.forEach(k => { mx[k]._displayName = dnMap[k]; });
   const allMonths=Array.from(monthSet).sort();
-  const months = allMonths;
+  // v8.163: sadece en az bir kayit olan aylari goster (visible rowKeys'te); "+" empty cell affordance kaybi kabul
+  const months = allMonths.filter(m => rowKeys.some(k => mx[k]?.[m]?.items?.length > 0));
   // Toggle buton görünümü
   const tb = document.getElementById('PAID_TOGGLE');
   if (tb) {
