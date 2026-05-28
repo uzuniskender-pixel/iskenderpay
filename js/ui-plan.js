@@ -96,14 +96,20 @@ function render() {
     });
   }
   if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+  // Tüm ayları ödenmiş satırları gizle (v8.146 fix — önceki kod yanlışlıkla ay-bazlı filter yapıyordu)
+  const showPaid = localStorage.getItem('v8-show-paid') === '1';
+  if (!showPaid) {
+    rowKeys = rowKeys.filter(k => {
+      const monthKeys = Object.keys(mx[k]).filter(x => !x.startsWith('_'));
+      if (!monthKeys.length) return true;
+      return monthKeys.some(mk => mx[k][mk].status !== 'paid');
+    });
+  }
   // Display name (paylasilan logic — kredi paneliyle ayni)
   const dnMap = window.Hesap._displayNames(mx, rowKeys);
   rowKeys.forEach(k => { mx[k]._displayName = dnMap[k]; });
   const allMonths=Array.from(monthSet).sort();
-  const showPaid = localStorage.getItem('v8-show-paid') === '1';
-  const months = showPaid
-    ? allMonths
-    : allMonths.filter(m=>rowKeys.some(k=>{const c=mx[k]?.[m];return c&&c.status!=='paid';}));
+  const months = allMonths;
   // Toggle buton görünümü
   const tb = document.getElementById('PAID_TOGGLE');
   if (tb) {
