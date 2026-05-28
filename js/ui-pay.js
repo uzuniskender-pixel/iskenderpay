@@ -139,7 +139,6 @@ function saveCred() {
       else if(srcKey.startsWith('pay_')){const pid=srcKey.replace('pay_','');window.Store.removeWhere('pays', p => String(Math.floor(Number(p.id)))===pid);}
       window._convertSourceKey=null;
       window._convertSourcePays=null;
-      if(window.invalidateLookups)window.invalidateLookups();
     }
   }
   window.Store.touch(); window.closeMov('CM'); window.render();

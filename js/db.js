@@ -191,7 +191,6 @@ window.doGoogleSignOut = async function() {
 async function saveSecure() {
   if (window._suppressSave) return;
   if (!window._cryptoKey) return;
-  if (typeof invalidateLookups === 'function') window.invalidateLookups();
   if (window._saveTimer) clearTimeout(window._saveTimer);
   window._dirty = true;  // Bekleyen degisiklik var — sync ezmesin
   window._saveTimer = setTimeout(() => { _doSave(); }, 400);
@@ -245,7 +244,6 @@ async function _doSave() {
 async function saveSecureNow() {
   if (window._saveTimer) clearTimeout(window._saveTimer);
   window._suppressSave = false;
-  if (typeof invalidateLookups === 'function') window.invalidateLookups();
   await _doSave();
 }
 

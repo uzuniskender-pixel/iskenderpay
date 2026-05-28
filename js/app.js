@@ -57,11 +57,6 @@ function go(n) {
 
 function chSort(v) { window.sortMode = v; render(); }
 async function chAhead(v) { localStorage.setItem('v5-ahead', v); render(); }
-function genRec() {
-  // Tekrar eden ödemeleri yenile — groupId'li kayıtların süreklilik kontrolü
-  // Gelecekte otomatik tekrar ekleme buraya
-  if (window.invalidateLookups) window.invalidateLookups();
-}
 
 // ── MİGRASYON (kredi tarihleri) ──────────────────────────────────────────────
 async function migrateCredDates() {
@@ -77,7 +72,6 @@ async function migrateCredDates() {
       if (p.date !== correct) p.date = correct;
     });
   });
-  genRec();
 }
 
 // ── SYNC UI ──────────────────────────────────────────────────────────────────
@@ -137,7 +131,6 @@ window.openRehber         = openRehber;
 window.go                 = go;
 window.chSort             = chSort;
 window.chAhead            = chAhead;
-window.genRec             = genRec;
 window.migrateCredDates   = migrateCredDates;
 window.toggleEye          = toggleEye;
 window.addLog             = addLog;

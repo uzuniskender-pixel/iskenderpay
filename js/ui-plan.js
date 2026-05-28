@@ -33,7 +33,6 @@ function buildMx(all) {
 }
 
 function render() {
-  window.invalidateLookups();
   const all = getAllItems();
   const now = new Date();
   const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
