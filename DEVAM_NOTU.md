@@ -1,6 +1,6 @@
 # DEVAM NOTU — sonraki oturum için brief
 
-_Son oturum: 2026-05-28 · son commit: **v8.126 / 20260528-51** (`0458e5c`)_
+_Son oturum: 2026-05-28 · son commit: **v8.128 / 20260528-53** (`a7ca043`)_
 
 CLAUDE.md = canonical referans (versiyon geçmişi, mimari notlar, dosya yapısı).
 Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
@@ -9,8 +9,10 @@ Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
 
 ## TL;DR
 
-Bu oturum baştan sona **Store sahipliği konsolidasyonu** + ikincil temizlikler oldu.
-v8.95'te başlayan Hesap modülünden v8.126'da CSS ayrımına kadar 30+ patch. Ana hat: dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace).
+Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler oldu.
+v8.95'te başlayan Hesap modülünden v8.128'e kadar 30+ patch. İki ana hat:
+1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
+2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127).
 
 ---
 
@@ -36,20 +38,23 @@ v8.95'te başlayan Hesap modülünden v8.126'da CSS ayrımına kadar 30+ patch. 
 | **`_doSave` integrity check** | v8.123 | pays/creds/persons için tip/varlık doğrulama (silent fix değil, forensic log) |
 | **ui-plan.js section header'lar** | v8.124 | 7 başlık, kod okunabilirliği |
 | **Cred "(Kredi)" suffix** | v8.125 | `hesap.js#_displayNames`'de post-pass — plan matrisi + kredi paneli + arama tutarlı |
-| **CSS → app.css** | v8.126 | index.html'in `<style>` bloğu ayrıldı, %30 küçüldü |
+| **CSS → app.css** | v8.126 | index.html'in `<style>` bloğu ayrıldı, %30 küçüldü; CACHE v9; CSS network-first |
+| **db.js → firestore.js + persist.js** | v8.127 | Firestore I/O (11 fn) ve encrypt/storage/migration (5 fn) ayrımı; window.* API yüzeyi korundu (0 caller değişikliği); sahiplik haritası: firebase.js → firestore.js → persist.js → auth-pin.js |
+| **persist.js 4 dead alias temizliği** | v8.128 | `window.save`/`savePersons`/`saveNotes`/`loadNotes` shim'leri silindi (v8.96 sonrası 0 caller); v8.127 öncesi persist.js import edilmiyordu → runtime'da bile bağlanmıyorlardı |
 
 ---
 
 ## Açık kalan maddeler
 
-**CLAUDE.md Sıradaki adımlar:** _liste boş_ — Store internal'a taşıma ailesi tamamlandı.
+**CLAUDE.md Sıradaki adımlar:** _liste boş_ — büyük Store ve modül ayrıştırma ailesi tamamlandı.
 
 **Implicit / olası yönler** (henüz görev değil):
 
-1. **db.js → persist.js + firestore.js ayrımı** — `auth-pin.js` header yorumu (v8.126 sonrası kullanıcı düzenlemesi) bu yöne işaret ediyor (`Bagimliliklar: ... persist.js (loadSecure), firestore.js (PIN/wrappedKey helpers)`). Henüz uygulanmadı; db.js tek dosya. Sıradaki oturumda kullanıcı bu ayrımı isteyebilir.
-2. **Store.session security hardening** — `Store.session` hâlâ `window.Store.session` üzerinden console-accessible. v8.115'te kabul edilen trade-off, ama mevcut konsol attack surface. Closure-based hiding düşünülebilir; v8.115 commit'i not etmişti: "bu task sahiplik konsolidasyonu, security hardening değil".
+1. **`persist.js#_doSave` integrity check → `validate.js` ayrımı** — v8.123'te eklenen integrity check ~40 satır. `persist.js`'in CLAUDE.md entry'sinde "sonraki refactor adayı (`validate.js`)" notu var. Mantıksal sınır net (encrypt/storage'dan ayrı concern).
+2. **`Store.session` security hardening** — `Store.session.cryptoKey/dataKeyRaw/plainPin` hâlâ `window.Store.session` üzerinden console-accessible. v8.115'te kabul edilen trade-off, ama mevcut konsol attack surface. Closure-based hiding + ephemeral key wrap pattern.
 3. **`window._rhbPhones` event delegation testi** — v8.121'de mantıksal doğru ama gerçek mobil/desktop test yapılmadı. Bir sonraki manuel test fırsatında doğrulanmalı.
 4. **`debugState()` SW cache testi** — v8.122'de eklendi ama bir noktada "expose edilmemiş" raporu geldi (gerçekte mevcut, muhtemelen stale tab). Gizli sekme veya hard reload ile doğrulanmalı.
+5. **Tarihi `db.js` yorum referansları** — `app.js:227` ("SYNC UI (db.js tarafından çağrılır)"), `index.html:442` (history yorum), `store.js:40,48`, `firebase.js:74` — kozmetik, davranış etkilenmez ama bir sonraki temizlik turunda toplu güncellenebilir.
 
 ---
 
@@ -60,6 +65,9 @@ Her `window._X` flag tek bir noktada — `js/store.js` `_persistState` veya `_se
 
 ### `firebase.js` load-order
 **v8.113'ten beri** `firebase.js` ana modül bloğunda `store.js`'ten **hemen sonra** import edilir (index.html'deki ayrı `<script type="module">` bloğu kaldırıldı). Bu, cached-auth `onAuthStateChanged` callback'inin Store yüklenmeden fire etme race'ini kalıcı çözer. **Önemli:** firebase.js'i ayrı bloğa geri taşıma — race geri gelir.
+
+### `firestore.js` + `persist.js` import sırası
+**v8.127'den beri** sıralama: `store → firebase → state → util → compat → crypto → **firestore → persist** → auth-pin → modal → ...`. `firestore.js` `firebase.js`'in expose ettiği `_planDoc`/`_metaDoc` closure'larına bağlı; `persist.js` `firestore.js`'in `window._fbSave/_fbLoad`'ine + `crypto.js`'in `encryptData/decryptData`'sına bağlı. Sıra bozulursa persist.js'in `if (window._fbSave)` guard'ı sessizce geçer → veri sadece localStorage'a yazılır (Firebase sync kopar).
 
 ### `Store.session` güvenlik trade-off
 `Store.session.cryptoKey/dataKeyRaw/plainPin` console'dan erişilebilir. v8.115'te bilinçli kararla "sahiplik konsolidasyonu, security hardening değil" notuyla kabul edildi. Hardening yapılırsa: closure scope + ephemeral key wrap pattern.
@@ -76,12 +84,15 @@ Her `window._X` flag tek bir noktada — `js/store.js` `_persistState` veya `_se
 
 | Tag | Commit | Notlar |
 |---|---|---|
-| **`v8.120-stable`** | `b99e570` | **Önerilen restore noktası.** Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline. |
+| **`v8.120-stable`** | `b99e570` | Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline. |
 | `v8.112-stable` | `d03d5bc` | Daha eski — personId backfill öncesi |
+
+**Öneri:** Bu oturumun sonunda v8.128 yeni baseline. Modül ayrıştırması (auth-pin.js + app.css + firestore.js/persist.js) tamamlandı, integrity check yerleşti.
+```
+git tag v8.128-stable a7ca043 && git push origin v8.128-stable
+```
 
 Geri dönüş:
 ```
 git reset --hard v8.120-stable
 ```
-
-İhtiyaç hâlinde sonraki oturum yeni bir stable tag oluştursun: `git tag v8.126-stable 0458e5c && git push origin v8.126-stable`.
