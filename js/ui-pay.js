@@ -93,7 +93,28 @@ function saveCred() {
   const startMo=startMo0-1;
   const pArr=Array.from({length:inst},(_,i)=>{const totalMo=startMo+i;const yr=startYr+Math.floor(totalMo/12),mo=totalMo%12;const lastDay=new Date(yr,mo+1,0).getDate();return{idx:i+1,date:window.toLocalISO(yr,mo,Math.min(startDay,lastDay)),amount:monthly,status:'pending',paid:0};});
   const eid=document.getElementById('CEID').value;
-  if(eid){const c=window.findCredById(eid);if(c){c.name=name;c.total=total||monthly*inst;c.monthly=monthly;c.inst=inst;c.start=start;c.pays=pArr;} window.addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);}
+  if(eid){
+    const cr=window.findCredById(eid);
+    if(cr){
+      const nameChanged=cr.name!==name;
+      const structureChanged=cr.inst!==inst||cr.start!==start;
+      cr.name=name; cr.total=total||monthly*inst; cr.monthly=monthly; cr.inst=inst; cr.start=start;
+      if(structureChanged){
+        // Taksit sayısı veya tarih değişti — yeniden oluştur, mevcut paid durumları koru
+        pArr.forEach((newP,i)=>{
+          const old=cr.pays[i];
+          if(old){newP.status=old.status;newP.paid=old.paid||0;}
+        });
+        cr.pays=pArr;
+      } else {
+        // Sadece ad/tutar değişti — status/paid koru, tutarı güncelle
+        cr.pays.forEach(p=>{p.amount=monthly;});
+      }
+      // paidItems'daki eski adı güncelle
+      if(nameChanged){(window.paidItems||[]).forEach(pi=>{if(pi._cid===cr.id)pi.name=name;});}
+    }
+    window.addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
+  }
   else{
     window.creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr});
     window.addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
