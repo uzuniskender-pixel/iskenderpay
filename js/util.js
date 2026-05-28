@@ -1,6 +1,6 @@
 // js/util.js — iskenderpay (v1.0)
 // Saf yardımcı fonksiyonlar. Hiçbir dış bağımlılık yok, side-effect yok.
-// index.html'deki esc, fmt, fmtA, toTRY, parseLocalDate, dd, sCls… buraya taşındı.
+// index.html'deki esc, fmt, fmtA, toTRY, parseLocalDate, sCls… buraya taşındı.
 
 // ── HTML kaçış ───────────────────────────────────────────────────────────────
 export function esc(s) {
@@ -37,21 +37,12 @@ export function parseLocalDate(s) {
   return new Date(y, m - 1, d);
 }
 
-export function parseLocalDate2(s) {
-  const [y, m, d] = s.split('-').map(Number);
-  return { y, m, d };
-}
-
 export function toLocalISO(yr, mo, day) {
   return yr + '-' + String(mo + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
 }
 
 export function fmtD(s) {
   return window.parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-}
-
-export function fmtDS(s) {
-  return window.parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function fmtLogTime(iso) {
@@ -66,14 +57,6 @@ export function fmtLogTime(iso) {
   const hh = d.getHours().toString().padStart(2, '0');
   const mn = d.getMinutes().toString().padStart(2, '0');
   return dd + '.' + mm + ' ' + hh + ':' + mn;
-}
-
-// Bugünden kaç gün farkı
-export function dd(s) {
-  const t = new Date();
-  t.setHours(0, 0, 0, 0);
-  const date = window.parseLocalDate(s);
-  return Math.round((date - t) / 864e5);
 }
 
 export function todayMidnight() {
