@@ -1,30 +1,19 @@
-// js/db.js — iskenderpay (v1.1)
-// Firebase bağlantısı, auth, doLogin, loadSecure, saveSecure, migrasyon.
-// index.html'deki Firebase init ile çakışmayı önlemek için getApps() guard eklendi.
+// js/db.js — iskenderpay (v1.2)
+// Firestore data ops, doLogin, loadSecure, saveSecure, migrasyon.
+// Auth concern'leri (init, listener, getRedirectResult, doGoogleLogin/SignOut)
+// firebase.js'in sahipliğinde — duplikasyon temizlendi.
 
-// firebase-app: firebase.js'te init edildi
-import { getAuth, GoogleAuthProvider,
-         signInWithPopup, signInWithRedirect,
-         getRedirectResult, onAuthStateChanged,
-         signOut }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-// Firebase nesneleri firebase.js'te init edildi — window üzerinden al
-// _auth ve _db: firebase.js'teki _auth/_db ile aynı instance (getApps guard ile)
-const _auth = window._firebaseAuth;
-const _db   = window._firebaseDb;
-
-let   _fbUid = null;
-window._fbUid = null;
+import { getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── Firestore yardımcıları ───────────────────────────────────────────────────
+// _planDoc / _metaDoc firebase.js'de tanımlı, firebase.js'in _db ve _fbUid'ini closure'la kullanır
 
 const _planDoc = window._planDoc;
 const _metaDoc = window._metaDoc;
 
 
 window._fbSave = async function(encData) {
-  if (!_fbUid) return;
+  if (!window._fbUid) return;
   await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
@@ -33,7 +22,7 @@ window._lastUpdated = 0;
 window._syncCb      = null;
 
 window._fbStartListen = function(onData) {
-  if (!_fbUid || !window._planId) return;
+  if (!window._fbUid || !window._planId) return;
   window._syncCb = onData;
   if (window._syncTimer) clearInterval(window._syncTimer);
   window._syncTimer = setInterval(window._fbPoll, 30000);
@@ -42,7 +31,7 @@ window._fbStartListen = function(onData) {
 
 let _pollRunning = false;
 window._fbPoll = async function() {
-  if (!_fbUid || !window._planId || !window._syncCb) return;
+  if (!window._fbUid || !window._planId || !window._syncCb) return;
   if (window._saveTimer !== null && window._saveTimer !== undefined) return;
   if (window._dirty) return;  // Bekleyen degisiklik var — sync atla
   if (_pollRunning) return;   // Concurrent poll önle
@@ -80,20 +69,20 @@ window._fbStopListen = function() {
 };
 
 window._fbLoad = async function() {
-  if (!_fbUid) return null;
+  if (!window._fbUid) return null;
   const snap = await getDoc(_planDoc());
   return snap.exists() ? snap.data().data : null;
 };
 
 window._fbSaveSalt = async function(saltKey, saltVal) {
-  if (!_fbUid) return;
+  if (!window._fbUid) return;
   const update = {};
   update['salts.' + saltKey] = saltVal;
   await setDoc(_planDoc(), update, { merge: true });
 };
 
 window._fbLoadSalt = async function(saltKey) {
-  if (!_fbUid) return null;
+  if (!window._fbUid) return null;
   const snap = await getDoc(_planDoc());
   if (!snap.exists()) return null;
   const salts = snap.data().salts || {};
@@ -101,90 +90,30 @@ window._fbLoadSalt = async function(saltKey) {
 };
 
 window._fbSavePinHash = async function(hash) {
-  if (!_fbUid) return;
+  if (!window._fbUid) return;
   await setDoc(_planDoc(), { pinHash: hash }, { merge: true });
 };
 
 window._fbLoadPinHash = async function() {
-  if (!_fbUid) return null;
+  if (!window._fbUid) return null;
   const snap = await getDoc(_planDoc());
   return snap.exists() ? (snap.data().pinHash || null) : null;
 };
 
 window._fbSaveWrappedKey = async function(wrappedB64) {
-  if (!_fbUid) return;
+  if (!window._fbUid) return;
   await setDoc(_metaDoc(), { wrappedKey: wrappedB64 }, { merge: true });
 };
 
 window._fbLoadWrappedKey = async function() {
-  if (!_fbUid) return null;
+  if (!window._fbUid) return null;
   try {
     const snap = await getDoc(_metaDoc());
     return snap.exists() ? (snap.data().wrappedKey || null) : null;
   } catch(e) { return null; }
 };
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
-
-let _redirectChecked = false;
-
-getRedirectResult(_auth).then((result) => {
-  if (result && result.user) console.log('Redirect ile giriş başarılı:', result.user.email);
-}).catch(e => console.warn('redirect result error:', e)).finally(() => { _redirectChecked = true; });
-
-onAuthStateChanged(_auth, (user) => {
-  const loadEl = document.getElementById('LOAD');
-  if (loadEl) loadEl.style.display = 'none';
-
-  const glsEl = document.getElementById('GLS');
-  const psEl  = document.getElementById('PS');
-  const appEl = document.getElementById('APP');
-
-  if (user) {
-    _fbUid = user.uid;
-    window._fbUid = user.uid;
-    if (glsEl) glsEl.style.display = 'none';
-    const plsEl   = document.getElementById('PLS');
-    const plsUser = document.getElementById('PLS_USER');
-    if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
-    if (plsEl) plsEl.style.display = 'flex';
-    if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-    if (typeof window.renderPlanNames === 'function') window.renderPlanNames();
-  } else {
-    _fbUid = null;
-    window._fbUid = null;
-    setTimeout(() => {
-      if (!_fbUid) {
-        if (glsEl) glsEl.style.display = 'flex';
-        const plsEl = document.getElementById('PLS');
-        if (plsEl) plsEl.style.display = 'none';
-        if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-        if (appEl) appEl.style.display = 'none';
-      }
-    }, 2000);
-  }
-});
-
-window.doGoogleLogin = async function() {
-  try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(_auth, provider);
-  } catch(e) {
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
-      try { await signInWithRedirect(_auth, new GoogleAuthProvider()); } catch(e2) { alert('Giriş başarısız: ' + e2.message); }
-    } else {
-      alert('Giriş başarısız: ' + e.message);
-    }
-  }
-};
-
-window.doGoogleSignOut = async function() {
-  if (!confirm('Çıkış yapmak istiyor musunuz?')) return;
-  await signOut(_auth);
-};
-
-// ── State (db.js scope — index.html'deki ile senkron) ────────────────────────
-// Bu değişkenler hem index.html'de hem burada var, window üzerinden paylaşılıyor
+// Auth (init + listener + doGoogleLogin/SignOut) firebase.js'in sahipliğinde.
 
 // ── saveSecure / loadSecure ───────────────────────────────────────────────────
 

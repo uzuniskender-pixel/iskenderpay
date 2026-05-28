@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.102 / 20260528-30
+## Mevcut Durum (28 Mayıs 2026) — v8.103 / 20260528-31
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,8 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.103 | 20260528-31 | **db.js auth duplikasyonu temizliği**: `getAuth`/`GoogleAuthProvider`/`signInWith*`/`onAuthStateChanged`/`getRedirectResult`/`signOut` import'ları ve karşılık gelen kod (auth listener, doGoogleLogin, doGoogleSignOut, `_fbUid` local state) db.js'den silindi — firebase.js zaten bu sorumlulukları üstleniyordu. db.js artık sadece Firestore data ops + doLogin (PIN) + loadSecure/saveSecure/migrasyon içerir. `_fbUid` referansları `window._fbUid`'e çevrildi (firebase.js owns). |
+| v8.103 | 20260528-31 | db.js auth duplikasyonu temizlendi — firebase.js owns auth, db.js sadece Firestore data ops |
 | v8.102 | 20260528-30 | **Ulaşılamaz else fallback temizliği**: `backup.js#doRestore` (L50), `backup.js#undoRestore` (L76), `sync.js` (L29) — `if (window.Store) {...} else {...}` pattern'ındaki else dalları silindi. store.js index.html'de **ilk** modül import'u (state.js'den önce); ES modules sequential execute olduğundan store.js tamamlanmadan sync/backup yüklenemez → `window.Store` runtime'da her zaman tanımlı. 3 dead code bloğu (~30 satır) kaldırıldı. |
 | v8.102 | 20260528-30 | Ulaşılamaz else fallback temizliği: backup.js (×2), sync.js (×1) |
 | v8.100 | 20260528-28 | **Event-based render**: `store.js`'te microtask-coalesced `store:change` CustomEvent dispatch eklendi (her mutation sonrası). Listener'lar: `ui-plan.js` (curTab=0 + pays/creds/paidItems → `render()`), `search.js` (curTab=5 + pays/creds/paidItems/rehber → `renderAI()`), `ui-pay.js` (curTab=0 + pays/creds → `renderCredSummary()`). `_dispatchChange(keys)`: birden fazla mutation aynı tick'te → tek event (Set coalescing). `Store._affects(detail, watched)` helper. **Decoupling**: `renderCredSummary` çağrısı `render()` içinden çıkarıldı (çift render önleme); `app.js#go(0)` artık her ikisini de explicit çağırıyor. **Manuel render() kaldırma**: ui-plan.js (9 CRUD fonksiyonu), ui-pay.js (savePay/saveCred), ui-persons.js (restoreFromHist). `togglePaidMonths` (localStorage), `chSort`/`chAhead` (sortMode) manuel render kalır (Store mutation yok, event fire olmaz). |
@@ -105,7 +107,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.102", "build": "20260528-30"}
+version.json        {"v": "8.103", "build": "20260528-31"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
