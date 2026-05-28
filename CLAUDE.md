@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (29 Mayıs 2026) — v8.162 / 20260529-02
+## Mevcut Durum (29 Mayıs 2026) — v8.163 / 20260529-03
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,7 +29,8 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
-| v8.162 | 20260529-02 | **Ayarlar (T5) compact kart grid** (`index.html` + `app.css`): tek-kolon ardışık `.acard` yapısı 2-kolon (auto-fit responsive) grid'e çevrildi. **CSS**: mevcut `.acard-grid` class'ı (paralel pencere v8.161'de eklemiş, sabit `1fr 1fr` + 480px media query'di) **`repeat(auto-fit, minmax(280px, 1fr))` + `align-items:start`** olarak güncellendi — media query kaldırıldı (native responsive, kart genişliği 280px altına düşmez, dar ekranda otomatik 1-kolon). `.acard-grid .acard { margin-bottom:0 }` korundu (grid gap yeterli). **HTML**: T5 wrapper'a `class="acard-grid"` eklendi (padding inline style olarak kaldı); 6 kart (Şifre Değiştir, Kur Bilgisi, Veri Yedekleme, Güncelleme, Oturum, Bilgi) grid içinde. Bilgi kartı paralel pencere tarafından grid dışı yapılmıştı — grid içine alındı (user "her biri ayrı kart 2 kolon" netleştirmesi). **Sub kısaltmalar** (paralel pencere): "Yedek şifreli JSON olarak indirilir, şifreni bilen geri yükler" → "Şifreli JSON yedek"; "Çıkış yap ve giriş ekranına dön" → "Hesap çıkışı"; "Mevcut şifreyi doğrula" → "Yeni şifre belirle"; "Otomatik kur alınamazsa elle gir" → "Manuel kur girişi". **renderAI dokunulmadı** — sadece outer kart yapısı değişti, `#AI` içeriği aynı; dar kartta da `1fr 1fr` özet kartları ve trend grafiği uyumlu. Davranış değişikliği: yok — sadece layout. |
+| v8.162 | 20260529-02 | **Ayarlar grid finalize** (`index.html` + `app.css`): v8.161'in tamamlayıcısı. (1) **Bilgi kartı grid'e alındı** — v8.161'de Bilgi `.acard-grid` dışında full-width bırakılmıştı; user "her biri ayrı kart 2 kolon" netleştirmesi üzerine grid içine taşındı (6 kart hepsi). (2) **`.acard-grid` style güncellendi**: `grid-template-columns:1fr 1fr` + 480px media query → `repeat(auto-fit, minmax(280px, 1fr))` + `align-items:start`. Native responsive, media query gereksizleşti. Davranış değişikliği: yok — sadece layout. |
+| v8.161 | 20260528-79 | **Ayarlar (T5) compact 2-kolon kart grid** (`index.html` + `app.css`): tek-kolon ardışık `.acard` yapısı `.acard-grid` (`grid-template-columns:1fr 1fr; gap:8px`) container'ına alındı. 5 fonksiyonel kart (Şifre/Kur/Yedek/Güncelleme/Oturum) grid içine; Bilgi kartı (renderAI iç stat grid sıkışmasın diye) altta tam genişlik bırakıldı — v8.162'de grid içine alındı. **Sub kısaltmalar**: "Mevcut şifreyi doğrula, yeni şifre belirle" → "Yeni şifre belirle"; "Otomatik kur alınamazsa elle gir." → "Manuel kur girişi"; "Yedek şifreli JSON olarak indirilir. Şifreni bilen geri yükleyebilir." → "Şifreli JSON yedek"; "Çıkış yap ve giriş ekranına dön" → "Hesap çıkışı". `.acard-grid .acard { margin-bottom:0 }` (grid gap yeterli); `@media (max-width:480px)` ile tek kolon — v8.162'de auto-fit ile değiştirildi. JS dokunulmadı; davranış değişikliği 0. |
 | v8.159 | 20260528-77 | **openRow DV paneline kişi adı + actLog history** (`ui-plan-detail.js#openRow`): DV detail paneline iki yeni bilgi öğesi eklendi. **(A) Kişi adı**: title altına `👤 AHMET` rozetli satır — ilk pay item'ından `personId` çözülür, `(window.persons||[]).find(p=>p.id===pid).name` ile lookup. personId yok veya person silinmiş → satır render edilmez. **(B) actLog history**: aylar listesi sonrası, `dacts`'tan önce yeni section. groupId çözümü: `key.startsWith('g_')` → `key.replace('g_','')`; `pay_*` → ilk item'ın `groupId`'si; `cred_*` → null (cred için skip — yapısında groupId yok). `window.actLog.filter(e => e.groupId === groupId).slice(0, 10)` ile son 10 entry. Format: title + ' · ' + detail (tek satır ellipsis) + `fmtLogTime` time stamp (log.js render'ıyla tutarlı). Eski entry'ler v8.146'da addLog ctx alındıktan sonra groupId taşıyor → bu section onları gösterir; v8.146 öncesi entry'ler eşleşmez (Log sekmesinde tüm filter'lar mevcut). Davranış değişikliği: yok — yeni info-only öğeler. |
 | v8.160 | 20260528-78 | **actLog groupId bazlı filtre** (`log.js` + `index.html`): v8.141'deki personId filter pattern'ı groupId için aynen klonlandı. Kullanıcı T7'de görüntülenecek log entry'lerini hem **kişi** hem **kayıt grubu** bazında filtreleyebilir (üç filter `date + person + group` AND-combine). **Yeni state**: `let _logGroupFilter = ''` (module-local, persistence yok). **Yeni helper**: `_passesGroupFilter(entry) → !_logGroupFilter \|\| entry.groupId === _logGroupFilter`. **Yeni dropdown populator** `_renderLogGroupFilterOptions`: actLog'taki benzersiz groupId'ler × `window.findPaysByGroup(gid)[0]?.name` join + count, alfabetik sort; silinmiş grup → "(silinmiş grup)"; placeholder "Tüm kayıt grupları / loglar"; aynı isimli iki grup için disambiguation yok (basit isim+count, kullanıcı option count'a göre ayırt eder). **Yeni setter** `setLogGroupFilter(gid)`: flag set + `_logSelected.clear()` + `renderActLog()`. **`renderActLog` değişiklikleri**: (1) baş kısımda `_renderLogGroupFilterOptions()` çağrısı eklendi (`_renderLogPersonFilterOptions` yanına); (2) filter combine `_passesLogFilter && _passesPersonFilter && _passesGroupFilter` (AND); (3) `filterActive` üç filter'ı kapsar; (4) empty message öncelik: group > person > date — `"Bu kayıt grubuna ait kayıt yok"` / `"Bu kişiye ait kayıt yok"` / `"Bu aralıkta kayıt yok"`. **`toggleSelectAllLogs` + `toggleLogItem`** üç filter'ı birden hesaba katar (visibleCount + select-all eşleştirme). **HTML**: `LOG_FILT_BAR` içine `LOG_FILT_PERSON` altına `LOG_FILT_GROUP <select>` (margin-top 6px). **Window export**: `setLogGroupFilter`. **Kapsam dışı**: LOG_DEL_BAR'a "Grup" silme modu eklenmedi (ayrı task). Cred entry'leri (groupId yok) grup filter aktifken görünmez — beklenen davranış. v8.139 öncesi legacy entry'ler (ne groupId ne personId) bu filter'a uymaz. **Versiyon notu**: kullanıcının başlangıç hedefi v8.156'ydı; v8.156 saveCred ctx, v8.157 ui-plan v8.152 işine, v8.158 Kredi kart paneli, v8.159 openRow DV history (hepsi paralel commit'lerle alındı) — bu iş kesilmeden v8.160'a kaydı. **Net Δ**: log.js +~40 satır, index.html +1 satır. |
 | v8.156 | 20260528-74 | **`saveCred` addLog ctx + `credId` field desteği**: v8.140'da "cred → groupId yok" gerekçesiyle dokunulmamış `saveCred`'in 2 addLog çağrısı artık `{personId, credId}` ctx geçiriyor. (1) **`ui-pay.js#saveCred`** başına `const personId=_resolvePersonId(name);` eklendi (savePay L49 pattern'iyle birebir). Edit branch (L141): `addLog(..., 0, {personId, credId:eid})`. New branch: `Store.push` öncesi `const newCred={...}` lokal lift (önceden inline'dı), `addLog(..., 0, {personId, credId:newCred.id})`. (2) **`app.js#addLog`** L156'ya `if (ctx.credId) entry.credId = ctx.credId;` eklendi; header yorum `ctx (v8.136 + v8.155): {personId, groupId, credId}` güncellendi (v8.155 yorumda, gerçek versiyon v8.156 — linter v8.155'i integrity.js refactor için kullandı, çakışma sonrası v8.156'ya kaydırıldı). **Boşluk kapsamı**: v8.143 person-modu silme + v8.145 person filter + v8.144 👤 ikon jump artık cred entry'lerini de yakalar. Pass 3 backfill (`app.js#_backfillPersonIds`) **dokunulmadı** — `cred_add` skip + `'taksit'` skip mantığı korundu (yeni entry'ler personId taşıdığından `e.personId` guard'ı zaten Pass 3'ü durdurur). **Yan keşif**: convertToCredit chain L151'deki `const newCred=window.creds[length-1]` benim L144'te lift ettiğim outer `newCred`'i nested if içinde **shadow ediyor** — JS block scope, çalışır ama temiz değil, sonraki cleanup'ın konusu. **`c.personId` data model genişlemesi** kapsam dışı (hesap.js cred display name personId-aware refactor ayrı). **Davranış değişikliği**: 0 mevcut entry; yeni saveCred entry'leri `personId`+`credId` taşır. |
@@ -91,7 +92,11 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-_Liste boş — Store internal'a taşıma ailesi (`_dirty`/`_saveTimer`/... → Store flags v8.108, `_fbUid` → Store.fbUid v8.113, session → Store.session v8.115, `_planId` → Store.planId v8.116, `_knownBuild` → version.js module-private v8.118) tamamlandı._
+_Liste boş._ Büyük refactor aileleri tamamlandı:
+- **Store internal'a taşıma**: persistence flags (v8.108), `_fbUid` (v8.113), session namespace (v8.115), `_planId` (v8.116), `_knownBuild` → version.js module-private (v8.118).
+- **Monolitik dosya ayrımları**: auth-pin (v8.110), CSS → app.css (v8.126), db → firestore + persist (v8.127), validate (v8.135), integrity (v8.155), ui-plan → render/detail/actions (v8.150–v8.152).
+- **personId + groupId ctx**: addLog imza (v8.136), caller bind (v8.140/v8.146/v8.156), backfill 3-pass (v8.111/v8.112/v8.148).
+- **Log T7 zenginleştirme**: person modu (v8.143), jump ikonları (v8.144), filter dropdown'ları (v8.145/v8.160).
 
 ---
 
@@ -129,17 +134,21 @@ js/store.js         Merkezi Store — 8 dizi + rates + lookup maps (pays/creds) 
 js/state.js         UI durumu (curTab, sortMode, partialCtx) + clearState() — veri dizileri ve _planId Store'da
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
-js/firestore.js     Firestore I/O katmanı — _fbSave/_fbLoad/_fbPoll/_fbStartListen/_fbStopListen + PIN/salt/wrappedKey helpers (v8.127'de db.js'ten ayrıştırıldı)
-js/persist.js       Encrypt + storage hybrid + migration — saveSecure/_doSave/saveSecureNow/loadSecure/migrateToV7 + alias shim'ler (v8.127'de db.js'ten ayrıştırıldı)
+js/firestore.js     Firestore I/O katmanı — _fbSave/_fbLoad/_fbPoll/_fbStartListen/_fbStopListen + PIN/wrappedKey helpers (v8.127'de db.js'ten ayrıştırıldı)
+js/validate.js      Schema validation (read-only) — `validateBeforeSave()` pays/creds/persons tip+varlık kontrolü (v8.135'te persist.js'ten ayrıştırıldı)
+js/integrity.js     Veri normalize (mutation) — `normalizeBeforeSave()` groupId tutarlılığı (v8.155'te persist.js'ten ayrıştırıldı)
+js/persist.js       Encrypt + storage hybrid + migration — saveSecure/_doSave/saveSecureNow/loadSecure/migrateToV7 (v8.127'de db.js'ten ayrıştırıldı)
 js/auth-pin.js      PIN doğrulama (doLogin) + şifre değiştir (chPass) — v8.110'da db.js'ten ayrıştırıldı
-js/app.js           enterApp, initApp, go, sekme yönetimi
+js/app.js           enterApp, initApp, go, sekme yönetimi, addLog, _backfillPersonIds
 js/plan.js          Plan adı, plan seçimi, plan geçişi
 js/sync.js          setSyncDot, startRealtimeSync
 js/kur.js           Döviz/altın kur çekme
 js/backup.js        Yedek alma/geri yükleme
 js/version.js       Versiyon kontrolü, güncelleme banner
-js/ui-plan.js       Plan matrisi, hücre işlemleri (openCell, markOk, saveCellAmt...)
-js/hesap.js         Merkezi hesap modülü — buAyOzeti, toplamOzeti, krediler, trend + paylaşılan display name
+js/ui-plan-render.js   Plan matrisi render (getAllItems, buildMx, render) — v8.150'de ui-plan.js'ten ayrıştırıldı
+js/ui-plan-detail.js   Detail panel (openRow, openCell, openEmptyCell, openKM) + dialog-flow (convertToCredit, editByKey) — v8.150 + v8.152
+js/ui-plan-actions.js  Hücre/satır CRUD primitive (addToMonth, markOk, undoCell, doPartial, saveCellAmt, resetPartial, delByKey, delMonthEntry, delCellItems) — v8.150
+js/hesap.js         Merkezi hesap modülü — buAyOzeti, toplamOzeti, krediler, trend + paylaşılan _displayNames
 js/ui-pay.js        Ödeme ekleme/düzenleme modalı (savePay)
 js/ui-persons.js    Kişi yönetimi
 js/ui-notes.js      Notlar
@@ -151,7 +160,7 @@ js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (wind
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
 app.css             Component CSS (v8.126'da index.html <style>'dan ayrıldı, 264 satır)
-version.json        {"v": "8.146", "build": "20260528-68"}
+version.json        {"v": "8.163", "build": "20260529-03"}
 sw.js               Service Worker — ip-static-v9
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
