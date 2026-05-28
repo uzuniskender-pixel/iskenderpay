@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.31)
 
-const CACHE = 'ip-static-v7';
+const CACHE = 'ip-static-v8';
 const STATIC = [
   './',
   './index.html',
