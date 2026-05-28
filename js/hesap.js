@@ -31,23 +31,56 @@ function _baseOf(name) {
   return n.replace(/ \d+$/, '').trim() || n;
 }
 
-// Disambiguated display name map: ayni "base name" birden fazla ise suffix ekler.
+// Disambiguated display name map.
+// personId varsa: ayni personId'nin birden fazla rowKey'i → "name (desc|category)"
+// personId yoksa (legacy): mevcut isim-suffix mantigi ("AHMET" / "AHMET 1")
 // keys verilirse sadece bu rowKey'leri dikkate alir (plan matrisi filtreliyse).
 function _displayNames(mx, keys) {
   const allKeys = (keys && keys.length)
     ? keys
     : Object.keys(mx).filter(k => mx[k]._name !== undefined);
-  // ad bazli sayim
-  const countMap = {};
+
+  // Her rowKey icin meta: personId + ayirt edici tag (desc varsa veya category)
+  const meta = {};
   allKeys.forEach(k => {
-    const b = _baseOf(mx[k]._name);
-    countMap[b] = (countMap[b] || 0) + 1;
+    const monthKeys = Object.keys(mx[k]).filter(x => !x.startsWith('_'));
+    const item = monthKeys.length ? mx[k][monthKeys[0]].items[0] : null;
+    meta[k] = {
+      pid: item && item.personId ? item.personId : null,
+      tag: item ? (item.desc || item.category || null) : null
+    };
   });
-  // suffix atamasi: ad alfabetik sirayla ilerle ("DENİZBANK", "DENİZBANK 1", ...)
-  const sortedKeys = [...allKeys].sort((a, b) =>
+
+  // personId'li keyleri grupla, geri kalan legacy yol
+  const byPid = {};
+  const noPid = [];
+  allKeys.forEach(k => {
+    const pid = meta[k].pid;
+    if (pid) (byPid[pid] = byPid[pid] || []).push(k);
+    else noPid.push(k);
+  });
+
+  const dnMap = {};
+
+  // personId gruplari: tek satirsa ham name; coksa "name (tag)"
+  Object.keys(byPid).forEach(pid => {
+    const ks = byPid[pid];
+    if (ks.length === 1) {
+      dnMap[ks[0]] = _baseOf(mx[ks[0]]._name);
+    } else {
+      ks.forEach(k => {
+        dnMap[k] = _baseOf(mx[k]._name) + ' (' + (meta[k].tag || '?') + ')';
+      });
+    }
+  });
+
+  // personId'siz keyler: legacy isim-suffix mantigi (geriye uyum)
+  const countMap = {};
+  noPid.forEach(k => { const b = _baseOf(mx[k]._name); countMap[b] = (countMap[b] || 0) + 1; });
+  const sortedNoPid = [...noPid].sort((a, b) =>
     (mx[a]._name||'').localeCompare(mx[b]._name||'', 'tr'));
-  const idxMap = {}, dnMap = {};
-  sortedKeys.forEach(k => {
+  const idxMap = {};
+  sortedNoPid.forEach(k => {
     const b = _baseOf(mx[k]._name);
     if (countMap[b] > 1) {
       const idx = idxMap[b] = (idxMap[b] || 0) + 1;
@@ -56,6 +89,7 @@ function _displayNames(mx, keys) {
       dnMap[k] = b;
     }
   });
+
   return dnMap;
 }
 

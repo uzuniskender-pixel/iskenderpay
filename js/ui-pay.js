@@ -25,6 +25,11 @@ function editPay(id) {
   ModalManager.open('PM2');
 }
 
+function _resolvePersonId(name) {
+  const base = window.Hesap ? window.Hesap._baseOf(name) : name;
+  return (window.persons || []).find(p => p.name === base)?.id || null;
+}
+
 function savePay() {
   const name=document.getElementById('PN').value.trim();
   const amount=parseFloat(document.getElementById('PA').value);
@@ -33,16 +38,21 @@ function savePay() {
   const category=document.getElementById('PK').value;
   const copyMonths=parseInt(document.getElementById('COPYMO').value)||0;
   if(!name||!amount||!date){alert('Ad, tutar ve tarih zorunlu');return;}
+  const personId=_resolvePersonId(name);
   const eid=document.getElementById('EID').value;
   if(eid){
     const p=window.findPayById(eid);
     if(p){
       const oldName=p.name, oldCat=p.category;
-      window.Store.mutateItem(p,{name,amount,currency,date,category});
+      const patch={name,amount,currency,date,category};
+      if(personId) patch.personId=personId;
+      window.Store.mutateItem(p, patch);
       // İsim veya kategori değiştiyse aynı gruptaki tüm kayıtları güncelle
       if(oldName!==name || oldCat!==category){
+        const groupPatch={name,category};
+        if(personId) groupPatch.personId=personId;
         window.pays.filter(x=>x.groupId===p.groupId && String(x.id)!==String(p.id))
-          .forEach(x=>window.Store.mutateItem(x,{name,category}));
+          .forEach(x=>window.Store.mutateItem(x, groupPatch));
       }
     }
   } else {
@@ -52,7 +62,9 @@ function savePay() {
       const totalMo=(pm-1)+i;
       const yr=py+Math.floor(totalMo/12),mo=totalMo%12;
       const lastDay=new Date(yr,mo+1,0).getDate();
-      window.Store.push('pays', {id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
+      const rec={id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0};
+      if(personId) rec.personId=personId;
+      window.Store.push('pays', rec);
     }
   }
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz

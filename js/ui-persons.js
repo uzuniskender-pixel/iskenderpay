@@ -60,14 +60,24 @@ function savePerson() {
   const eid = document.getElementById('PREID').value;
   if (eid !== '') {
     const idx = parseInt(eid);
-    const oldName = window.persons[idx].name;
-    if (oldName !== name) { window.pays.forEach(p => { if(p.name===oldName) window.Store.mutateItem(p, {name}); }); }
-    window.Store.spliceAt('persons', idx, 1, {name, desc});
+    const existing = window.persons[idx];
+    const oldName = existing.name;
+    const pid = existing.id || null;
+    if (oldName !== name) {
+      window.pays.forEach(p => {
+        if ((pid && p.personId === pid) || (!p.personId && p.name === oldName))
+          window.Store.mutateItem(p, {name});
+      });
+    }
+    const newObj = {name, desc};
+    if (pid) newObj.id = pid;
+    window.Store.spliceAt('persons', idx, 1, newObj);
   } else {
     let finalName = name;
-    const existing = window.persons.map(p => p.name);
-    if (existing.includes(name)) { let i=2; while(existing.includes(name+' '+i)) i++; finalName=name+' '+i; }
-    window.Store.push('persons', {name:finalName, desc});
+    const existingNames = window.persons.map(p => p.name);
+    if (existingNames.includes(name)) { let i=2; while(existingNames.includes(name+' '+i)) i++; finalName=name+' '+i; }
+    const newId = 'per_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    window.Store.push('persons', {id:newId, name:finalName, desc});
   }
   window.closeMov('PRM'); renderPersons();
 }
