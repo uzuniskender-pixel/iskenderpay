@@ -1,6 +1,6 @@
 # DEVAM NOTU — sonraki oturum için brief
 
-_Son oturum: 2026-05-28 · son commit: **v8.128 / 20260528-53** (`a7ca043`)_
+_Son oturum: 2026-05-28 · son commit: **v8.139 / 20260528-63** (`73f9374`)_
 
 CLAUDE.md = canonical referans (versiyon geçmişi, mimari notlar, dosya yapısı).
 Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
@@ -10,9 +10,11 @@ Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
 ## TL;DR
 
 Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler oldu.
-v8.95'te başlayan Hesap modülünden v8.128'e kadar 30+ patch. İki ana hat:
+v8.95'te başlayan Hesap modülünden v8.139'a kadar 40+ patch. Üç ana hat:
 1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
-2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127).
+2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135).
+3. Ölü kod toplu temizliği (v8.128-v8.133): persist alias'ları, firestore salt helper'ları, util artıkları, UI handler'ları, Firebase window expose'ları — toplam ~70 satır.
+4. `addLog` zenginleştirildi (v8.136 + v8.139): yeni `ctx = {personId, groupId}` 5. parametre + log render rozetleri.
 
 ---
 
@@ -41,6 +43,13 @@ v8.95'te başlayan Hesap modülünden v8.128'e kadar 30+ patch. İki ana hat:
 | **CSS → app.css** | v8.126 | index.html'in `<style>` bloğu ayrıldı, %30 küçüldü; CACHE v9; CSS network-first |
 | **db.js → firestore.js + persist.js** | v8.127 | Firestore I/O (11 fn) ve encrypt/storage/migration (5 fn) ayrımı; window.* API yüzeyi korundu (0 caller değişikliği); sahiplik haritası: firebase.js → firestore.js → persist.js → auth-pin.js |
 | **persist.js 4 dead alias temizliği** | v8.128 | `window.save`/`savePersons`/`saveNotes`/`loadNotes` shim'leri silindi (v8.96 sonrası 0 caller); v8.127 öncesi persist.js import edilmiyordu → runtime'da bile bağlanmıyorlardı |
+| **2 ölü Firestore helper** | v8.129 | `_fbSaveSalt` + `_fbLoadSalt` (firestore.js); v8.96'dan beri PIN salt `getSaltAsync` ile türetiliyor — generic salt store gereksizdi |
+| **3 ölü util artığı** | v8.131 | `dd` + `fmtDS` + `parseLocalDate2` (util.js export'ları + compat.js bridge'i); v8.96 sonrası 0 caller |
+| **2 ölü UI handler** | v8.132 | `openCred` (ui-pay.js, ~10 satır) + `openRehber` (app.js, 1 satır); rehber tam-ekran pattern'ine geçince wrapper'lar atıl kaldı |
+| **3 ölü Firebase window expose** | v8.133 | `window._firebaseApp` / `_firebaseAuth` / `_firebaseDb` (firebase.js); v8.103'te db.js consumer'ları silinmişti, expose'lar artık takıdır |
+| **warn-toast resting fix** | v8.134, v8.137 | `#warn-toast` resting `translateY(-80px)` → `-160px` (v8.134, ekran içinde kalan bug fix) → `-200px` (v8.137, mobil header marjı için ek artış) |
+| **validate.js ayrımı** | v8.135 | persist.js'teki integrity check bloğu (~40 satır) ayrı modüle taşındı; `_doSave` artık `window.validateBeforeSave()` çağırıyor — encrypt/storage'tan validate concern'i ayrı |
+| **addLog ctx + log render** | v8.136, v8.139 | `addLog` 5. param `ctx = {personId, groupId}` opsiyonel obj; truthy guard ile entry'i kirletmiyor (backward compat 12 caller); `log.js` render personId/groupId rozetli görüntüler |
 
 ---
 
@@ -50,11 +59,12 @@ v8.95'te başlayan Hesap modülünden v8.128'e kadar 30+ patch. İki ana hat:
 
 **Implicit / olası yönler** (henüz görev değil):
 
-1. **`persist.js#_doSave` integrity check → `validate.js` ayrımı** — v8.123'te eklenen integrity check ~40 satır. `persist.js`'in CLAUDE.md entry'sinde "sonraki refactor adayı (`validate.js`)" notu var. Mantıksal sınır net (encrypt/storage'dan ayrı concern).
-2. **`Store.session` security hardening** — `Store.session.cryptoKey/dataKeyRaw/plainPin` hâlâ `window.Store.session` üzerinden console-accessible. v8.115'te kabul edilen trade-off, ama mevcut konsol attack surface. Closure-based hiding + ephemeral key wrap pattern.
-3. **`window._rhbPhones` event delegation testi** — v8.121'de mantıksal doğru ama gerçek mobil/desktop test yapılmadı. Bir sonraki manuel test fırsatında doğrulanmalı.
-4. **`debugState()` SW cache testi** — v8.122'de eklendi ama bir noktada "expose edilmemiş" raporu geldi (gerçekte mevcut, muhtemelen stale tab). Gizli sekme veya hard reload ile doğrulanmalı.
-5. **Tarihi `db.js` yorum referansları** — `app.js:227` ("SYNC UI (db.js tarafından çağrılır)"), `index.html:442` (history yorum), `store.js:40,48`, `firebase.js:74` — kozmetik, davranış etkilenmez ama bir sonraki temizlik turunda toplu güncellenebilir.
+1. **`Store.session` security hardening** — `Store.session.cryptoKey/dataKeyRaw/plainPin` hâlâ `window.Store.session` üzerinden console-accessible. v8.115'te kabul edilen trade-off, ama mevcut konsol attack surface. Closure-based hiding + ephemeral key wrap pattern.
+2. **`window._rhbPhones` event delegation testi** — v8.121'de mantıksal doğru ama gerçek mobil/desktop test yapılmadı. Bir sonraki manuel test fırsatında doğrulanmalı.
+3. **`debugState()` SW cache testi** — v8.122'de eklendi ama bir noktada "expose edilmemiş" raporu geldi (gerçekte mevcut, muhtemelen stale tab). Gizli sekme veya hard reload ile doğrulanmalı.
+4. **Tarihi `db.js` yorum referansları** — `app.js:227` ("SYNC UI (db.js tarafından çağrılır)"), `index.html:442` (history yorum), `store.js:40,48`, `firebase.js:74` — kozmetik, davranış etkilenmez ama bir sonraki temizlik turunda toplu güncellenebilir.
+5. **`addLog` ctx caller migration** — v8.136'da imza genişledi (`ctx = {personId, groupId}`), v8.139'da log.js render edebilir hale geldi; ancak 12 mevcut caller (`ui-pay.js` ×4, `ui-plan.js` ×5, `rehber.js` ×3) hâlâ `undefined` 5. arg geçiyor. Opsiyonel olarak: `ui-pay.js#savePay` → `{personId, groupId}`, `ui-plan.js#markOk/undoCell/...` → `{groupId}`, vb. Davranış değişmez (sadece log render zenginleşir).
+6. **`personId` data quality göstergesi UX kararı** — v8.137'de hesap.js'e eklendi (`g_*`/`pay_*` rowKey'lere `⚠️` suffix); kalıcı UX olarak doğru mu yoksa geçici "kullanıcıyı backfill'e teşvik" emoji'si mi? Net karar yok, gözlem altında.
 
 ---
 
@@ -84,15 +94,17 @@ Her `window._X` flag tek bir noktada — `js/store.js` `_persistState` veya `_se
 
 | Tag | Commit | Notlar |
 |---|---|---|
-| **`v8.120-stable`** | `b99e570` | Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline. |
+| **`v8.139-stable`** _(öneri)_ | `73f9374` | actLog ctx render dahil — validate.js ayrımı + addLog ctx + warn-toast mobil fix tamamlanmış son baseline |
+| `v8.128-stable` | `a7ca043` | Modül ayrıştırması (auth-pin + app.css + firestore/persist) tamamlanmış önceki baseline |
+| `v8.120-stable` | `b99e570` | Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline |
 | `v8.112-stable` | `d03d5bc` | Daha eski — personId backfill öncesi |
 
-**Öneri:** Bu oturumun sonunda v8.128 yeni baseline. Modül ayrıştırması (auth-pin.js + app.css + firestore.js/persist.js) tamamlandı, integrity check yerleşti.
+**Öneri:** v8.139 yeni baseline. addLog ctx + log.js render + validate.js ayrımı + warn-toast mobil fix paketi tamamlandı.
 ```
-git tag v8.128-stable a7ca043 && git push origin v8.128-stable
+git tag v8.139-stable 73f9374 && git push origin v8.139-stable
 ```
 
 Geri dönüş:
 ```
-git reset --hard v8.120-stable
+git reset --hard v8.128-stable
 ```
