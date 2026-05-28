@@ -201,6 +201,15 @@ Bu bölüm "ne yapıldı" değil **"neden öyle yapıldı"** anlatır — gelece
 
 ---
 
+## Önemli Kurallar
+
+### Manuel git tag YAPMA
+`.github/workflows/auto-tag.yml` her push'ta `version.json`'dan versiyon okuyup otomatik tag oluşturuyor (format: `v8.166-20260529-06`). **Manuel `git tag` + `git push origin <tag>` gereksiz** — zaten yapılıyor.
+
+**Stable tag istiyorsan:** sadece `version.json`'u set et, push et. Workflow tag'ı oluşturur. `-stable` suffix'li tag'ler (`v8.166-stable`, `v8.160-stable`) manuel oluşturuldu çünkü "stable baseline" kararı insani bir kararvermedir — bunlar kalsın, gelecek stable tag'leri de aynı şekilde manuel oluştur. Ama normal release tag'lerini (her push'a) manuel oluşturma.
+
+---
+
 ## Restore points
 
 | Tag | Commit | Notlar |
