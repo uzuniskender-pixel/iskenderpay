@@ -38,6 +38,30 @@ ALL_KEYS.forEach(k => {
 
 function _markDirty() { window._dirty = true; }
 
+// ── EVENT DISPATCH (microtask-coalesced) ───────────────────────────────────
+// Her mutation sonrasi 'store:change' CustomEvent fire eder.
+// Birden fazla mutation ayni tick'te ise Set'te birikir, tek event olur.
+// detail.keys: Set<string> veya '*' (her sey degisti)
+let _pendingKeys = new Set();
+let _dispatchScheduled = false;
+
+function _dispatchChange(keys) {
+  if (keys === '*') _pendingKeys = '*';
+  else if (_pendingKeys !== '*') {
+    (Array.isArray(keys) ? keys : [keys]).forEach(k => _pendingKeys.add(k));
+  }
+  if (_dispatchScheduled) return;
+  _dispatchScheduled = true;
+  queueMicrotask(() => {
+    const out = _pendingKeys;
+    _pendingKeys = new Set();
+    _dispatchScheduled = false;
+    if (out === '*' || out.size > 0) {
+      window.dispatchEvent(new CustomEvent('store:change', { detail: { keys: out } }));
+    }
+  });
+}
+
 // ── LOOKUP MAPS (data.js'ten taşındı) ──────────────────────────────────────
 // O(1) erişim için pays/creds haritaları — veri değişince invalidate edilir
 let _lookupDirty = true;
@@ -78,18 +102,24 @@ export const Store = {
   // ── HYDRATE (silent, saveSecure cagrilmaz) ───────────────────────────────
   // loadSecure, sync, plan switch, clearState, restore icin
   hydrate(obj) {
+    const changedKeys = [];
     DATA_KEYS.forEach(k => {
-      if (obj && k in obj) _state[k] = obj[k] || [];
+      if (obj && k in obj) { _state[k] = obj[k] || []; changedKeys.push(k); }
     });
-    if (obj && 'rates' in obj) _state.rates = obj.rates || { EUR:null, USD:null, GOLD:null };
+    if (obj && 'rates' in obj) {
+      _state.rates = obj.rates || { EUR:null, USD:null, GOLD:null };
+      changedKeys.push('rates');
+    }
     _invalidate();
+    if (changedKeys.length) _dispatchChange(changedKeys);
   },
 
-  // Tum verileri sifirla (silent)
+  // Tum verileri sifirla (silent saveSecure, ama event fire eder)
   clearAll() {
     DATA_KEYS.forEach(k => { _state[k] = []; });
     _state.rates = { EUR: null, USD: null, GOLD: null };
     _invalidate();
+    _dispatchChange('*');
   },
 
   // ── REPLACE (autoSave tetikler — diger mutation API'leri ile tutarli) ────
@@ -100,14 +130,16 @@ export const Store = {
     _state[key] = value;
     _invalidate();
     _autoSave();
+    _dispatchChange([key]);
   },
 
-  // ── MUTATION API (autoSave tetikler) ─────────────────────────────────────
+  // ── MUTATION API (autoSave tetikler + event dispatch) ────────────────────
   push(key, item) {
     if (!Array.isArray(_state[key])) _state[key] = [];
     _state[key].push(item);
     _invalidate();
     _autoSave();
+    _dispatchChange([key]);
   },
 
   unshift(key, item) {
@@ -115,6 +147,7 @@ export const Store = {
     _state[key].unshift(item);
     _invalidate();
     _autoSave();
+    _dispatchChange([key]);
   },
 
   removeWhere(key, predicate) {
@@ -122,6 +155,7 @@ export const Store = {
     _state[key] = _state[key].filter(x => !predicate(x));
     _invalidate();
     _autoSave();
+    _dispatchChange([key]);
   },
 
   spliceAt(key, idx, deleteCount, ...inserts) {
@@ -129,20 +163,24 @@ export const Store = {
     const result = _state[key].splice(idx, deleteCount, ...inserts);
     _invalidate();
     _autoSave();
+    _dispatchChange([key]);
     return result;
   },
 
   // Bir item'da (object) field guncellemesi yap + autoSave
+  // Item hangi diziye ait bilinmedigi icin '*' dispatch
   mutateItem(item, partial) {
     if (item && partial && typeof item === 'object') Object.assign(item, partial);
     _invalidate();
     _autoSave();
+    _dispatchChange('*');
   },
 
   // Item'da manuel degisiklik yapildi, Store'a haber ver (autoSave tetikle)
   touch() {
     _invalidate();
     _autoSave();
+    _dispatchChange('*');
   },
 
   // ── LOOKUP API ───────────────────────────────────────────────────────────
@@ -163,11 +201,20 @@ export const Store = {
     }
   },
 
+  // ── EVENT HELPER ─────────────────────────────────────────────────────────
+  // Listener'lar icin: detail.keys icinde watched key'lerden biri var mi?
+  _affects(detail, watched) {
+    if (!detail || !detail.keys) return false;
+    if (detail.keys === '*') return true;
+    return watched.some(k => detail.keys.has(k));
+  },
+
   // ── INTERNAL (setter koprusu icin) ───────────────────────────────────────
   _setSilent(key, value) {
     _state[key] = value;
     _invalidate();
     _markDirty();
+    _dispatchChange([key]);
   },
 
   // Debug / introspection

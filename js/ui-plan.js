@@ -156,7 +156,7 @@ function render() {
   // Bu hafta widget'ı
   renderHaftaWidget(all, now, soon7);
   if (window.renderSiradaki) window.renderSiradaki();
-  if (window.renderCredSummary) window.renderCredSummary();
+  // renderCredSummary decoupled (v9.0): ui-pay.js listener cagiriyor
 }
 
 function renderGecWidget(all) {
@@ -420,7 +420,7 @@ function addToMonth(keyEnc,month) {
   const refItem=groupId?window.findPaysByGroup(groupId)[0]:window.pays.find(p=>p.name===name);
   window.Store.push('pays', {id:Date.now()+Math.random(), groupId:groupId||String(Date.now()), name, amount:amt, currency:cur, date, category:refItem?refItem.category||'Diğer':'Diğer', status:'pending', paid:0});
   window.addLog('plan_add', 'Kayıt eklendi', name+' · '+window.fmtAmt(amt,cur), 0);
-  closeDV(); render();
+  closeDV();
 }
 
 function markOk(keyEnc,month) {
@@ -433,7 +433,7 @@ function markOk(keyEnc,month) {
     window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:window.toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
     try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1);}catch(e){}
   });
-  window.Store.touch(); closeDV(); render();
+  window.Store.touch(); closeDV();
 }
 
 function undoCell(keyEnc,month) {
@@ -446,7 +446,7 @@ function undoCell(keyEnc,month) {
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
   });
-  window.Store.touch(); closeDV(); render();
+  window.Store.touch(); closeDV();
 }
 
 function openKM(keyEnc,month) {
@@ -472,7 +472,7 @@ function doPartial() {
     if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=window.toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
     else{window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'partial', paid:amt, paidAt:new Date().toISOString()});}
   });
-  window.Store.touch(); window.closeMov('KM'); render();
+  window.Store.touch(); window.closeMov('KM');
 }
 
 function saveCellAmt(keyEnc,month) {
@@ -485,7 +485,7 @@ function saveCellAmt(keyEnc,month) {
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i)i.amount=v;}}
     else{const orig=window.findPayById(p.id);if(orig)orig.amount=v;}
   });
-  window.Store.touch(); render(); openCell(keyEnc, month);
+  window.Store.touch(); openCell(keyEnc, month);
 }
 
 function resetPartial(keyEnc,month) {
@@ -498,7 +498,7 @@ function resetPartial(keyEnc,month) {
     const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
   });
-  window.Store.touch(); closeDV(); render();
+  window.Store.touch(); closeDV();
 }
 
 function editByKey(keyEnc) {
@@ -545,7 +545,7 @@ function delByKey(keyEnc) {
     try{if(toDelete.length)window.addLog('plan_del','Kayıt silindi',toDelete[0].name+' · '+window.fmtAmt(toDelete[0].amount,toDelete[0].currency||'TRY'),0);}catch(e){}
     window.Store.removeWhere('pays', p => String(Math.floor(Number(p.id)))===pid);
   }
-  closeDV(); render();
+  closeDV();
 }
 
 function delMonthEntry(idEnc) {
@@ -553,7 +553,7 @@ function delMonthEntry(idEnc) {
   if(!confirm('Bu aya ait kayıt silinecek. Diğer aylar etkilenmez. Emin misin?'))return;
   const p=window.findPayById(id);
   if(p){try{window.addLog('plan_del','Kayıt silindi',p.name+' · '+window.fmtAmt(p.amount,p.currency||'TRY'),0);}catch(e){};window.Store.unshift('hist',{...p,delAt:new Date().toISOString()});window.Store.removeWhere('pays', x => String(x.id)===id);}
-  closeDV(); render();
+  closeDV();
 }
 
 function delCellItems(keyEnc,month) {
@@ -566,9 +566,17 @@ function delCellItems(keyEnc,month) {
     window.Store.unshift('hist',{...p,delAt:new Date().toISOString()});
     window.Store.removeWhere('pays', x => String(x.id)===String(p.id));
   });
-  closeDV(); render();
+  closeDV();
 }
 
+
+
+// ── STORE EVENT LISTENER (v9.0) ─────────────────────────────────────────────
+// Store mutation -> 'store:change' event -> active tab 0 ise render
+window.addEventListener('store:change', e => {
+  if (window.curTab !== 0) return;
+  if (window.Store && window.Store._affects(e.detail, ['pays','creds','paidItems'])) render();
+});
 
 // ── GLOBAL COMPAT ─────────────────────────────────────────────────────────────
 window.getAllItems         = getAllItems;

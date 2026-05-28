@@ -58,7 +58,7 @@ function savePay() {
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz
   if(eid){ window.addLog('plan_edit','Kayıt düzenlendi', name+' · '+window.fmtAmt(amount,currency), 0); }
   else   { window.addLog('plan_add', 'Kayıt eklendi',    name+' · '+window.fmtAmt(amount,currency), 0); }
-  window.closeMov('PM2'); window.render();
+  window.closeMov('PM2');
 }
 
 function openCred() {
@@ -141,7 +141,7 @@ function saveCred() {
       window._convertSourcePays=null;
     }
   }
-  window.Store.touch(); window.closeMov('CM'); window.render();
+  window.Store.touch(); window.closeMov('CM');
 }
 
 function updLP() {
@@ -200,3 +200,10 @@ function renderCredSummary() {
   el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">KREDİLER</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">${cards}</div>`;
 }
 window.renderCredSummary = renderCredSummary;
+
+// ── STORE EVENT LISTENER (v9.0) ─────────────────────────────────────────────
+// Plan sekmesi aktifken pays/creds degisirse kredi panelini yenile
+window.addEventListener('store:change', e => {
+  if (window.curTab !== 0) return;
+  if (window.Store && window.Store._affects(e.detail, ['pays','creds'])) renderCredSummary();
+});

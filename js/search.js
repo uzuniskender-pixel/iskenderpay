@@ -113,6 +113,14 @@ function renderAI() {
 }
 
 
+// ── STORE EVENT LISTENER (v9.0) ─────────────────────────────────────────────
+// Ayarlar sekmesi aktifken Store degisirse renderAI'yi yenile
+window.addEventListener('store:change', e => {
+  if (window.curTab !== 5) return;
+  if (window.Store && window.Store._affects(e.detail, ['pays','creds','paidItems','rehber'])) renderAI();
+});
+
+
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.execGlobalSearch = execGlobalSearch;
 window.renderAI = renderAI;

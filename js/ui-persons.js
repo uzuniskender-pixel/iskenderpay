@@ -119,7 +119,7 @@ function restoreFromHist(i) {
   const p=window.hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
   window.Store.push('pays', restored);window.Store.spliceAt('hist', i, 1);
-  renderHist(); window.render();
+  renderHist();
 }
 
 function delHist(i) { window.Store.spliceAt('hist', i, 1); renderHist(); }

@@ -45,7 +45,7 @@ function go(n) {
     const m = document.getElementById('m'+i); if (m) m.classList.toggle('on', i===n);
     const s = document.getElementById('s'+i); if (s) s.classList.toggle('on', i===n);
   });
-  if (n===0) window.render();
+  if (n===0) { window.render(); if (window.renderCredSummary) window.renderCredSummary(); }
   if (n===1) window.renderPaid();
   if (n===2) window.renderPersons();
   if (n===3) window.renderNotes();
