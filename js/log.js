@@ -19,9 +19,47 @@ let _logDelMode = 'range';
 let _logSelected = new Set();
 let _logFilter = 'all'; // 'all' | 'today' | 'week' | 'month'
 let _logPersonFilter = ''; // '' = tum kisiler; personId = sadece o kisi (v8.141)
+let _logGroupFilter = '';  // '' = tum gruplar;  groupId  = sadece o grup  (v8.156)
 
 function _passesPersonFilter(entry) {
   return !_logPersonFilter || entry.personId === _logPersonFilter;
+}
+
+function _passesGroupFilter(entry) {
+  return !_logGroupFilter || entry.groupId === _logGroupFilter;
+}
+
+// Dropdown options'i actLog'taki benzersiz groupId'ler + pays.name join ile uret (v8.156)
+// personId filter pattern'inin aynisi — sadece isim + count (disambiguation yok)
+function _renderLogGroupFilterOptions() {
+  const sel = document.getElementById('LOG_FILT_GROUP');
+  if (!sel) return;
+  const groupIdsInLog = new Set();
+  (window.actLog || []).forEach(e => { if (e.groupId) groupIdsInLog.add(e.groupId); });
+  const groupLabel = new Map();
+  groupIdsInLog.forEach(gid => {
+    const first = (typeof window.findPaysByGroup === 'function')
+      ? window.findPaysByGroup(gid)[0]
+      : (window.pays || []).find(p => p.groupId === gid);
+    groupLabel.set(gid, first ? first.name : '(silinmiş grup)');
+  });
+  const sortedGids = [...groupIdsInLog].sort((a, b) =>
+    (groupLabel.get(a) || '~').localeCompare(groupLabel.get(b) || '~', 'tr'));
+  const opts = ['<option value=""' + (!_logGroupFilter ? ' selected' : '') + '>Tüm kayıt grupları / loglar</option>'];
+  sortedGids.forEach(gid => {
+    const name = groupLabel.get(gid);
+    const count = (window.actLog || []).filter(e => e.groupId === gid).length;
+    const isSel = gid === _logGroupFilter ? ' selected' : '';
+    opts.push('<option value="' + window.esc(gid) + '"' + isSel + '>' + window.esc(name) + ' (' + count + ')</option>');
+  });
+  sel.innerHTML = opts.join('');
+}
+
+function setLogGroupFilter(gid) {
+  _logGroupFilter = gid || '';
+  // Filter degisince stale index'leri temizle (gorunmez kayitlarda selection olmasin)
+  _logSelected.clear();
+  renderActLog();
 }
 
 // Dropdown options'i actLog'tan benzersiz personId'ler + persons.name join ile uret (v8.141)
@@ -89,11 +127,12 @@ function setLogFilter(mode) {
 function renderActLog() {
   const el=document.getElementById('ACT_LOG_LIST');if(!el)return;
   _renderLogPersonFilterOptions();
+  _renderLogGroupFilterOptions();
   const total=window.actLog.length;
-  // Date + person filter birlikte uygulanir (v8.141)
-  const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e));
+  // Date + person + group filter birlikte uygulanir (v8.141 + v8.156, AND-combine)
+  const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e));
   const shown=entries.length;
-  const filterActive=(_logFilter!=='all')||!!_logPersonFilter;
+  const filterActive=(_logFilter!=='all')||!!_logPersonFilter||!!_logGroupFilter;
   const cntEl=document.getElementById('LOG_CNT');
   if(cntEl){
     cntEl.textContent=(!filterActive||shown===total)
@@ -102,7 +141,7 @@ function renderActLog() {
   }
   if(!total){el.innerHTML='<div class="empty"><div class="ico">📋</div><p>Henüz kayıt yok.</p></div>';return;}
   if(!shown){
-    const msg=_logPersonFilter?'Bu kişiye ait kayıt yok.':'Bu aralıkta kayıt yok.';
+    const msg=_logGroupFilter?'Bu kayıt grubuna ait kayıt yok.':_logPersonFilter?'Bu kişiye ait kayıt yok.':'Bu aralıkta kayıt yok.';
     el.innerHTML='<div class="empty"><div class="ico">🔍</div><p>'+msg+'</p></div>';return;
   }
   const selMode=_logDelMode==='select';
@@ -198,7 +237,7 @@ function _populateLogPersonSelect() {
 }
 
 function toggleSelectAllLogs(checked) {
-  if(checked){window.actLog.forEach((e,i)=>{if(_passesLogFilter(e)&&_passesPersonFilter(e))_logSelected.add(i);});}else{_logSelected.clear();}
+  if(checked){window.actLog.forEach((e,i)=>{if(_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e))_logSelected.add(i);});}else{_logSelected.clear();}
   renderActLog();_updateLogSelCount();
 }
 
@@ -208,7 +247,7 @@ function toggleLogItem(idx) {
   const cb=document.getElementById('LOG_CB_'+idx);if(cb)cb.checked=_logSelected.has(idx);
   const allCb=document.getElementById('LOG_SEL_ALL');
   if(allCb){
-    const visibleCount=window.actLog.filter(e=>_passesLogFilter(e)&&_passesPersonFilter(e)).length;
+    const visibleCount=window.actLog.filter(e=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)).length;
     allCb.checked=_logSelected.size===visibleCount && visibleCount>0;
   }
 }
@@ -276,6 +315,7 @@ function doLogDelByPerson() {
 window.renderActLog       = renderActLog;
 window.setLogFilter       = setLogFilter;
 window.setLogPersonFilter = setLogPersonFilter;
+window.setLogGroupFilter  = setLogGroupFilter;
 window.logNav             = logNav;
 window.logJumpGroup       = logJumpGroup;
 window.logJumpPerson      = logJumpPerson;
