@@ -1,11 +1,16 @@
 // js/kur.js — iskenderpay
 // Kur çekme, kur bar render, sıradaki ödeme
 
-async function fetchRates() {
+async function fetchRates(force=false) {
   if (!window.rates) window.rates = {EUR:null, USD:null, GOLD:null};
   const s = localStorage.getItem('v5-rates-'+window._planId) || localStorage.getItem('v5-rates');
   if (s) try { const parsed = JSON.parse(s); Object.assign(window.rates, parsed); } catch(e) {}
   renderKur();
+  // Son 30 dakika içinde çekildiyse API'ye gitme
+  if (!force && window.rates._fetchedAt) {
+    const ageMin = (Date.now() - new Date(window.rates._fetchedAt).getTime()) / 60000;
+    if (ageMin < 30 && window.rates.EUR && window.rates.USD && window.rates.GOLD) return;
+  }
   let anySuccess = false;
   try {
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -45,7 +50,7 @@ function renderKur() {
   if (window.rates.USD)  h += `<div class="ki"><span class="kl">USD</span><span class="kv u">₺${window.rates.USD.toFixed(2)}</span></div><div class="ksep"></div>`;
   if (window.rates.GOLD) h += `<div class="ki"><span class="kl">Altın/gr</span><span class="kv g">₺${window.rates.GOLD.toFixed(0)}</span></div><div class="ksep"></div>`;
   if (h) {
-    h += timeLabel + `<button class="kbtn" onclick="fetchRates()">🔄</button>`;
+    h += timeLabel + `<button class="kbtn" onclick="fetchRates(true)">🔄</button>`;
   } else {
     h = `<span style="font-size:11px;color:var(--danger)">Kur alınamadı</span><button class="kbtn" onclick="window.go(5)" style="color:var(--acc);font-weight:600;font-size:11px;margin-left:6px">Manuel Gir →</button><button class="kbtn" onclick="fetchRates()">🔄</button>`;
   }
