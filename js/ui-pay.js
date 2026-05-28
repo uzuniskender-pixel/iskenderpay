@@ -175,41 +175,11 @@ function renderCredSummary() {
     if (el) el.style.display = 'none';
     return;
   }
-  // Plan matrisiyle ayni display name mantigi: pays base name'leri de say
-  const baseOf = name => name.replace(/ \d+$/, '').trim() || name;
-  const baseCount = {};
-  // Pays'deki base name'leri say
-  const allItems = typeof window.getAllItems==='function' ? window.getAllItems() : window.pays||[];
-  const mx = typeof window.buildMx==='function' ? window.buildMx(allItems) : {};
-  Object.keys(mx).filter(k=>mx[k]._name!==undefined).forEach(k=>{
-    const b=baseOf(mx[k]._name||''); baseCount[b]=(baseCount[b]||0)+1;
-  });
-  // Sadece cred key'lerini sifirla ve yeniden say (pays'deki sayilar zaten eklendi)
-  const credBaseIdx = {};
-  const displayNames = (window.creds||[]).map(cr => {
-    const b = baseOf(cr.name);
-    const credKey = 'cred_'+cr.id;
-    if(baseCount[b] > 1){
-      // Plan matrisindeki sira ile ayni olsun
-      const keys = Object.keys(mx).filter(k=>mx[k]._name!==undefined)
-        .sort((a,b2)=>(mx[a]._name||'').localeCompare(mx[b2]._name||'','tr'));
-      const nameIdxMap={}, nameCountMap={}, dnMap={};
-      keys.forEach(k=>{const n=baseOf(mx[k]._name||'');nameCountMap[n]=(nameCountMap[n]||0)+1;});
-      keys.forEach(k=>{const n=baseOf(mx[k]._name||'');if(nameCountMap[n]>1){const idx=nameIdxMap[n]=(nameIdxMap[n]||0)+1;dnMap[k]=idx===1?n:n+' '+(idx-1);}else{dnMap[k]=n;}});
-      return dnMap[credKey] || b;
-    }
-    return b;
-  });
-  const cards = (window.creds || []).map((c, ci) => {
-    const dispName = displayNames[ci];
-    const paid     = (c.pays||[]).filter(p=>(p.status||'pending')==='paid').length;
-    const total    = (c.pays||[]).length;
-    const bekleyen = (c.pays||[]).filter(p=>(p.status||'pending')!=='paid').reduce((s,p)=>s+p.amount,0);
-    const pct      = total>0?Math.round((paid/total)*100):0;
+  // Tum hesap + display name Hesap.krediler'a delege (plan matrisiyle tutarli)
+  const list = window.Hesap.krediler();
+  const cards = list.map(({cred, dispName, paid, total, bekleyen, pct, nextPay, done}) => {
     const pctColor = pct>=80?'var(--ok)':pct>=50?'var(--blue)':'var(--ora)';
-    const nextPay  = (c.pays||[]).find(p=>(p.status||'pending')!=='paid');
     const nextStr  = nextPay?window.fmtD(nextPay.date):'✓';
-    const done     = paid===total;
     return `<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(dispName)}</div>

@@ -37,16 +37,9 @@ function render() {
   const all = getAllItems();
   const now = new Date();
   const curMK = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const buAy = all.filter(p => {
-    const d = window.parseLocalDate(p.date);
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-  });
-  let tot=0, ok=0, bek=0, gec=0, okN=0, bekN=0, gecN=0;
-  buAy.forEach(p => {
-    const t = window.toTRY(p.amount, p.currency||'TRY'); tot+=t;
-    const s = p.status||'pending';
-    if(s==='paid'){ok+=t;okN++;}else if(window.isOD(p)){gec+=t;gecN++;}else{bek+=t;bekN++;}
-  });
+  const ozet = window.Hesap.buAyOzeti({all});
+  const tot = ozet.tot, ok = ozet.ok, bek = ozet.bek, gec = ozet.gec;
+  const okN = ozet.okN, bekN = ozet.bekN, gecN = ozet.gecN;
   // Sayfa başlığında geciken ödeme sayısı
   document.title = gecN > 0 ? `(${gecN} gecikmiş) iskenderpay` : 'iskenderpay';
 
@@ -69,7 +62,7 @@ function render() {
   }).length;
 
   document.getElementById('OC').innerHTML=`
-    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${buAy.length} ödeme</div></div>
+    <div class="ocard t"><div class="lbl">Bu Ay Toplam</div><div class="val mono">${window.fmt(tot)}</div><div class="sub">${ozet.itemCount} ödeme</div></div>
     <div class="ocard p"><div class="lbl">Ödendi</div><div class="val">${window.fmt(ok)}</div><div class="sub">${okN} ödeme</div></div>
     <div class="ocard b"><div class="lbl">Bekliyor</div><div class="val">${window.fmt(bek)}</div><div class="sub">${yaklaşanN>0?`<span style="color:var(--ora)">⚡ ${yaklaşanN} bu hafta</span>`:bekN+' ödeme'}</div></div>
     <div class="ocard g"><div class="lbl">Gecikmiş</div><div class="val">${window.fmt(gec)}</div><div class="sub">${gecN} ödeme</div></div>`;
@@ -102,12 +95,9 @@ function render() {
     });
   }
   if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
-  // Sondaki sayiyi soy: 'QNB 1'→'QNB', 'DENİZBANK 2'→'DENİZBANK'
-  const baseOf=k=>(mx[k]._name||'').replace(/ \d+$/,'').trim()||mx[k]._name||'';
-  const nameCountMap={};
-  rowKeys.forEach(k=>{const b=baseOf(k);nameCountMap[b]=(nameCountMap[b]||0)+1;});
-  const nameIdxMap={};
-  rowKeys.forEach(k=>{const b=baseOf(k);if(nameCountMap[b]>1){const idx=nameIdxMap[b]=(nameIdxMap[b]||0)+1;mx[k]._displayName=idx===1?b:b+' '+(idx-1);}else{mx[k]._displayName=b;}});
+  // Display name (paylasilan logic — kredi paneliyle ayni)
+  const dnMap = window.Hesap._displayNames(mx, rowKeys);
+  rowKeys.forEach(k => { mx[k]._displayName = dnMap[k]; });
   const allMonths=Array.from(monthSet).sort();
   const showPaid = localStorage.getItem('v8-show-paid') === '1';
   const months = showPaid

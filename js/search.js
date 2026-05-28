@@ -58,37 +58,14 @@ function execGlobalSearch() {
 }
 
 function renderAI() {
-  const pays     = window.pays     || [];
-  const creds    = window.creds    || [];
-  const paidItems= window.paidItems|| [];
-  const rehber   = window.rehber   || [];
+  // Tum hesaplar Hesap modulune delege — tutarsizlik onlendi
+  const ozet = window.Hesap.buAyOzeti();
+  const buAyTot = ozet.tot, buAyOdendi = ozet.ok, buAyGec = ozet.gec;
 
-  // Bu ay istatistikleri
-  const now  = new Date();
-  const nowY = now.getFullYear(), nowM = now.getMonth();
-  const buAy = (window.getAllItems ? window.getAllItems() : window.pays).filter(p => {
-    const d = window.parseLocalDate(p.date);
-    return d.getFullYear()===nowY && d.getMonth()===nowM;
-  });
-  const buAyTot  = buAy.reduce((s,p) => s+window.toTRY(p.amount,p.currency||'TRY'), 0);
-  const buAyOdendi = buAy.filter(p=>(p.status||'pending')==='paid').reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
-  const buAyGec  = buAy.filter(p=>(p.status||'pending')!=='paid'&&window.isOD(p)).reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+  const top = window.Hesap.toplamOzeti();
+  const toplamBekleyen = top.paysBekleyen, krediBekleyen = top.krediBekleyen;
 
-  // Genel toplam borç (tüm ödenmemiş)
-  const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
-    .reduce((s,p)=>s+Math.max(0,window.toTRY(p.amount,p.currency||'TRY')-(p.paid||0)),0);
-  const krediBekleyen = window.creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
-    .reduce((a,p)=>a+p.amount,0),0);
-
-  // Son 3 ay ödeme trendi
-  const trend = [];
-  for(let i=2;i>=0;i--){
-    const tM=new Date(nowY,nowM-i,1);
-    const tY=tM.getFullYear(), tMo=tM.getMonth();
-    const mPays=window.paidItems.filter(p=>{const d=window.parseLocalDate(p.date);return d.getFullYear()===tY&&d.getMonth()===tMo;});
-    const mTot=mPays.reduce((s,p)=>s+(p.paid||window.toTRY(p.amount,p.currency||'TRY')),0);
-    trend.push({lbl:tM.toLocaleDateString('tr-TR',{month:'short'}), tot:mTot});
-  }
+  const trend = window.Hesap.trend(3);
   const trendMax = Math.max(...trend.map(t=>t.tot), 1);
   const trendBars = trend.map(t=>`
     <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
