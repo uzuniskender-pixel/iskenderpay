@@ -1,6 +1,6 @@
 # DEVAM NOTU — sonraki oturum için brief
 
-_Son oturum: 2026-05-28 · son commit: **v8.140 / 20260528-64**_
+_Son oturum: 2026-05-28 · son commit: **v8.145 / 20260528-67**_
 
 CLAUDE.md = canonical referans (versiyon geçmişi, mimari notlar, dosya yapısı).
 Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
@@ -10,7 +10,7 @@ Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
 ## TL;DR
 
 Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler oldu.
-v8.95'te başlayan Hesap modülünden v8.140'a kadar 45+ patch. Dört ana hat:
+v8.95'te başlayan Hesap modülünden v8.145'e kadar 50+ patch. Dört ana hat:
 1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
 2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135).
 3. Ölü kod toplu temizliği (v8.128-v8.133): persist alias'ları, firestore salt helper'ları, util artıkları, UI handler'ları, Firebase window expose'ları — toplam ~70 satır.
@@ -50,6 +50,9 @@ v8.95'te başlayan Hesap modülünden v8.140'a kadar 45+ patch. Dört ana hat:
 | **warn-toast resting fix** | v8.134, v8.137 | `#warn-toast` resting `translateY(-80px)` → `-160px` (v8.134, ekran içinde kalan bug fix) → `-200px` (v8.137, mobil header marjı için ek artış) |
 | **validate.js ayrımı** | v8.135 | persist.js'teki integrity check bloğu (~40 satır) ayrı modüle taşındı; `_doSave` artık `window.validateBeforeSave()` çağırıyor — encrypt/storage'tan validate concern'i ayrı |
 | **addLog ctx + log render** | v8.136, v8.139, v8.140 | `addLog` 5. param `ctx = {personId, groupId}` opsiyonel obj; truthy guard ile entry'i kirletmiyor; `log.js` render personId/groupId rozetli görüntüler; v8.140'ta 7 caller bağlandı (`savePay` → {personId, groupId}; `addToMonth`/`markOk`/`delByKey g_+pay_`/`delMonthEntry` → {groupId}) + `undoCell`'e yeni `plan_undo` addLog eklendi |
+| **log silme: kişi modu** | v8.143 | LOG_DEL_BAR'a 3. mode (`person`) — persons dropdown'dan seçilen kişinin tüm entry'leri silinir (v8.140 entry.personId'ye bağımlı); DRY `setBtnStyle` helper'ı buton stillerini birleştirdi |
+| **log jump + flash** | v8.144 | actLog 📋/👤 ikonları tıklanabilir — `logJumpGroup`/`logJumpPerson` plan matrisi / persons tab'ında ilgili row/card'a smooth scroll + `.jump-flash` 1.5sn keyframe; `tr[data-row-key]` ve `[data-person-id]` selector'ları eklendi |
+| **log tarih filtresi** | v8.145 | T7 `.ph` altına 4 buton (Hepsi/Bugün/Bu hafta/Bu ay); module-local `_logFilter`, `_passesLogFilter` ISO hafta Pzt başlangıç; renderActLog orijinal actLog index'ini korur; toggleSelectAllLogs/toggleLogItem date + person filter ikisini birden hesaplar; sayaç `X / Y hareket` formatı |
 
 ---
 
