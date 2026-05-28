@@ -1,6 +1,6 @@
 # DEVAM NOTU — sonraki oturum için brief
 
-_Son oturum: 2026-05-28 · son commit: **v8.139 / 20260528-63** (`73f9374`)_
+_Son oturum: 2026-05-28 · son commit: **v8.140 / 20260528-64**_
 
 CLAUDE.md = canonical referans (versiyon geçmişi, mimari notlar, dosya yapısı).
 Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
@@ -14,7 +14,7 @@ v8.95'te başlayan Hesap modülünden v8.139'a kadar 40+ patch. Üç ana hat:
 1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
 2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135).
 3. Ölü kod toplu temizliği (v8.128-v8.133): persist alias'ları, firestore salt helper'ları, util artıkları, UI handler'ları, Firebase window expose'ları — toplam ~70 satır.
-4. `addLog` zenginleştirildi (v8.136 + v8.139): yeni `ctx = {personId, groupId}` 5. parametre + log render rozetleri.
+4. `addLog` zenginleştirildi (v8.136 + v8.139 + v8.140): yeni `ctx = {personId, groupId}` 5. parametre + log render rozetleri + 7 caller bağlandı.
 
 ---
 
@@ -49,7 +49,7 @@ v8.95'te başlayan Hesap modülünden v8.139'a kadar 40+ patch. Üç ana hat:
 | **3 ölü Firebase window expose** | v8.133 | `window._firebaseApp` / `_firebaseAuth` / `_firebaseDb` (firebase.js); v8.103'te db.js consumer'ları silinmişti, expose'lar artık takıdır |
 | **warn-toast resting fix** | v8.134, v8.137 | `#warn-toast` resting `translateY(-80px)` → `-160px` (v8.134, ekran içinde kalan bug fix) → `-200px` (v8.137, mobil header marjı için ek artış) |
 | **validate.js ayrımı** | v8.135 | persist.js'teki integrity check bloğu (~40 satır) ayrı modüle taşındı; `_doSave` artık `window.validateBeforeSave()` çağırıyor — encrypt/storage'tan validate concern'i ayrı |
-| **addLog ctx + log render** | v8.136, v8.139 | `addLog` 5. param `ctx = {personId, groupId}` opsiyonel obj; truthy guard ile entry'i kirletmiyor (backward compat 12 caller); `log.js` render personId/groupId rozetli görüntüler |
+| **addLog ctx + log render** | v8.136, v8.139, v8.140 | `addLog` 5. param `ctx = {personId, groupId}` opsiyonel obj; truthy guard ile entry'i kirletmiyor; `log.js` render personId/groupId rozetli görüntüler; v8.140'ta 7 caller bağlandı (`savePay` → {personId, groupId}; `addToMonth`/`markOk`/`delByKey g_+pay_`/`delMonthEntry` → {groupId}) + `undoCell`'e yeni `plan_undo` addLog eklendi |
 
 ---
 
@@ -63,7 +63,7 @@ v8.95'te başlayan Hesap modülünden v8.139'a kadar 40+ patch. Üç ana hat:
 2. **`window._rhbPhones` event delegation testi** — v8.121'de mantıksal doğru ama gerçek mobil/desktop test yapılmadı. Bir sonraki manuel test fırsatında doğrulanmalı.
 3. **`debugState()` SW cache testi** — v8.122'de eklendi ama bir noktada "expose edilmemiş" raporu geldi (gerçekte mevcut, muhtemelen stale tab). Gizli sekme veya hard reload ile doğrulanmalı.
 4. **Tarihi `db.js` yorum referansları** — `app.js:227` ("SYNC UI (db.js tarafından çağrılır)"), `index.html:442` (history yorum), `store.js:40,48`, `firebase.js:74` — kozmetik, davranış etkilenmez ama bir sonraki temizlik turunda toplu güncellenebilir.
-5. **`addLog` ctx caller migration** — v8.136'da imza genişledi (`ctx = {personId, groupId}`), v8.139'da log.js render edebilir hale geldi; ancak 12 mevcut caller (`ui-pay.js` ×4, `ui-plan.js` ×5, `rehber.js` ×3) hâlâ `undefined` 5. arg geçiyor. Opsiyonel olarak: `ui-pay.js#savePay` → `{personId, groupId}`, `ui-plan.js#markOk/undoCell/...` → `{groupId}`, vb. Davranış değişmez (sadece log render zenginleşir).
+5. **`addLog` ctx caller migration — TAMAMLANDI v8.140** — `savePay` (ui-pay.js) `{personId, groupId}` taşır; `addToMonth`/`markOk`/`delByKey g_+pay_`/`delMonthEntry` (ui-plan.js) `{groupId}` taşır; `undoCell`'e yeni `plan_undo` addLog eklendi. Dokunulmayanlar: `saveCred` + `delByKey cred` (cred → groupId yok), `rehber.js` ×3 (kişi/rehber concern'i — kapsam dışı).
 6. **`personId` data quality göstergesi UX kararı** — v8.137'de hesap.js'e eklendi (`g_*`/`pay_*` rowKey'lere `⚠️` suffix); kalıcı UX olarak doğru mu yoksa geçici "kullanıcıyı backfill'e teşvik" emoji'si mi? Net karar yok, gözlem altında.
 
 ---

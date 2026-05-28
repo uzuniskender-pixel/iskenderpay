@@ -56,9 +56,11 @@ function savePay() {
       setTimeout(() => window.showWarnToast && window.showWarnToast('"'+name+'" kişi listesinde yok'), 200);
     }
   }
+  let savedGroupId=null;
   if(eid){
     const p=window.findPayById(eid);
     if(p){
+      savedGroupId=p.groupId;
       const oldName=p.name, oldCat=p.category;
       const patch={name,amount,currency,date,category};
       if(personId) patch.personId=personId;
@@ -73,6 +75,7 @@ function savePay() {
     }
   } else {
     const groupId=String(Date.now());
+    savedGroupId=groupId;
     const[py,pm,pd]=date.split('-').map(Number);
     for(let i=0;i<=copyMonths;i++){
       const totalMo=(pm-1)+i;
@@ -84,8 +87,9 @@ function savePay() {
     }
   }
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz
-  if(eid){ window.addLog('plan_edit','Kayıt düzenlendi', name+' · '+window.fmtAmt(amount,currency), 0); }
-  else   { window.addLog('plan_add', 'Kayıt eklendi',    name+' · '+window.fmtAmt(amount,currency), 0); }
+  const logCtx={personId, groupId: savedGroupId};
+  if(eid){ window.addLog('plan_edit','Kayıt düzenlendi', name+' · '+window.fmtAmt(amount,currency), 0, logCtx); }
+  else   { window.addLog('plan_add', 'Kayıt eklendi',    name+' · '+window.fmtAmt(amount,currency), 0, logCtx); }
   window.closeMov('PM2');
 }
 
