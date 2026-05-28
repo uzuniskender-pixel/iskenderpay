@@ -322,6 +322,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
         <button id="LOG_FILTER_WEEK"  onclick="setLogFilter('week')"  class="btn bc" style="font-size:11px;font-weight:600">Bu hafta</button>
         <button id="LOG_FILTER_MONTH" onclick="setLogFilter('month')" class="btn bc" style="font-size:11px;font-weight:600">Bu ay</button>
       </div>
+      <div id="LOG_FILT_BAR" style="padding:0 16px 8px">
+        <select id="LOG_FILT_PERSON" class="fi" onchange="setLogPersonFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px"></select>
+      </div>
       <div id="LOG_DEL_BAR" style="padding:0 16px 8px;display:none">
         <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
           <!-- Mod seçimi -->

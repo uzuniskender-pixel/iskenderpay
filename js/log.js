@@ -275,6 +275,7 @@ function doLogDelByPerson() {
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.renderActLog       = renderActLog;
 window.setLogFilter       = setLogFilter;
+window.setLogPersonFilter = setLogPersonFilter;
 window.logNav             = logNav;
 window.logJumpGroup       = logJumpGroup;
 window.logJumpPerson      = logJumpPerson;
