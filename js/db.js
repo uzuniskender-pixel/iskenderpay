@@ -40,15 +40,26 @@ window._fbStartListen = function(onData) {
   setTimeout(window._fbPoll, 5000);
 };
 
+let _pollRunning = false;
 window._fbPoll = async function() {
   if (!_fbUid || !window._planId || !window._syncCb) return;
   if (window._saveTimer !== null && window._saveTimer !== undefined) return;
   if (window._dirty) return;  // Bekleyen degisiklik var — sync atla
+  if (_pollRunning) return;   // Concurrent poll önle
+  _pollRunning = true;
   try {
     const snap = await getDoc(_planDoc());
     if (!snap.exists()) { window.setSyncDot && window.setSyncDot('active'); return; }
     const d = snap.data();
     const ts = d.updatedAt || 0;
+    // Firebase'e yazılamamış veri varsa önce onu yükle
+    if (window._fbSyncNeeded && !window._dirty) {
+      const enc = localStorage.getItem('v5-data-' + window._planId);
+      if (enc) {
+        try { await window._fbSave(enc); window._lastUpdated = Date.now(); window._fbSyncNeeded = false; } catch(e) {}
+      }
+      return;
+    }
     if (ts > window._lastUpdated && window._lastUpdated > 0) {
       window._lastUpdated = ts;
       if (d.data) window._syncCb(d.data);
@@ -58,6 +69,8 @@ window._fbPoll = async function() {
     window.setSyncDot && window.setSyncDot('active');
   } catch(e) {
     console.warn('Sync poll hatası:', e.message || e);
+  } finally {
+    _pollRunning = false;
   }
 };
 
@@ -214,11 +227,19 @@ async function _doSave() {
     rehber: window.rehber, actLog: window.actLog
   };
   const enc = await window.encryptData(data, window._cryptoKey);
-  if (window._fbSave) {
-    try { await window._fbSave(enc); window._lastUpdated = Date.now(); } catch(e) { console.warn('Firebase kayıt hatası:', e); } finally { window._dirty = false; }
-  }
+  // localStorage ÖNCE yaz — Firebase başarısız olsa bile veri güvende
   localStorage.setItem('v5-data-' + window._planId, enc);
   localStorage.setItem('v5-rates-' + window._planId, JSON.stringify(window.rates));
+  if (window._fbSave) {
+    try {
+      await window._fbSave(enc);
+      window._lastUpdated = Date.now();
+      window._fbSyncNeeded = false;
+    } catch(e) {
+      console.warn('Firebase kayıt hatası:', e);
+      window._fbSyncNeeded = true;  // Bir sonraki başarılı poll'da yeniden dene
+    } finally { window._dirty = false; }
+  }
 }
 
 async function saveSecureNow() {

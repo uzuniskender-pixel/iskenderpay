@@ -51,7 +51,7 @@ function doRestore() {
   window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
   window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
   window.invalidateLookups();
-  window.save().then(() => {
+  window.saveSecureNow().then(() => {
     window.migrateCredDates();
     window.closeMov('RM');
     window.render();
@@ -73,7 +73,7 @@ function undoRestore() {
   window.persons=d.persons||[]; window.notes=d.notes||[]; window.paidItems=d.paidItems||[];
   window.rehber=d.rehber||[]; window.actLog=d.actLog||[];
   window.invalidateLookups();
-  window.save().then(() => {
+  window.saveSecureNow().then(() => {
     window.migrateCredDates(); window.render();
     localStorage.removeItem('v8-restore-snapshot');
     const bar = document.getElementById('RESTORE_UNDO');

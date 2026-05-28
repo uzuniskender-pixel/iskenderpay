@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.88 / 20260528-16
+## Mevcut Durum (28 Mayıs 2026) — v8.89 / 20260528-17
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -102,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.89 | 20260528-17 | localStorage önce yaz; _fbPoll concurrent guard + _fbSyncNeeded retry; backup.js saveSecureNow |
 | v8.88 | 20260528-16 | kur.js: 30 dakika içinde çekildiyse API atlanır; 🔄 butonu force=true ile zorunlu yeniler |
 | v8.87 | 20260528-15 | Küçük fixler: _doSave finally→dirty=false, loadSecure dirty=false, SW install log, mx._dn pollution fix |
 | v8.86 | 20260528-14 | Kredi kartı display name: pays base name'leri de sayılır, plan matrisiyle tutarlı |
