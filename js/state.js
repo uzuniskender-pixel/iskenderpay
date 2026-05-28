@@ -64,16 +64,15 @@ export function setRates(r)        { rates = r; window.rates = r; }
 
 // ── clearState ───────────────────────────────────────────────────────────────
 export function clearState() {
-  pays      = []; window.pays      = [];
-  creds     = []; window.creds     = [];
-  hist      = []; window.hist      = [];
-  persons   = []; window.persons   = [];
-  notes     = []; window.notes     = [];
-  paidItems = []; window.paidItems = [];
-  rehber    = []; window.rehber    = [];
-  actLog    = []; window.actLog    = [];
-  rates     = { EUR: null, USD: null, GOLD: null };
-  window.rates = rates;
+  // Store merkezi temizler (window.* getter'lari yine canli)
+  if (window.Store) {
+    window.Store.clearAll();
+  } else {
+    // Fallback — store.js yuklenmediyse eski davranis
+    window.pays = []; window.creds = []; window.hist = []; window.persons = [];
+    window.notes = []; window.paidItems = []; window.rehber = []; window.actLog = [];
+    window.rates = { EUR: null, USD: null, GOLD: null };
+  }
   _lookupDirty = true;
   console.log('[State] Bellek tamamen temizlendi.');
 }

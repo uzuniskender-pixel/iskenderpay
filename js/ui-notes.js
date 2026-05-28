@@ -48,14 +48,14 @@ function saveNote() {
   const cat=document.getElementById('NCAT').value;
   if(!title||!content){alert('Başlık ve içerik zorunlu');return;}
   const eid=document.getElementById('NEID').value;
-  if(eid!==''){const idx=window.notes.findIndex(x=>x.nid===eid);if(idx!==-1){notes[idx]={...notes[idx],title,content,cat,upd:new Date().toISOString()};}}
-  else{const nid='n'+Date.now()+'_'+Math.random().toString(36).slice(2,7);window.notes.unshift({nid,title,content,cat,at:new Date().toISOString()});}
+  if(eid!==''){const idx=window.notes.findIndex(x=>x.nid===eid);if(idx!==-1){window.Store.mutateItem(window.notes[idx],{title,content,cat,upd:new Date().toISOString()});}}
+  else{const nid='n'+Date.now()+'_'+Math.random().toString(36).slice(2,7);window.Store.unshift('notes',{nid,title,content,cat,at:new Date().toISOString()});}
   window.saveNotes(); window.closeMov('NM'); renderNotes();
 }
 
 function delNote(nid) {
   if(!confirm('Bu notu silmek istiyor musun?'))return;
-  const idx=window.notes.findIndex(x=>x.nid===nid);if(idx!==-1)window.notes.splice(idx,1);
+  const idx=window.notes.findIndex(x=>x.nid===nid);if(idx!==-1)window.Store.spliceAt('notes', idx, 1);
   window.saveNotes(); renderNotes();
 }
 
@@ -123,14 +123,14 @@ function savePaidItem() {
   if(!name){alert('Ödeme adı boş olamaz');return;}
   if(isNaN(amt)||amt<0){alert('Geçerli bir tutar girin');return;}
   if(!date.match(/^\d{4}-\d{2}-\d{2}$/)){alert('Tarih YYYY-AA-GG formatında olmalı');return;}
-  p.name=name;p.paid=amt;p.date=date;
+  window.Store.mutateItem(p, {name, paid:amt, date});
   window.saveSecure();window.closeMov('PIMOD');renderPaid();
 }
 
 function delPaidItem(paidId) {
   const p=window.paidItems.find(x=>x.paidId===paidId);if(!p)return;
   if(!confirm(p.name+' yapılan ödemelerden silinecek. Plan etkilenmez. Emin misin?'))return;
-  const idx=window.paidItems.indexOf(p);if(idx!==-1)window.paidItems.splice(idx,1);
+  const idx=window.paidItems.indexOf(p);if(idx!==-1)window.Store.spliceAt('paidItems', idx, 1);
   window.saveSecure();renderPaid();
 }
 

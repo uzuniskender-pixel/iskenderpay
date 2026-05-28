@@ -25,15 +25,20 @@ async function startRealtimeSync() {
     if (window._dirty) return;  // Bekleyen degisiklik var — sync ezmesin
     try {
       const d = await window.decryptData(encData, window._cryptoKey);
-      window.pays      = d.pays      || [];
-      window.creds     = d.creds     || [];
-      window.hist      = d.hist      || [];
-      window.persons   = d.persons   || [];
-      window.notes     = d.notes     || [];
-      window.paidItems = d.paidItems || [];
-      window.rehber    = d.rehber    || [];
-      window.actLog    = d.actLog    || [];
-      if (window.invalidateLookups) window.invalidateLookups();
+      // Toplu sessiz atama — remote'tan gelen veri, saveSecure tetiklenmez
+      if (window.Store) {
+        window.Store.hydrate(d);
+      } else {
+        window.pays      = d.pays      || [];
+        window.creds     = d.creds     || [];
+        window.hist      = d.hist      || [];
+        window.persons   = d.persons   || [];
+        window.notes     = d.notes     || [];
+        window.paidItems = d.paidItems || [];
+        window.rehber    = d.rehber    || [];
+        window.actLog    = d.actLog    || [];
+        if (window.invalidateLookups) window.invalidateLookups();
+      }
       if (window.render)       window.render();
       if (window.renderHist)   window.renderHist();
       if (window.renderPaid)   window.renderPaid();

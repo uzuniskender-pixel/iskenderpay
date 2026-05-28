@@ -1,0 +1,166 @@
+// js/store.js — iskenderpay (v1.0)
+// Merkezi Store. 8 veri dizisi + rates icin tek otorite.
+// window.pays / window.creds vb. property'leri Store'a baglar (getter/setter).
+//
+// Tasarim:
+//   - Store, 8 dizi + rates icin canonical referansi tutar.
+//   - Object.defineProperty ile window.<key> getter -> Store.get(key),
+//     setter -> Store._setSilent(key, val). (Geriye uyum: eski "window.pays = X" calismaya devam eder.)
+//   - Setter "silent" davranir: yalniz referansi gunceller, invalidateLookups + dirty=true set eder.
+//     saveSecure cagrisini cagiran kod yapar (mevcut davranis korunur).
+//   - Yeni call site'lar Store.push / Store.removeWhere / Store.spliceAt / Store.mutateItem kullanir;
+//     bu API'ler invalidateLookups + dirty=true + saveSecure() debounce'unu otomatik tetikler.
+//   - Store.hydrate({pays, creds, ...}) — loadSecure / sync / restore icin: toplu sessiz atama,
+//     saveSecure tetiklemez (kayit cagiran tarafa birakilmistir).
+
+const DATA_KEYS = ['pays','creds','hist','persons','notes','paidItems','rehber','actLog'];
+const ALL_KEYS  = [...DATA_KEYS, 'rates'];
+
+const _state = {
+  pays:      [],
+  creds:     [],
+  hist:      [],
+  persons:   [],
+  notes:     [],
+  paidItems: [],
+  rehber:    [],
+  actLog:    [],
+  rates:     { EUR: null, USD: null, GOLD: null }
+};
+
+// Eger store.js yuklenmeden once index.html veya state.js window.* atadiysa, oradan al
+ALL_KEYS.forEach(k => {
+  if (window[k] !== undefined && window[k] !== null) {
+    _state[k] = window[k];
+  }
+});
+
+function _markDirty() { window._dirty = true; }
+function _invalidate() { if (window.invalidateLookups) window.invalidateLookups(); }
+
+// saveSecure suppress flag — Store.tx ve hydrate sirasinda otomatik kaydi durdurur
+let _suppressAutoSave = 0;
+
+function _autoSave() {
+  if (_suppressAutoSave > 0) return;
+  if (window._suppressSave) return;
+  if (typeof window.saveSecure === 'function') window.saveSecure();
+}
+
+export const Store = {
+  // ── READ ─────────────────────────────────────────────────────────────────
+  get(key) { return _state[key]; },
+
+  // ── HYDRATE (silent, saveSecure cagrilmaz) ───────────────────────────────
+  // loadSecure, sync, plan switch, clearState, restore icin
+  hydrate(obj) {
+    DATA_KEYS.forEach(k => {
+      if (obj && k in obj) _state[k] = obj[k] || [];
+    });
+    if (obj && 'rates' in obj) _state.rates = obj.rates || { EUR:null, USD:null, GOLD:null };
+    _invalidate();
+  },
+
+  // Tum verileri sifirla (silent)
+  clearAll() {
+    DATA_KEYS.forEach(k => { _state[k] = []; });
+    _state.rates = { EUR: null, USD: null, GOLD: null };
+    _invalidate();
+  },
+
+  // ── REPLACE (silent — setter ile ayni) ───────────────────────────────────
+  // "window.pays = X" cagrisinin yaptigi ile esdeger.
+  // Cagiran saveSecure'i kendisi yonetir.
+  replace(key, value) {
+    _state[key] = value;
+    _invalidate();
+    _markDirty();
+  },
+
+  // ── MUTATION API (autoSave tetikler) ─────────────────────────────────────
+  push(key, item) {
+    if (!Array.isArray(_state[key])) _state[key] = [];
+    _state[key].push(item);
+    _invalidate();
+    _autoSave();
+  },
+
+  unshift(key, item) {
+    if (!Array.isArray(_state[key])) _state[key] = [];
+    _state[key].unshift(item);
+    _invalidate();
+    _autoSave();
+  },
+
+  removeWhere(key, predicate) {
+    if (!Array.isArray(_state[key])) return;
+    _state[key] = _state[key].filter(x => !predicate(x));
+    _invalidate();
+    _autoSave();
+  },
+
+  spliceAt(key, idx, deleteCount, ...inserts) {
+    if (!Array.isArray(_state[key])) return;
+    const result = _state[key].splice(idx, deleteCount, ...inserts);
+    _invalidate();
+    _autoSave();
+    return result;
+  },
+
+  // Bir item'da (object) field guncellemesi yap + autoSave
+  mutateItem(item, partial) {
+    if (item && partial && typeof item === 'object') Object.assign(item, partial);
+    _invalidate();
+    _autoSave();
+  },
+
+  // Item'da manuel degisiklik yapildi, Store'a haber ver (autoSave tetikle)
+  touch() {
+    _invalidate();
+    _autoSave();
+  },
+
+  // ── BATCH ────────────────────────────────────────────────────────────────
+  // tx icinde birden fazla mutation -> tek saveSecure (debounce zaten yapiyor
+  // ama acik bati niyet icin).
+  tx(fn) {
+    _suppressAutoSave++;
+    try { fn(); }
+    finally {
+      _suppressAutoSave--;
+      _autoSave();
+    }
+  },
+
+  // ── INTERNAL (setter koprusu icin) ───────────────────────────────────────
+  _setSilent(key, value) {
+    _state[key] = value;
+    _invalidate();
+    _markDirty();
+  },
+
+  // Debug / introspection
+  _snapshot() {
+    const out = {};
+    ALL_KEYS.forEach(k => { out[k] = _state[k]; });
+    return out;
+  }
+};
+
+// ── window.<key> getter/setter koprusu ─────────────────────────────────────
+// Eski kodlar: window.pays / window.pays.push(...) / window.pays = [...] calismaya devam eder.
+ALL_KEYS.forEach(key => {
+  try {
+    Object.defineProperty(window, key, {
+      configurable: true,
+      enumerable: true,
+      get() { return _state[key]; },
+      set(v) { Store._setSilent(key, v); }
+    });
+  } catch(e) {
+    console.warn('[Store] window.' + key + ' defineProperty hatasi:', e);
+  }
+});
+
+window.Store = Store;
+console.log('[Store] hazir.');

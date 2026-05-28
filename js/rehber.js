@@ -89,7 +89,7 @@ function rhbImport() {
       data.forEach(p=>{p.name=(p.name||'').toLocaleUpperCase('tr');p.company=(p.company||'').toLocaleUpperCase('tr');if(p.phones)p.phones=p.phones.map(ph=>({...ph,num:normPhone(ph.num)}));});
       const existKey=new Set(window.rehber.map(p=>rhbGetName(p)+'|'+(p.phones?.[0]?.num||'')));
       let added=0,skipped=0;
-      data.forEach(p=>{const key=rhbGetName(p)+'|'+(p.phones?.[0]?.num||'');if(existKey.has(key)){skipped++;return;}p.id=p.id||Date.now()+added;window.rehber.push(p);added++;existKey.add(key);});
+      data.forEach(p=>{const key=rhbGetName(p)+'|'+(p.phones?.[0]?.num||'');if(existKey.has(key)){skipped++;return;}p.id=p.id||Date.now()+added;window.Store.push('rehber', p);added++;existKey.add(key);});
       window.rhbSave();renderRhb();
       if(added>0)window.addLog('rhb_import','Rehber içe aktarıldı',added+' kişi eklendi'+(skipped>0?', '+skipped+' atlandı':''),6);
       alert(added+' kişi eklendi'+(skipped>0?', '+skipped+' zaten mevcut':'')+'.');
@@ -185,8 +185,8 @@ function rhbSavePerson() {
   const email=document.getElementById('RMOD_EMAIL').value.trim();
   const note=document.getElementById('RMOD_NOTE').value.trim();
   const eid=document.getElementById('RMOD_ID').value;
-  if(eid){const p=window.rehber.find(x=>String(x.id)===String(eid));if(p)Object.assign(p,{name,company,phones,email,note});window.addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
-  else{window.rehber.push({id:Date.now(),name,company,phones,email,note});window.addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
+  if(eid){const p=window.rehber.find(x=>String(x.id)===String(eid));if(p)window.Store.mutateItem(p,{name,company,phones,email,note});window.addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
+  else{window.Store.push('rehber',{id:Date.now(),name,company,phones,email,note});window.addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
   window.rhbSave();window.closeMov('RMOD');renderRhb();
 }
 
@@ -194,7 +194,7 @@ function rhbDel(id) {
   const p=window.rehber.find(x=>String(x.id)===String(id));
   if(!confirm(rhbGetName(p)+' silinecek. Emin misin?'))return;
   window.addLog('rhb_del','Kişi silindi',rhbGetName(p||{})+(p?.company?' · '+p.company:''),6);
-  window.rehber=window.rehber.filter(x=>String(x.id)!==String(id));
+  window.Store.removeWhere('rehber', x => String(x.id)===String(id));
   window.rhbSave();window.closeRDET();renderRhb();
 }
 

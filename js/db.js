@@ -262,14 +262,19 @@ async function loadSecure() {
   if (!enc) return;
   try {
     const data = await window.decryptData(enc, window._cryptoKey);
-    window.pays      = data.pays      || [];
-    window.creds     = data.creds     || [];
-    window.hist      = data.hist      || [];
-    window.persons   = data.persons   || [];
-    window.notes     = data.notes     || [];
-    window.paidItems = data.paidItems || [];
-    window.rehber    = data.rehber    || [];
-    window.actLog    = data.actLog    || [];
+    // Toplu sessiz atama — saveSecure tetiklenmez (veri zaten kaynak)
+    if (window.Store) {
+      window.Store.hydrate(data);
+    } else {
+      window.pays      = data.pays      || [];
+      window.creds     = data.creds     || [];
+      window.hist      = data.hist      || [];
+      window.persons   = data.persons   || [];
+      window.notes     = data.notes     || [];
+      window.paidItems = data.paidItems || [];
+      window.rehber    = data.rehber    || [];
+      window.actLog    = data.actLog    || [];
+    }
     // Sadece Firebase bos ise localStorage verisini yukle (migration)
     // Firebase hatali iken localStorage ile ezme - DATA LOSS onlendi
     if (!fbHadData && window._fbSave) { try { await window._fbSave(enc); } catch(e) {} }
@@ -289,18 +294,20 @@ async function migrateToV7() {
   const migKey = 'v7-migrated-' + (window._fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
   window._suppressSave = true;
-  window.pays = (window.pays||[]).map(p => {
+  const _migPays = (window.pays||[]).map(p => {
     const entry = {...p};
     if (!entry.groupId) entry.groupId = String(Math.floor(Number(entry.rp || entry.id)));
     delete entry.rec; delete entry.rp; delete entry.rs; delete entry.rm;
     return entry;
   });
+  if (window.Store) window.Store.replace('pays', _migPays); else window.pays = _migPays;
   if (!(window.paidItems||[]).length) {
     const allItems = [...(window.pays||[])];
     (window.creds||[]).forEach(c => (c.pays||[]).forEach(i => allItems.push({...i, name: c.name, currency: 'TRY', _cid: c.id, _ii: i.idx})));
-    window.paidItems = allItems
+    const _migPaid = allItems
       .filter(p => p.status === 'paid' || p.status === 'partial')
       .map(p => ({...p, paidId: 'pi_' + Date.now() + '_' + Math.random()}));
+    if (window.Store) window.Store.replace('paidItems', _migPaid); else window.paidItems = _migPaid;
   }
   window._suppressSave = false;
   await saveSecureNow();

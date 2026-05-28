@@ -103,7 +103,7 @@ function doLogDel() {
   const from=new Date(d1).getTime(),to=new Date(d2).getTime();
   if(isNaN(from)||isNaN(to)){alert('Geçersiz tarih');return;}
   const before=window.actLog.length;
-  window.actLog=window.actLog.filter(e=>{const t=new Date(e.at).getTime();return t<from||t>to;});
+  window.Store.removeWhere('actLog', e => { const t=new Date(e.at).getTime(); return !(t<from||t>to); });
   const deleted=before-window.actLog.length;
   window.saveSecure();renderActLog();closeLogDel();
   if(deleted>0)alert(deleted+' kayıt silindi.');else alert('Bu aralıkta kayıt bulunamadı.');
@@ -112,13 +112,13 @@ function doLogDel() {
 function doLogDelSelected() {
   if(!_logSelected.size){alert('Önce silinecek kayıtları seçin.');return;}
   if(!confirm(_logSelected.size+' kayıt silinecek. Emin misin?'))return;
-  window.actLog=window.actLog.filter((_,i)=>!_logSelected.has(i));
+  window.Store.removeWhere('actLog', (_, i) => _logSelected.has(i));
   _logSelected.clear();window.saveSecure();renderActLog();closeLogDel();
 }
 
 function doLogDelAll() {
   if(!confirm('Tüm log silinecek. Emin misin?'))return;
-  window.actLog=[];window.saveSecure();renderActLog();closeLogDel();
+  window.Store.replace('actLog', []);window.saveSecure();renderActLog();closeLogDel();
 }
 
 

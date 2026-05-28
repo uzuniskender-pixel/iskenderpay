@@ -38,11 +38,11 @@ function savePay() {
     const p=window.findPayById(eid);
     if(p){
       const oldName=p.name, oldCat=p.category;
-      Object.assign(p,{name,amount,currency,date,category});
+      window.Store.mutateItem(p,{name,amount,currency,date,category});
       // İsim veya kategori değiştiyse aynı gruptaki tüm kayıtları güncelle
       if(oldName!==name || oldCat!==category){
         window.pays.filter(x=>x.groupId===p.groupId && String(x.id)!==String(p.id))
-          .forEach(x=>{x.name=name;x.category=category;});
+          .forEach(x=>window.Store.mutateItem(x,{name,category}));
       }
     }
   } else {
@@ -52,7 +52,7 @@ function savePay() {
       const totalMo=(pm-1)+i;
       const yr=py+Math.floor(totalMo/12),mo=totalMo%12;
       const lastDay=new Date(yr,mo+1,0).getDate();
-      window.pays.push({id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
+      window.Store.push('pays', {id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0});
     }
   }
   // Fonksiyonun başında okunan değişkenler kullanılır — DOM tekrar okunmaz
@@ -116,7 +116,7 @@ function saveCred() {
     window.addLog('plan_edit','Kredi düzenlendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
   }
   else{
-    window.creds.push({id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr});
+    window.Store.push('creds', {id:'c'+Date.now(),name,total:total||monthly*inst,monthly,inst,start,pays:pArr});
     window.addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
     const srcKey=window._convertSourceKey;
     if(srcKey){
@@ -132,8 +132,8 @@ function saveCred() {
         });
       }
       // Eski pays grubunu sil
-      if(srcKey.startsWith('g_')){const gid=srcKey.replace('g_','');window.pays=window.pays.filter(p=>p.groupId!==gid);}
-      else if(srcKey.startsWith('pay_')){const pid=srcKey.replace('pay_','');window.pays=window.pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);}
+      if(srcKey.startsWith('g_')){const gid=srcKey.replace('g_','');window.Store.removeWhere('pays', p => p.groupId===gid);}
+      else if(srcKey.startsWith('pay_')){const pid=srcKey.replace('pay_','');window.Store.removeWhere('pays', p => String(Math.floor(Number(p.id)))===pid);}
       window._convertSourceKey=null;
       window._convertSourcePays=null;
       if(window.invalidateLookups)window.invalidateLookups();

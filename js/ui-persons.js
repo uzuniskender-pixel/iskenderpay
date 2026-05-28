@@ -59,21 +59,22 @@ function savePerson() {
   if (!name) { alert('İsim zorunlu'); return; }
   const eid = document.getElementById('PREID').value;
   if (eid !== '') {
-    const oldName = window.persons[parseInt(eid)].name;
-    if (oldName !== name) { window.pays.forEach(p => { if(p.name===oldName) p.name=name; }); }
-    window.persons[parseInt(eid)] = {name, desc};
+    const idx = parseInt(eid);
+    const oldName = window.persons[idx].name;
+    if (oldName !== name) { window.pays.forEach(p => { if(p.name===oldName) window.Store.mutateItem(p, {name}); }); }
+    window.Store.spliceAt('persons', idx, 1, {name, desc});
   } else {
     let finalName = name;
     const existing = window.persons.map(p => p.name);
     if (existing.includes(name)) { let i=2; while(existing.includes(name+' '+i)) i++; finalName=name+' '+i; }
-    window.persons.push({name:finalName, desc});
+    window.Store.push('persons', {name:finalName, desc});
   }
   window.savePersons(); window.closeMov('PRM'); renderPersons();
 }
 
 function delPerson(i) {
   if (!confirm('Bu kişiyi silmek istiyor musunuz?')) return;
-  window.persons.splice(i, 1);
+  window.Store.spliceAt('persons', i, 1);
   window.savePersons(); renderPersons();
 }
 
@@ -106,22 +107,24 @@ function saveHistItem() {
   const newName=document.getElementById('HINAM').value.trim();
   const newAmt=parseFloat(document.getElementById('HIAMT').value);
   const newDate=document.getElementById('HIDAT').value;
-  if(newName) p.name=newName;
-  if(!isNaN(newAmt)&&newAmt>0) p.amount=newAmt;
-  if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) p.date=newDate;
+  const _patch={};
+  if(newName) _patch.name=newName;
+  if(!isNaN(newAmt)&&newAmt>0) _patch.amount=newAmt;
+  if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) _patch.date=newDate;
+  if(Object.keys(_patch).length) window.Store.mutateItem(p, _patch);
   window.saveSecure(); ModalManager.close('HIMOD'); renderHist();
 }
 
 function restoreFromHist(i) {
   const p=window.hist[i];if(!p)return;
   const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
-  window.pays.push(restored);window.hist.splice(i,1);
+  window.Store.push('pays', restored);window.Store.spliceAt('hist', i, 1);
   window.save().then(()=>{renderHist();window.render();});
 }
 
-function delHist(i) { window.hist.splice(i,1); save().then(()=>renderHist()); }
+function delHist(i) { window.Store.spliceAt('hist', i, 1); save().then(()=>renderHist()); }
 
-function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.hist=[]; save().then(()=>renderHist()); }
+function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.Store.replace('hist', []); save().then(()=>renderHist()); }
 
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────

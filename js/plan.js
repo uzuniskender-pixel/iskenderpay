@@ -41,8 +41,12 @@ function selectPlan(planId) {
   window._planId = planId;
   localStorage.setItem('v6-active-plan', planId);
   // Veri dizilerini sıfırla — _cryptoKey ve _dataKeyRaw KORUNUYOR
-  window.pays=[]; window.creds=[]; window.hist=[]; window.persons=[];
-  window.notes=[]; window.paidItems=[]; window.rehber=[]; window.actLog=[];
+  if (window.Store) {
+    window.Store.clearAll();
+  } else {
+    window.pays=[]; window.creds=[]; window.hist=[]; window.persons=[];
+    window.notes=[]; window.paidItems=[]; window.rehber=[]; window.actLog=[];
+  }
   document.getElementById('PLS').style.display = 'none';
   const psEl = document.getElementById('PS');
   psEl.style.display = '';

@@ -9,6 +9,7 @@ const STATIC = [
   './manifest.json',
   './version.json',
   './js/firebase.js',
+  './js/store.js',
   './js/state.js',
   './js/util.js',
   './js/compat.js',
