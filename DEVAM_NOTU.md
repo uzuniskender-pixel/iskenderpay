@@ -1,6 +1,6 @@
 # DEVAM NOTU — sonraki oturum için brief
 
-_Son oturum: 2026-05-28 · son commit: **v8.149 / 20260528-70**_
+_Son oturum: 2026-05-28 · son commit: **v8.151 / 20260528-71**_
 
 CLAUDE.md = canonical referans (versiyon geçmişi, mimari notlar, dosya yapısı).
 Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
@@ -9,14 +9,16 @@ Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
 
 ## TL;DR
 
-Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler + **log UI olgunlaşması** + **plan matrisi bug fix** oldu.
-v8.95'te başlayan Hesap modülünden v8.149'a kadar 55+ patch. Altı ana hat:
+Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler + **log UI olgunlaşması** + **plan matrisi bug fix** + **ui-plan.js 3 dosyaya bölündü** + **legacy actLog backfill** oldu.
+v8.95'te başlayan Hesap modülünden v8.151'e kadar 58+ patch. Sekiz ana hat:
 1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
-2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135).
+2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135), **ui-plan.js → render/detail/actions** (v8.150).
 3. Ölü kod toplu temizliği (v8.128-v8.133): persist alias'ları, firestore salt helper'ları, util artıkları, UI handler'ları, Firebase window expose'ları — toplam ~70 satır.
 4. `addLog` zenginleştirildi (v8.136 + v8.139 + v8.140 + v8.146): yeni `ctx = {personId, groupId}` 5. parametre + log render rozetleri + 7 caller bağlandı (v8.140) + 6 ui-plan caller'a `personId` eklendi (v8.146).
 5. **Log UI olgunlaştı** (v8.143-v8.145): "Kişi" silme modu (LOG_DEL_BAR 3. mode) + 📋/👤 icon jump + .jump-flash highlight (v8.144) + Hepsi/Bugün/Bu hafta/Bu ay tarih filtresi (v8.145) + person dropdown filter (v8.145 wiring) — actLog artık zengin metadata + zengin UI ile tüketiliyor.
 6. **Plan matrisi bug fix** (v8.147): `togglePaidMonths` özelliği ay-bazlı filter yapıyordu (yanlış), satır-bazlı olarak düzeltildi.
+7. **Legacy actLog backfill** (v8.148): `_backfillPersonIds`'a Pass 3 eklendi — v8.140 öncesi entry'lere `detail` segmentinden isim eşleşmesiyle `personId` atanır (rhb_*/cred_add/taksit skip'leri ile false positive azaltıldı). Person-modu del + person-filter eski entry'leri de yakalar.
+8. **rehber.js event delegation tamamlandı** (v8.151): v8.121'de başlayan pattern devam ettirildi — kalan 6 inline `onclick` handler container delegation'a çevrildi (`renderRhb` card + `openRhbDetail` 5 buton); 6 window export silindi (0 caller).
 
 ---
 
@@ -59,6 +61,9 @@ v8.95'te başlayan Hesap modülünden v8.149'a kadar 55+ patch. Altı ana hat:
 | **ui-plan addLog personId** | v8.146 | 6 caller'a ctx'e `personId` eklendi (addToMonth → refItem.personId; markOk/undoCell/delMonthEntry → p.personId; delByKey g_+pay_ → toDelete[0].personId); cred del dokunulmadı; v8.143 person-del + v8.145 person-filter artık bu entry'leri yakalar (v8.140 öncesi entry'ler hâlâ "kişi-bağımsız") |
 | **paid rows hide bug fix** | v8.147 | `ui-plan.js#render` togglePaidMonths özelliği — bug: `allMonths.filter(...)` ay-bazlı (yanlış); fix: `rowKeys.filter(monthKeys.some(status!=='paid'))` satır-bazlı; months hep allMonths; dnMap paid filter SONRASI (disambiguation doğru); boş satır korunur |
 | **log-jump CSS class** | v8.149 | log.js'teki inline span style'ları (`👤`/`📋` jump ikonları) `.log-jump` CSS class'ına refactor edildi (app.css'e taşındı); padding 2px 5px + border-radius + hover transition + tıklama alanı genişledi; davranış aynı, kod temizlendi |
+| **actLog personId backfill (Pass 3)** | v8.148 | `app.js#_backfillPersonIds`'a 3. pass: v8.140 öncesi entry'lere `detail`'in ilk ` · ` segmentinden `Hesap._baseOf` + persons Map lookup ile `personId` atanır. Skip kuralları: (1) entry.personId set (idempotent), (2) `e.type` `rhb_*` (rehber ≠ plan participant), (3) `e.type === 'cred_add'`, (4) `detail` `' taksit'` içeriyor (cred plan_edit/del'i yakalar), (5) boş namePart. Her `mutateItem` autoSave debounce'a düşer (tek batch). Console: `[backfill] N actLog personId atandı`. Etki: eski entry'ler artık person-modu del + person-filter dropdown'a görünür. Net Δ: +18 satır. |
+| **ui-plan.js 3 dosyaya bölündü** | v8.150 | 626 satırlık monolitik dosya 3 sorumluluğa ayrıştırıldı: **`ui-plan-render.js`** (~272 satır): `getAllItems`/`buildMx`/`render`/`renderHaftaWidget`/`renderGecWidget` + `store:change` listener; **`ui-plan-detail.js`**: hücre/satır detay paneli (`openRow`/`openCell`/`closeDV`/`closeRDET`/`openEmptyCell`); **`ui-plan-actions.js`**: CRUD + krediye dönüştürme + ödenmiş ay toggle. Cross-module bağımlılıklar `window.*` üzerinden. `index.html` import sırası: render → detail → actions. Davranış değişikliği 0. |
+| **rehber.js event delegation tamamlandı** | v8.151 | v8.121 pattern devamı — kalan 6 inline `onclick` event delegation'a çevrildi. **renderRhb**: card `onclick="openRhbDetail(...)"` → `data-detail-id` + RHB_LIST one-shot delegation. **openRhbDetail** 5 buton: copy → `data-copy`, edit → `data-edit-id`, del → `data-del-id`, close → `data-close` + RDET_C delegation. **6 window export silindi** (0 caller): `openRhbDetail`/`rhbCopy`/`rhbFallback`/`rhbFeedback`/`openRhbEdit`/`rhbDel`. `closeRDET` korundu (index.html caller). One-shot flag (`_rhbListHandlerAttached`/`_rdetHandlerAttached`) memory leak engelleyici. |
 
 ---
 
@@ -103,24 +108,27 @@ Her `window._X` flag tek bir noktada — `js/store.js` `_persistState` veya `_se
 
 | Tag | Commit | Notlar |
 |---|---|---|
-| **`v8.147-stable`** _(öneri)_ | `41a938f` | Log UI olgunlaşması (silme/jump/date+person filter) + ui-plan personId genişlemesi + paid rows hide bug fix dahil bugünün substansiyel baseline'ı; actLog entry'leri zengin ctx ile yazılıyor + zengin UI ile tüketiliyor. v8.149 sadece CSS polish (`.log-jump` class refactor) — davranış v8.147 ile birebir aynı, bu yüzden canonical restore tag v8.147 |
-| `v8.140-stable` _(önceki)_ | `f9d7fb5` | addLog ctx caller bağlama tamamlandı — addLog zenginleştirme paketi (v8.136 + v8.139 + v8.140) + validate.js ayrımı + warn-toast mobil fix dahil baseline; log UI henüz olgunlaşmamış |
+| **`v8.150-stable`** _(öneri)_ | `19f0b90` | ui-plan.js 3 dosyaya bölünmüş (render/detail/actions ayrımı) + actLog personId backfill Pass 3 (v8.148) tamamlanmış baseline. Önceki baseline'lardan farkı: modül haritası daha temiz (626 satırlık monolitik dosya gitti) + eski actLog entry'leri person-filter'a görünür. v8.151 sadece rehber.js inline handler temizliği (event delegation), v8.149 sadece CSS polish — bu üç commit fonksiyonel davranışı değiştirmez, bu yüzden canonical restore tag v8.150 |
+| `v8.147-stable` _(önceki)_ | `41a938f` | Log UI olgunlaşması (silme/jump/date+person filter) + ui-plan personId genişlemesi + paid rows hide bug fix dahil önceki baseline; ui-plan.js hâlâ monolitik (626 satır); actLog backfill Pass 3 yok |
+| `v8.140-stable` | `f9d7fb5` | addLog ctx caller bağlama tamamlandı — addLog zenginleştirme paketi (v8.136 + v8.139 + v8.140) + validate.js ayrımı + warn-toast mobil fix dahil baseline; log UI henüz olgunlaşmamış |
 | `v8.139-stable` | `73f9374` | actLog ctx render dahil ama caller'lar henüz bağlanmamış |
 | `v8.128-stable` | `a7ca043` | Modül ayrıştırması (auth-pin + app.css + firestore/persist) tamamlanmış önceki baseline |
 | `v8.120-stable` | `b99e570` | Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline |
 | `v8.112-stable` | `d03d5bc` | Daha eski — personId backfill öncesi |
 
-**Öneri:** v8.147 yeni baseline. Bugün yapılanların tamamı (log UI olgunlaşması + ui-plan personId + paid rows bug fix) bu commit'te. Tag oluştur:
+**Öneri:** v8.150 yeni baseline. ui-plan.js modülerleştirmesi + actLog backfill Pass 3 bu commit'te. Tag oluştur:
 ```
-git tag v8.147-stable 41a938f && git push origin v8.147-stable
+git tag v8.150-stable 19f0b90 && git push origin v8.150-stable
 ```
+
+Önceki canonical (v8.147) zaten tag'lendi — `git tag --list` ile doğrula.
 
 Geri dönüş (önceki baseline'a):
 ```
-git reset --hard v8.140-stable
+git reset --hard v8.147-stable
 ```
 
-Önceki baseline'ı (v8.140) güvende tutmak için (tag yoksa):
+Daha eski baseline'a geri dönmek için:
 ```
-git tag v8.140-stable f9d7fb5 && git push origin v8.140-stable
+git reset --hard v8.140-stable
 ```
