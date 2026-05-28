@@ -1,13 +1,23 @@
-// js/ui-plan-detail.js — iskenderpay (v8.150)
-// Detail panel (DV) modal açma fonksiyonları. ui-plan.js'ten v8.150'de ayrıştırıldı.
-// Cross-module çağrılar: window.getAllItems, window.buildMx (render.js'ten).
+// js/ui-plan-detail.js — iskenderpay (v8.152)
+// Detail panel (DV) modal açma fonksiyonları + dialog-flow orchestrator'ları
+// (convertToCredit + editByKey — v8.152'de actions.js'ten taşındı).
+// ui-plan.js'ten v8.150'de ayrıştırıldı.
+// Cross-module çağrılar: window.getAllItems, window.buildMx (render.js);
+// window.editCred, window.editPay, window.updLP (ui-pay.js).
 
 // ── DETAIL PANEL (DV) ───────────────────────
 function openRow(keyEnc) {
   const key=decodeURIComponent(keyEnc), all=window.getAllItems(), mx=window.buildMx(all);
   const dispName=mx[key]?._displayName||mx[key]?._name||key;
   const months=Object.keys(mx[key]||{}).filter(k=>!k.startsWith('_')).sort();
-  let h=`<div class="dtitle">${dispName}</div><div class="dsub">Tüm aylar — tıkla işaretlemek için</div>`;
+  // v8.157: kişi adı + groupId çözümü (actLog history için)
+  const firstItem=months.length?mx[key][months[0]].items[0]:null;
+  const personId=firstItem&&firstItem.personId;
+  const groupId=key.startsWith('g_')?key.replace('g_',''):key.startsWith('pay_')?(firstItem&&firstItem.groupId):null;
+  const personName=personId?((window.persons||[]).find(p=>p.id===personId)||{}).name:null;
+  let h=`<div class="dtitle">${window.esc(dispName)}</div>`;
+  if(personName) h+=`<div class="dsub" style="margin-bottom:4px">👤 ${window.esc(personName)}</div>`;
+  h+=`<div class="dsub">Tüm aylar — tıkla işaretlemek için</div>`;
   months.forEach(m=>{
     const c=mx[key][m];if(!c||!c.items)return;
     const s=c.status||'pending',over=s!=='paid'&&c.items.some(x=>window.isOD(x));
@@ -25,6 +35,24 @@ function openRow(keyEnc) {
       </span>
     </div>`;
   });
+  // v8.157: actLog history (groupId varsa, cred için skip — cred'in groupId'si yok)
+  if(groupId&&window.actLog){
+    const history=(window.actLog||[]).filter(e=>e.groupId===groupId).slice(0,10);
+    if(history.length){
+      h+=`<div style="margin-top:10px;border-top:1px solid var(--bdr);padding-top:8px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Aktivite Geçmişi (${history.length})</div>`;
+      history.forEach(e=>{
+        const time=e.at?window.fmtLogTime(e.at):'';
+        const title=e.title?String(e.title):'(?)';
+        const detail=e.detail?String(e.detail):'';
+        h+=`<div style="display:flex;gap:8px;font-size:11px;padding:3px 0;color:var(--muted)">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${window.esc(title)}${detail?' · '+window.esc(detail):''}</span>
+          <span style="flex-shrink:0;font-size:10px">${window.esc(time)}</span>
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+  }
   const isCredRow = key.startsWith('cred_');
   h+=`<div class="dacts">
     <button class="dact da-edit" onclick="editByKey('${encodeURIComponent(key)}')">Düzenle</button>
@@ -147,10 +175,61 @@ function openKM(keyEnc,month) {
   ModalManager.open('KM');
 }
 
+// ── DIALOG FLOW (DV → diğer modal) ──────────
+// DV'den başka modal'a geçiş orchestrator'ları. v8.152'de actions.js'ten taşındı.
+function convertToCredit(keyEnc) {
+  const key=decodeURIComponent(keyEnc);
+  const gid=key.startsWith('g_')?key.replace('g_',''):null;
+  if(!gid){alert('Sadece normal odeme satirlari krediye donusturulebilir.');return;}
+  // Gruptaki tum kayitlar tarihe gore sirali
+  const srcPays=window.pays.filter(p=>p.groupId===gid).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!srcPays.length){alert('Kayit bulunamadi.');return;}
+  const name=srcPays[0].name;
+  const count=srcPays.length;
+  const startDate=srcPays[0].date;
+  const monthly=Math.round(srcPays[0].amount);
+  // Odeme durumlarini sakla — saveCred sonrasi kredi taksitlerine islenecek
+  window._convertSourceKey=key;
+  window._convertSourcePays=srcPays.map(p=>({date:p.date,status:p.status||'pending',paid:p.paid||0,amount:p.amount}));
+  // Modali doldur
+  document.getElementById('CEID').value='';
+  document.getElementById('CN').value=name;
+  document.getElementById('CT').value='';
+  document.getElementById('CI').value=count;
+  document.getElementById('CM2').value=monthly;
+  document.getElementById('CS').value=startDate;
+  if(typeof window.updLP==='function') window.updLP();
+  window.closeDV();
+  setTimeout(()=>ModalManager.open('CM'),50);
+}
+
+function editByKey(keyEnc) {
+  const key=decodeURIComponent(keyEnc);
+  window.closeDV();
+  if(key.startsWith('cred_')){
+    const credId=key.replace('cred_','');
+    const c=window.findCredById(credId);
+    if(c) setTimeout(()=>window.editCred(c.id),50);
+    else alert('Düzenlenecek kayıt bulunamadı.');
+  } else if(key.startsWith('g_')){
+    const gid=key.replace('g_','');
+    const p=window.findPaysByGroup(gid)[0];
+    if(p) setTimeout(()=>window.editPay(p.id),50);
+    else alert('Düzenlenecek kayıt bulunamadı.');
+  } else {
+    const pid=key.replace('pay_','');
+    const p=window.pays.find(x=>String(Math.floor(Number(x.id)))===pid);
+    if(p) setTimeout(()=>window.editPay(p.id),50);
+    else alert('Düzenlenecek kayıt bulunamadı.');
+  }
+}
+
 // ── GLOBAL COMPAT ──────────────────────────
-window.openRow       = openRow;
-window.openCell      = openCell;
-window.openEmptyCell = openEmptyCell;
-window.openKM        = openKM;
-window.closeDV       = closeDV;
-window.closeRDET     = closeRDET;
+window.openRow         = openRow;
+window.openCell        = openCell;
+window.openEmptyCell   = openEmptyCell;
+window.openKM          = openKM;
+window.closeDV         = closeDV;
+window.closeRDET       = closeRDET;
+window.convertToCredit = convertToCredit;
+window.editByKey       = editByKey;
