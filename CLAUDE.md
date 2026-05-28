@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.93 / 20260528-21
+## Mevcut Durum (28 Mayıs 2026) — v8.94 / 20260528-22
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.94 | 20260528-22 | `sync.js` realtime callback'ine `renderActLog` çağrısı eklendi — uzak sekmeden gelen actLog değişiklikleri artık aktivite log sekmesinde de yansıyor |
 | v8.93 | 20260528-21 | **Merkezi Store pattern (Aşama 2)**: CRUD mutation site'ları Store API'ye geçirildi — `log.js` (actLog filter/clear → `removeWhere`/`replace`), `rehber.js` (push/filter/Object.assign → `push`/`removeWhere`/`mutateItem`), `ui-pay.js` (savePay/saveCred push'ları + convert-source filter), `ui-plan.js` (10+ site: addToMonth/markOk/undoCell/doPartial/resetPartial/delByKey/delMonthEntry/delCellItems), `ui-persons.js` (savePerson/delPerson/restoreFromHist/delHist/clrHist + saveHistItem mutateItem), `ui-notes.js` (saveNote/delNote/savePaidItem/delPaidItem). Manuel `window.saveSecure()`/`window.save()` çağrıları KORUNDU (debounce sayesinde çift yazma olmuyor — Aşama 3'te temizlenecek). Ölü dosyalar `ui.js`/`ui-data.js`/`ui-misc.js` (v8.90'da kaldırıldı, FS'te artık) atlandı. |
 | v8.92 | 20260528-20 | **Merkezi Store pattern (Aşama 1)**: `js/store.js` eklendi — 8 dizi + rates için tek otorite; `window.<key>` getter/setter köprüsü (Object.defineProperty) — geriye uyum korunuyor; bulk reassign noktaları (`state.js#clearState`, `db.js#loadSecure`+`migrateToV7`, `sync.js`, `plan.js#selectPlan`, `backup.js#doRestore`+`undoRestore`) `Store.hydrate`/`Store.clearAll`/`Store.replace` API'lerine geçirildi. Yeni API: `Store.get/hydrate/replace/push/unshift/removeWhere/spliceAt/mutateItem/touch/tx/clearAll`. Mutation API'leri `invalidateLookups` + `_dirty=true` + `saveSecure()` debounce'unu otomatik tetikler. |
 
@@ -92,7 +93,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Veri yardımcıları
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.93", "build": "20260528-21"}
+version.json        {"v": "8.94", "build": "20260528-22"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -104,6 +105,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.94 | 20260528-22 | sync.js callback'ine renderActLog eklendi |
 | v8.93 | 20260528-21 | Merkezi Store pattern Aşama 2 — tüm CRUD mutation site'ları Store API'ye geçirildi |
 | v8.92 | 20260528-20 | Merkezi Store pattern Aşama 1 — js/store.js + bulk reassign migration |
 | v8.91 | 20260528-19 | fix.py, fix_ver.py geçici dosyalar silindi |

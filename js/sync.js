@@ -45,6 +45,7 @@ async function startRealtimeSync() {
       if (window.renderPersons)window.renderPersons();
       if (window.renderNotes)  window.renderNotes();
       if (window.renderRhb)    window.renderRhb();
+      window.renderActLog && window.renderActLog();
       setSyncDot('synced');
       showSyncToast();
     } catch(e) { console.warn('Sync decrypt hatasi:', e); }
