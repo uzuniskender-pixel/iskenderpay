@@ -193,10 +193,10 @@ function renderCredSummary() {
       // Plan matrisindeki sira ile ayni olsun
       const keys = Object.keys(mx).filter(k=>mx[k]._name!==undefined)
         .sort((a,b2)=>(mx[a]._name||'').localeCompare(mx[b2]._name||'','tr'));
-      const nameIdxMap={}, nameCountMap={};
+      const nameIdxMap={}, nameCountMap={}, dnMap={};
       keys.forEach(k=>{const n=baseOf(mx[k]._name||'');nameCountMap[n]=(nameCountMap[n]||0)+1;});
-      keys.forEach(k=>{const n=baseOf(mx[k]._name||'');if(nameCountMap[n]>1){const idx=nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._dn=idx===1?n:n+' '+(idx-1);}else{mx[k]._dn=n;}});
-      return mx[credKey]?._dn || b;
+      keys.forEach(k=>{const n=baseOf(mx[k]._name||'');if(nameCountMap[n]>1){const idx=nameIdxMap[n]=(nameIdxMap[n]||0)+1;dnMap[k]=idx===1?n:n+' '+(idx-1);}else{dnMap[k]=n;}});
+      return dnMap[credKey] || b;
     }
     return b;
   });

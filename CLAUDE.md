@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.86 / 20260528-14
+## Mevcut Durum (28 Mayıs 2026) — v8.87 / 20260528-15
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -102,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.87 | 20260528-15 | Küçük fixler: _doSave finally→dirty=false, loadSecure dirty=false, SW install log, mx._dn pollution fix |
 | v8.86 | 20260528-14 | Kredi kartı display name: pays base name'leri de sayılır, plan matrisiyle tutarlı |
 | v8.85 | 20260528-13 | Dirty flag: değişiklik varken sync in-memory'i ezmez; saveSecure→dirty=true, _doSave sonrası→dirty=false |
 | v8.84 | 20260528-12 | _doSave öncesi groupId tutarlılık kontrolü: aynı groupId'de farklı isim varsa en yaygın isme normalize edilir |

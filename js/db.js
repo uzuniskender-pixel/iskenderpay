@@ -215,7 +215,7 @@ async function _doSave() {
   };
   const enc = await window.encryptData(data, window._cryptoKey);
   if (window._fbSave) {
-    try { await window._fbSave(enc); window._lastUpdated = Date.now(); window._dirty = false; } catch(e) { console.warn('Firebase kayıt hatası:', e); }
+    try { await window._fbSave(enc); window._lastUpdated = Date.now(); } catch(e) { console.warn('Firebase kayıt hatası:', e); } finally { window._dirty = false; }
   }
   localStorage.setItem('v5-data-' + window._planId, enc);
   localStorage.setItem('v5-rates-' + window._planId, JSON.stringify(window.rates));
@@ -255,6 +255,7 @@ async function loadSecure() {
   } catch(e) {
     throw new Error('decrypt_failed');
   }
+  window._dirty = false;  // Yeni veri yüklendi — bekleyen değişiklik yok
   const r = localStorage.getItem('v5-rates-' + window._planId) || localStorage.getItem('v5-rates');
   if (r) try { Object.assign(window.rates, JSON.parse(r)); } catch(e) {}
 }

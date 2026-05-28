@@ -32,7 +32,7 @@ const STATIC = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {})));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC).catch(e => console.warn('[SW] Cache hatasi:', e))));
   self.skipWaiting();
 });
 
