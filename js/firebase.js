@@ -60,7 +60,8 @@ onAuthStateChanged(_auth, (user) => {
     if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
     if (plsEl) plsEl.style.display = 'flex';
     if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-    window.renderPlanNames();
+    // firebase.js ayri <script> blogunda yukleniyor — plan.js'ten once eval olabilir; auth cache hizli fire ederse defensive guard gerekli
+    if (typeof window.renderPlanNames === 'function') window.renderPlanNames();
   } else {
     _fbUid = null;
     window._fbUid = null;
