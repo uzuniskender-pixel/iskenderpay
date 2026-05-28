@@ -32,8 +32,28 @@ function _backfillPersonIds() {
       npy++;
     }
   });
+  // Pass 3: actLog'a personId ata — entry.detail'in ilk segmentinden isim eşleşmesi (v8.148)
+  const personByName = new Map();
+  (window.persons || []).forEach(q => { if (q.id) personByName.set(q.name, q.id); });
+  let nal = 0;
+  (window.actLog || []).forEach(e => {
+    if (e.personId) return;
+    // rhb_* tipleri rehber (contact) hakkında, plan participant değil — skip
+    if (e.type && e.type.startsWith('rhb_')) return;
+    // cred-iliskili tipleri skip (false positive azaltir): cred_add ve detail'i 'taksit' iceren plan_edit/plan_del
+    if (e.type === 'cred_add') return;
+    const detail = e.detail || '';
+    if (detail.includes(' taksit')) return;
+    const firstSep = detail.indexOf(' · ');
+    const namePart = (firstSep > 0 ? detail.substring(0, firstSep) : detail).trim();
+    if (!namePart) return;
+    const base = baseOf(namePart);
+    const pid = personByName.get(base);
+    if (pid) { window.Store.mutateItem(e, { personId: pid }); nal++; }
+  });
   if (np > 0)  console.log('[backfill] ' + np + ' persons id atandı');
   if (npy > 0) console.log('[backfill] ' + npy + ' pays personId atandı');
+  if (nal > 0) console.log('[backfill] ' + nal + ' actLog personId atandı');
 }
 
 function enterApp() {
