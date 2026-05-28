@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.160 / 20260528-78
+## Mevcut Durum (29 Mayıs 2026) — v8.161 / 20260528-79
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -162,6 +162,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.161 | 20260528-79 | Ayarlar T5 compact 2-kolon kart grid: 5 fonksiyonel kart (Şifre/Kur/Yedek/Güncelleme/Oturum) `.acard-grid` (grid-template-columns:1fr 1fr) container'ına; Bilgi kartı altta tam genişlik (renderAI iç stat grid sıkışmasın); 4 açıklama kısaltıldı; mobil <480px tek kolon @media; JS dokunulmadı; davranış değişikliği 0 |
 | v8.160 | 20260528-78 | actLog groupId bazlı filtre (log.js + index.html): personId filter pattern'ı groupId için aynen klonlandı — `_logGroupFilter` state, `_passesGroupFilter` helper, `_renderLogGroupFilterOptions` populator (findPaysByGroup name + count, silinmiş grup label), `setLogGroupFilter` setter, LOG_FILT_GROUP select dropdown; üç filter (date+person+group) AND-combine; empty msg öncelik group>person>date; toggleSelectAllLogs/toggleLogItem üç filter'ı hesaba katar |
 | v8.156 | 20260528-74 | saveCred addLog ctx + credId field: ui-pay.js#saveCred'in 2 addLog çağrısına `{personId, credId}` (savePay pattern); app.js#addLog `ctx.credId` desteği; v8.143/v8.144/v8.145 cred entry'lerini de yakalar; Pass 3 backfill dokunulmadı (legacy false positive riski sürüyor); v8.155 linter integrity.js refactor için kullandığından bu iş v8.156'ya kaydırıldı |
 | v8.155 | 20260528-73 | groupId normalization → js/integrity.js: persist.js#_doSave'in groupId normalize bloğu (24 satır) integrity.js'e taşındı; _doSave artık normalizeBeforeSave + validateBeforeSave ardışık çağırır; sahiplik: integrity = mutation, validate = read-only |

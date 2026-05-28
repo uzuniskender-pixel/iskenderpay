@@ -242,32 +242,49 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <div class="ph"><h1>⚙️ <span>Ayarlar</span></h1></div>
       <div style="padding:0 16px 70px">
 
-        <div class="acard">
-          <div class="acard-title">🔐 Şifre Değiştir</div>
-          <div class="acard-sub">Mevcut şifreyi doğrula, yeni şifre belirle</div>
-          <div class="pw-wrap"><input class="fi mono-inp" id="CP" type="password" placeholder="Mevcut şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP').focus()"><button class="pw-eye" onclick="toggleEye('CP')">👁</button></div>
-          <div class="pw-wrap"><input class="fi mono-inp" id="NP" type="password" placeholder="Yeni şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP2').focus()"><button class="pw-eye" onclick="toggleEye('NP')">👁</button></div>
-          <div class="pw-wrap" style="margin-bottom:6px"><input class="fi mono-inp" id="NP2" type="password" placeholder="Yeni şifre tekrar" onkeydown="if(event.key===\'Enter\')chPass()"><button class="pw-eye" onclick="toggleEye('NP2')">👁</button></div>
-          <div id="PM" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
-          <button onclick="chPass()" class="btn bs" style="width:100%">Şifreyi Güncelle</button>
-        </div>
+        <div class="acard-grid">
 
-        <div class="acard">
-          <div class="acard-title">💱 Kur Bilgisi</div>
-          <div class="acard-sub">Otomatik kur alınamazsa elle gir.</div>
-          <div class="fg"><label class="fl">EUR / TRY</label><input class="fi mono-inp" id="ME" type="number" placeholder="ör: 51.15" step="0.01" inputmode="decimal"></div>
-          <div class="fg"><label class="fl">USD / TRY</label><input class="fi mono-inp" id="MU" type="number" placeholder="ör: 44.30" step="0.01" inputmode="decimal"></div>
-          <div class="fg"><label class="fl">Altın (gr / TRY)</label><input class="fi mono-inp" id="MG" type="number" placeholder="ör: 6398" inputmode="decimal"></div>
-          <button onclick="saveRates()" class="btn bs" style="width:100%">Kurları Kaydet</button>
-        </div>
-
-        <div class="acard">
-          <div class="acard-title">☁️ Veri Yedekleme</div>
-          <div class="acard-sub">Yedek şifreli JSON olarak indirilir. Şifreni bilen geri yükleyebilir.</div>
-          <div style="display:flex;gap:8px">
-            <button onclick="doBackup()" class="btn bs" style="flex:1">Yedek Al</button>
-            <button data-modal-open="RM" class="btn bc" style="flex:1">Geri Yükle</button>
+          <div class="acard">
+            <div class="acard-title">🔐 Şifre Değiştir</div>
+            <div class="acard-sub">Yeni şifre belirle</div>
+            <div class="pw-wrap"><input class="fi mono-inp" id="CP" type="password" placeholder="Mevcut şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP').focus()"><button class="pw-eye" onclick="toggleEye('CP')">👁</button></div>
+            <div class="pw-wrap"><input class="fi mono-inp" id="NP" type="password" placeholder="Yeni şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP2').focus()"><button class="pw-eye" onclick="toggleEye('NP')">👁</button></div>
+            <div class="pw-wrap" style="margin-bottom:6px"><input class="fi mono-inp" id="NP2" type="password" placeholder="Yeni şifre tekrar" onkeydown="if(event.key===\'Enter\')chPass()"><button class="pw-eye" onclick="toggleEye('NP2')">👁</button></div>
+            <div id="PM" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
+            <button onclick="chPass()" class="btn bs" style="width:100%">Şifreyi Güncelle</button>
           </div>
+
+          <div class="acard">
+            <div class="acard-title">💱 Kur Bilgisi</div>
+            <div class="acard-sub">Manuel kur girişi</div>
+            <div class="fg"><label class="fl">EUR / TRY</label><input class="fi mono-inp" id="ME" type="number" placeholder="ör: 51.15" step="0.01" inputmode="decimal"></div>
+            <div class="fg"><label class="fl">USD / TRY</label><input class="fi mono-inp" id="MU" type="number" placeholder="ör: 44.30" step="0.01" inputmode="decimal"></div>
+            <div class="fg"><label class="fl">Altın (gr / TRY)</label><input class="fi mono-inp" id="MG" type="number" placeholder="ör: 6398" inputmode="decimal"></div>
+            <button onclick="saveRates()" class="btn bs" style="width:100%">Kurları Kaydet</button>
+          </div>
+
+          <div class="acard">
+            <div class="acard-title">☁️ Veri Yedekleme</div>
+            <div class="acard-sub">Şifreli JSON yedek</div>
+            <div style="display:flex;gap:8px">
+              <button onclick="doBackup()" class="btn bs" style="flex:1">Yedek Al</button>
+              <button data-modal-open="RM" class="btn bc" style="flex:1">Geri Yükle</button>
+            </div>
+          </div>
+
+          <div class="acard">
+            <div class="acard-title">🔄 Güncelleme</div>
+            <div class="acard-sub" id="UPD_STATUS">Sürüm kontrol ediliyor...</div>
+            <button onclick="manualCheckUpdate()" class="btn bs" style="width:100%;margin-top:8px">Güncelleme Kontrol Et</button>
+            <button id="UPD_BTN" onclick="updApply()" class="btn bc" style="width:100%;margin-top:6px;display:none">⬇️ Güncellemeyi Yükle</button>
+          </div>
+
+          <div class="acard" style="border-color:rgba(248,113,113,.2)">
+            <div class="acard-title">🚪 Oturum</div>
+            <div class="acard-sub">Hesap çıkışı</div>
+            <button onclick="doGoogleSignOut()" class="btn" style="width:100%;margin-top:8px;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Çıkış Yap</button>
+          </div>
+
         </div>
 
         <div class="acard">
@@ -275,18 +292,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
           <div style="font-size:12px;color:var(--muted);line-height:1.9;font-family:'IBM Plex Mono',monospace" id="AI"></div>
         </div>
 
-        <div class="acard">
-          <div class="acard-title">🔄 Güncelleme</div>
-          <div class="acard-sub" id="UPD_STATUS">Sürüm kontrol ediliyor...</div>
-          <button onclick="manualCheckUpdate()" class="btn bs" style="width:100%;margin-top:8px">Güncelleme Kontrol Et</button>
-          <button id="UPD_BTN" onclick="updApply()" class="btn bc" style="width:100%;margin-top:6px;display:none">⬇️ Güncellemeyi Yükle</button>
-        </div>
-
-        <div class="acard" style="border-color:rgba(248,113,113,.2)">
-          <div class="acard-title">🚪 Oturum</div>
-          <div class="acard-sub">Çıkış yap ve giriş ekranına dön</div>
-          <button onclick="doGoogleSignOut()" class="btn" style="width:100%;margin-top:8px;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Çıkış Yap</button>
-        </div>
       </div>
     </div>
     <!-- REHBER -->
