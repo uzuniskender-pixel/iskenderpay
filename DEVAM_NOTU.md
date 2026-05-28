@@ -10,7 +10,7 @@ Bu dosya = oturumlar arası **kısa devir notu**. Detay için CLAUDE.md'ye bak.
 ## TL;DR
 
 Bu oturum baştan sona **Store sahipliği konsolidasyonu** + **modül ayrıştırmaları** + ikincil temizlikler oldu.
-v8.95'te başlayan Hesap modülünden v8.139'a kadar 40+ patch. Üç ana hat:
+v8.95'te başlayan Hesap modülünden v8.140'a kadar 45+ patch. Dört ana hat:
 1. Dağınık `window._X` durum değişkenleri tek otorite **`Store`** altında toplandı (10 persist flag + session namespace + planId).
 2. Monolitik dosyalar concern'lerine ayrıldı: **auth-pin.js** (v8.110), **app.css** (v8.126), **firestore.js + persist.js** (v8.127), **validate.js** (v8.135).
 3. Ölü kod toplu temizliği (v8.128-v8.133): persist alias'ları, firestore salt helper'ları, util artıkları, UI handler'ları, Firebase window expose'ları — toplam ~70 satır.
@@ -94,14 +94,15 @@ Her `window._X` flag tek bir noktada — `js/store.js` `_persistState` veya `_se
 
 | Tag | Commit | Notlar |
 |---|---|---|
-| **`v8.139-stable`** _(öneri)_ | `73f9374` | actLog ctx render dahil — validate.js ayrımı + addLog ctx + warn-toast mobil fix tamamlanmış son baseline |
+| **`v8.140-stable`** _(öneri)_ | _bu commit_ | addLog ctx caller bağlama tamamlandı — addLog zenginleştirme paketi (v8.136 + v8.139 + v8.140) + validate.js ayrımı + warn-toast mobil fix dahil son baseline |
+| `v8.139-stable` _(önceki)_ | `73f9374` | actLog ctx render dahil ama caller'lar henüz bağlanmamış |
 | `v8.128-stable` | `a7ca043` | Modül ayrıştırması (auth-pin + app.css + firestore/persist) tamamlanmış önceki baseline |
 | `v8.120-stable` | `b99e570` | Store migration ailesi (v8.108-v8.120) + personId gruplama tamamlanmış stabil baseline |
 | `v8.112-stable` | `d03d5bc` | Daha eski — personId backfill öncesi |
 
-**Öneri:** v8.139 yeni baseline. addLog ctx + log.js render + validate.js ayrımı + warn-toast mobil fix paketi tamamlandı.
+**Öneri:** v8.140 yeni baseline. addLog ctx + log.js render + ana caller'lar (savePay/plan ops) bağlama dahil paket tamamlandı. Bu commit'in hash'i ile:
 ```
-git tag v8.139-stable 73f9374 && git push origin v8.139-stable
+git tag v8.140-stable HEAD && git push origin v8.140-stable
 ```
 
 Geri dönüş:
