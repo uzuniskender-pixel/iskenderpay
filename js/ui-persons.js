@@ -172,7 +172,16 @@ function openPersonHist(personId) {
     + '</div>'
     + (s.gecikmis > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr);font-size:12px;color:var(--danger);font-weight:600">⚠ Gecikmiş: '+window.fmt(s.gecikmis)+' ('+s.gecikmisCount+' ödeme)</div>' : '')
     + '</div>';
-  const entries = (window.actLog||[]).filter(e => e.personId === personId);
+  // v8.167: personId-siz eski/cred entry'lerini de yakala — _buildPersonSummary taban-isim mantığıyla tutarlı
+  const baseName = window.Hesap._baseOf(person.name);
+  const entries = (window.actLog||[]).filter(e => {
+    if ((e.type||'').startsWith('rhb_')) return false;
+    if (e.personId === personId) return true;
+    if (!e.personId && e.detail) {
+      return window.Hesap._baseOf((e.detail.split(' · ')[0]) || '') === baseName;
+    }
+    return false;
+  });
   const list = document.getElementById('PHIST_LIST');
   if (!entries.length) {
     list.innerHTML = summaryHTML + '<div class="empty"><div class="ico">📋</div><p>Bu kişiye ait kayıt yok.</p></div>';
