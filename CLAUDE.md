@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.109 / 20260528-37
+## Mevcut Durum (28 Mayıs 2026) — v8.110 / 20260528-38
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.110 | 20260528-38 | **`auth-pin.js` ayrımı**: `doLogin` (~68 satır) + `chPass` (~32 satır) `db.js`'ten yeni `js/auth-pin.js`'e taşındı. db.js artık sadece Firestore data ops + saveSecure/loadSecure/_doSave + migrateToV7 (~260 satır, %30 küçüldü). Auth concern hattı netleşti: `firebase.js` (Google auth init/listener) → `db.js` (Firestore data + persist) → `auth-pin.js` (PIN doğrulama + şifre değiştir). Bağımlılık: auth-pin.js index.html'de db.js'ten **hemen sonra** import edilir (aynı `<script type="module">` bloğu — sequential execution garantili, race riski yok). auth-pin.js'in yerel `loadSecure()` çağrıları `window.loadSecure()`'a çevrildi (artık aynı modül scope'unda değil). sw.js STATIC listesine eklendi (yeni dosya offline'da cache'lensin). db.js header yorumu güncellendi (v1.2 → v1.3). `window.doLogin`/`window.chPass` API'leri korundu — çağrı site'leri (PIN modal `onclick`, ŞİFRE DEĞİŞTİR butonu) etkilenmez. |
 | v8.108 | 20260528-36 | **Persistence/sync flags Store internal'a taşındı** — 8 flag (`_dirty`, `_saveTimer`, `_syncTimer`, `_fbSyncNeeded`, `_lastUpdated`, `_syncCb`, `_suppressSave`, `_logSaveTimer`) artık `window.*` yerine `Store.dirty`, `Store.saveTimer` vb. üzerinden erişiliyor. `js/store.js`'e module-local `_persistState` obj + 8 getter/setter eklendi; `_autoSave`/`_markDirty` Store internal'a yönlendi. `js/state.js`'in `_suppressSave`/`_saveTimer` init satırları silindi (Store default değerleri zaten karşılıyor). `js/db.js`'te ~30 site (`saveSecure`, `_doSave`, `saveSecureNow`, `loadSecure`, `_fbStartListen`, `_fbPoll`, `_fbStopListen`, `migrateToV7`) `window._X` → `window.Store.X` migrate edildi. `js/sync.js` (×2), `js/app.js#addLog` (×2), `index.html:733` (SW reload bekleyen kayıt check'i) de güncellendi. `_pollRunning` zaten module-local `let` idi — dokunulmadı. Backward compat: yok — `window._dirty` vb. okuyan harici kod artık `undefined` görür (istenen davranış). Doğrulama grep'i: aktif kodda `window\._(dirty|saveTimer|...)` 0 sonuç. |
 | v8.109 | 20260528-37 | **personId gruplama (v8.66 yeniden)** — 3 dosya değişti, migration yok (sadece yeni kayıtlar personId taşır). (1) `ui-persons.js#savePerson`: yeni person'a `id: 'per_'+Date.now()+'_'+rnd` atanır; edit dalı id'yi korur (`spliceAt` yeni obj'e `existing.id` taşır); rename propagation isim eşleşmesi yerine `personId` eşleşmesine geçti (fallback: id'siz eski kayıtlar için isim). (2) `ui-pay.js#savePay`: yeni `_resolvePersonId(name)` helper — `Hesap._baseOf(name)` ile suffix'i soyup persons'ta arar ("AHMET 2" datalist suggestion'ı → "AHMET" person'una eşleşir). Yeni push ve edit mutateItem patch'lerine `personId` (varsa) eklenir; aynı groupId'deki kardeş kayıtlara da propagate edilir. (3) `hesap.js#_displayNames`: rowKey'in ilk item'ından personId/tag (desc varsa, yoksa category) okunur. Aynı personId'nin birden fazla rowKey'i varsa "name (tag)" disambiguation; tek satırsa ham name. personId'siz rowKey'ler için **mevcut** _baseOf isim-suffix mantığı korunur — legacy data geriye uyumlu. Davranış değişikliği: groupId-bazlı satır mantığı KORUNDU; sadece display name kompozisyonu personId-aware oldu. Aynı personId + farklı groupId + farklı category → "AHMET (Kira)" + "AHMET (Elektrik)". |
 | v8.107 | 20260528-35 | **Ölü kod silindi: `migrateToV7b`** — v8.73'te early `return` ile devre dışı bırakılmıştı (isim bazlı gruplama veriyi bozuyordu, yerini `fix_groupids.js` aldı). Şimdi `db.js`'ten fonksiyon tanımı (~30 satır) + `window.migrateToV7b` export'u, `app.js#enterApp`'taki `.then(() => window.migrateToV7b())` zinciri tamamen silindi. Migrasyon yolu artık tek fonksiyon: `migrateToV7`. CLAUDE.md "groupId Mantığı" bölümündeki ölü referans da temizlendi (v8.73 history satırı korundu — o tarihteki durumu doğru yansıtıyor). |
@@ -90,7 +91,8 @@ js/store.js         Merkezi Store — 8 dizi + rates + lookup maps (pays/creds) 
 js/state.js         UI durumu (curTab, sortMode, partialCtx) + _planId + clearState() — veri dizileri Store'da
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
-js/db.js            Firebase köprüsü + doLogin/loadSecure/saveSecure/migrasyon
+js/db.js            Firestore data ops + loadSecure/saveSecure/migrasyon
+js/auth-pin.js      PIN doğrulama (doLogin) + şifre değiştir (chPass) — v8.110'da db.js'ten ayrıştırıldı
 js/app.js           enterApp, initApp, go, sekme yönetimi
 js/plan.js          Plan adı, plan seçimi, plan geçişi
 js/sync.js          setSyncDot, startRealtimeSync
@@ -109,7 +111,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.108", "build": "20260528-36"}
+version.json        {"v": "8.110", "build": "20260528-38"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -121,6 +123,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.110 | 20260528-38 | `auth-pin.js` ayrımı: doLogin + chPass db.js'ten yeni dosyaya taşındı — db.js %30 küçüldü, auth concern hattı netleşti |
 | v8.109 | 20260528-37 | personId gruplama (v8.66 yeniden) — persons.id + pays.personId + Hesap._displayNames personId-aware; aynı personId + farklı category → "AHMET (Kira)" + "AHMET (Elektrik)" |
 | v8.108 | 20260528-36 | Persistence/sync flags Store internal'a taşındı — 8 flag (`_dirty`/`_saveTimer`/`_syncTimer`/`_fbSyncNeeded`/`_lastUpdated`/`_syncCb`/`_suppressSave`/`_logSaveTimer`) artık `Store.X` üzerinden, `window.*` yok |
 | v8.107 | 20260528-35 | Ölü kod silindi: `migrateToV7b` (v8.73'te devre dışı) — db.js fonksiyon + window export + app.js zinciri |

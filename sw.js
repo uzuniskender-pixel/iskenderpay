@@ -17,6 +17,7 @@ const STATIC = [
   './js/modal.js',
   './js/data.js',
   './js/db.js',
+  './js/auth-pin.js',
   './js/app.js',
   './js/plan.js',
   './js/sync.js',
