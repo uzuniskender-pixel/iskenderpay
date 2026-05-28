@@ -1,9 +1,10 @@
-// sw.js — iskenderpay PWA cache (v8.31)
+// sw.js — iskenderpay PWA cache (v8.126: CSS app.css'e ayrildi, CACHE v9)
 
-const CACHE = 'ip-static-v8';
+const CACHE = 'ip-static-v9';
 const STATIC = [
   './',
   './index.html',
+  './app.css',
   './icon-192.png',
   './icon-512.png',
   './manifest.json',
@@ -75,8 +76,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // JS modülleri: her zaman network'ten al, HTTP cache atla
-  if (url.includes('/js/')) {
+  // JS modülleri ve CSS: her zaman network'ten al, HTTP cache atla
+  if (url.includes('/js/') || url.endsWith('.css')) {
     e.respondWith(fetch(new Request(url, {cache: 'no-cache'})).catch(() => caches.match(e.request)));
     return;
   }
