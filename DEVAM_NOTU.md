@@ -21,6 +21,9 @@ Service worker cache agresif (`ip-static-v9`). Aktif sekme deploy sonrası eski 
 ### Paralel terminal çakışması: version.json/index.html aynı anda değiştirilmez
 Linter veya paralel terminal version dosyalarını ileri bumpler (bizim v8.163 → kullanıcı v8.166'ya bumpedlamış). **Kural**: kod commit'inde mümkünse version dosyalarına dokunma — kullanıcı manage etsin. Aksi halde commit message'a "version files user-managed" notu düş.
 
+### Paralel CC = ayrı git worktree
+Aynı repo kökünde birden çok Claude Code oturumu paralel çalışınca aynı working tree'yi paylaşır — biri stash/rebase yaparken diğerinin değişiklikleri kayboluyor/çakışıyor (bu oturumda integrity.js commit'i sırasında log.js + ui-persons.js stash karmaşası yaşandı). **Kural**: paralel CC oturumlarını **ayrı git worktree**'de çalıştır (`git worktree add ../iskenderpay-wt2 main`). Her oturum kendi working tree'sinde izole; push'larda yalnızca commit-düzeyi rebase çakışması olur, dosya-düzeyi stash savaşı olmaz.
+
 ### Store.replace autoSave tetikler
 v8.97 hotfix: `Store.replace` artık `_autoSave()` çağırır. Manuel `saveSecure()` çağrısı **gereksiz** — Store mutation API'leri (push/removeWhere/spliceAt/mutateItem/replace) hepsi autoSave debounce tetikler. **Kural**: mutation sonrası manuel `saveSecure()` ekleme; `Store.touch()` zaten içerir.
 
@@ -106,11 +109,8 @@ Bu bölüm "ne yapıldı" değil **"neden öyle yapıldı"** anlatır.
 
 1. **QNB çoklu grup özet fix** — `ui-persons.js#_buildPersonSummary` multi-group durumunda groupId çözümünü düzelt. Reprodüksiyon senaryosu test et: aynı kişiye 2 farklı groupId'li pay grubu ekle → öteki kaybolur mu?
 2. **Boş ay sütunu debug** — v8.163 fix'ini gizli sekme + cache temizleyerek tarayıcıda doğrula. Çalışmıyorsa: `monthSet` filter mantığını tekrar incele. SW CACHE bump gerekebilir.
-3. **actLog credId bazlı filtreleme** — v8.156'da `credId` field eklendi, v8.160'ta group filter eklendi; **cred filter dropdown henüz yok**. v8.160 pattern'ı klonla (`_logCredFilter` + `_passesCredFilter` + `_renderLogCredFilterOptions` + setter + AND-combine).
-4. **Log grup silme modu** — v8.160 groupId filter dropdown eklendi ama `LOG_DEL_BAR`'da `person` modunun simetriği olan `group` mode yok. v8.143 person-mode pattern klonu: `_populateLogGroupSelect` + `doLogDelByGroup`.
-5. **`Store.session` security hardening** — closure scope + ephemeral key wrap (büyük refactor, dikkatli incele).
-6. **integrity.js dedupe + orphan ref** — `js/integrity.js` header'ında not edildi. Aynı id'li paidItems dedupe + silinmiş person/cred'e referans veren entry'lerin temizliği.
-7. **Tarihi `db.js` yorum referansları** — `app.js:227`, `index.html:442`, `store.js:40,48`, `firebase.js:74` — kozmetik temizlik.
+3. **`Store.session` security hardening — ⏭️ SIRADAKİ** — closure scope + ephemeral key wrap (büyük refactor, dikkatli incele). `Store.session.cryptoKey/dataKeyRaw/plainPin` console-accessible; gerçek hardening için module-private closure + ephemeral key wrap gerekir.
+4. **Tarihi `db.js` yorum referansları** — `app.js:227`, `index.html:442`, `store.js:40,48`, `firebase.js:74` — kozmetik temizlik.
 
 ---
 
