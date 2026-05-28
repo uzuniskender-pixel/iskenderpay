@@ -71,10 +71,8 @@ onAuthStateChanged(_auth, (user) => {
   }
 });
 
-// Firebase nesnelerini window'a bağla — db.js getApp() yerine bunları kullanır
-window._firebaseApp  = _app;
-window._firebaseAuth = _auth;
-window._firebaseDb   = _db;
+// _firebaseApp/_firebaseAuth/_firebaseDb window expose'ları silindi (v8.130) — 0 caller.
+// _planDoc/_metaDoc firestore.js closure ile yakalar.
 window._planDoc      = _planDoc;
 window._metaDoc      = _metaDoc;
 
