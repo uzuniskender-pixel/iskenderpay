@@ -1,5 +1,9 @@
 // js/ui-persons.js — iskenderpay
 // Kişiler ve geçmiş
+// Event delegation (v8.166): PRL (kişi kartı + Düzenle/Sil), HL (geçmiş Düzenle/Geri Al/Sil)
+
+let _prlHandlersAttached = false;
+let _hlHandlersAttached = false;
 
 function renderPersons() {
   const pl = document.getElementById('PRL');
@@ -12,18 +16,30 @@ function renderPersons() {
   pl.innerHTML = `<div style="max-width:480px">` + sortedPersons.map(p => {
     const origIdx = (window.persons||[]).indexOf(p);
     const pid = p.id || '';
-    const clickAttr = pid ? `onclick="openPersonHist('${pid}')" style="cursor:pointer;` : `style="`;
-    return `<div data-person-id="${pid}" ${clickAttr}background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    const cursorStyle = pid ? 'cursor:pointer;' : '';
+    return `<div data-person-id="${pid}" style="${cursorStyle}background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.name)}</div>
         ${p.desc?`<div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.desc)}</div>`:''}
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0">
-        <button onclick="event.stopPropagation();editPerson(${origIdx})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
-        <button onclick="event.stopPropagation();delPerson(${origIdx})" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
+        <button data-edit-idx="${origIdx}" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
+        <button data-del-idx="${origIdx}" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
       </div>
     </div>`;
   }).join('') + `</div>`;
+
+  if (!_prlHandlersAttached) {
+    pl.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('button[data-edit-idx]');
+      if (editBtn) { editPerson(parseInt(editBtn.dataset.editIdx)); return; }
+      const delBtn = e.target.closest('button[data-del-idx]');
+      if (delBtn) { delPerson(parseInt(delBtn.dataset.delIdx)); return; }
+      const card = e.target.closest('[data-person-id]');
+      if (card && card.dataset.personId) openPersonHist(card.dataset.personId);
+    });
+    _prlHandlersAttached = true;
+  }
 }
 
 function updateDatalist() {
@@ -90,18 +106,63 @@ function delPerson(i) {
   renderPersons();
 }
 
-// ── KİŞİ GEÇMİŞ MODAL (v8.143) ───────────────────────────────────────────────
+// ── KİŞİ GEÇMİŞ MODAL (v8.143, v8.164 özet eklendi) ──────────────────────────
+// _buildPersonSummary: kişiye ait pays/paidItems üzerinden borç/ödeme özeti (v8.164)
+// Öncelik: personId match > legacy name match (personId yoksa).
+// Bekleyen tanımı: tüm aktif (paid değil) borç; gecikmiş alt-küme ayrı raporlanır.
+function _buildPersonSummary(personId, personName) {
+  const today = window.todayMidnight ? window.todayMidnight() : (() => { const t=new Date(); t.setHours(0,0,0,0); return t; })();
+  const matches = (p) => (personId && p.personId === personId) || (!p.personId && p.name === personName);
+  const personPays = (window.pays || []).filter(matches);
+  const personPaidItems = (window.paidItems || []).filter(matches);
+  let bekleyen = 0, gecikmis = 0, bekleyenCount = 0, gecikmisCount = 0;
+  personPays.forEach(p => {
+    if ((p.status || 'pending') === 'paid') return;
+    const t = window.toTRY(p.amount, p.currency || 'TRY');
+    const remaining = Math.max(0, t - (p.paid || 0));
+    bekleyen += remaining;
+    bekleyenCount++;
+    if (p.date && window.parseLocalDate(p.date) < today) {
+      gecikmis += remaining;
+      gecikmisCount++;
+    }
+  });
+  const odenmisToplam = personPaidItems.reduce((s, pi) => s + (pi.paid || 0), 0);
+  return {
+    bekleyen, bekleyenCount,
+    gecikmis, gecikmisCount,
+    odenmisToplam, odenmisCount: personPaidItems.length
+  };
+}
+
 function openPersonHist(personId) {
   if (!personId) { alert('Bu kişinin ID\'si yok'); return; }
   const person = (window.persons||[]).find(p => p.id === personId);
   if (!person) return;
   document.getElementById('PHIST_T').innerHTML = window.esc(person.name) + ' <span>Geçmişi</span>';
+  // v8.164: özet bloğu — başlığın hemen altı, list'in üstü
+  const s = _buildPersonSummary(personId, person.name);
+  const summaryHTML = '<div style="margin-bottom:12px;padding:10px 12px;background:var(--surf2);border-radius:9px;border:1px solid var(--bdr)">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +   '<div>'
+    +     '<div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px">Bekleyen</div>'
+    +     '<div style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--ora);font-size:14px">'+window.fmt(s.bekleyen)+'</div>'
+    +     '<div style="font-size:10px;color:var(--muted)">'+s.bekleyenCount+' ödeme</div>'
+    +   '</div>'
+    +   '<div>'
+    +     '<div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px">Ödenen</div>'
+    +     '<div style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--ok);font-size:14px">'+window.fmt(s.odenmisToplam)+'</div>'
+    +     '<div style="font-size:10px;color:var(--muted)">'+s.odenmisCount+' ödeme</div>'
+    +   '</div>'
+    + '</div>'
+    + (s.gecikmis > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr);font-size:12px;color:var(--danger);font-weight:600">⚠ Gecikmiş: '+window.fmt(s.gecikmis)+' ('+s.gecikmisCount+' ödeme)</div>' : '')
+    + '</div>';
   const entries = (window.actLog||[]).filter(e => e.personId === personId);
   const list = document.getElementById('PHIST_LIST');
   if (!entries.length) {
-    list.innerHTML = '<div class="empty"><div class="ico">📋</div><p>Bu kişiye ait kayıt yok.</p></div>';
+    list.innerHTML = summaryHTML + '<div class="empty"><div class="ico">📋</div><p>Bu kişiye ait kayıt yok.</p></div>';
   } else {
-    list.innerHTML = entries.map(e => {
+    list.innerHTML = summaryHTML + entries.map(e => {
       const time = e.at ? window.fmtLogTime(e.at) : '';
       const title = window.esc(e.title || '');
       const detail = e.detail ? window.esc(e.detail) : '';
@@ -125,10 +186,22 @@ function renderHist() {
     <div class="hi">
       <div class="hi-inf"><div class="hi-name">${window.esc(p.name)}</div><div class="hi-date">Silindi: ${new Date(p.delAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})} · ${window.fmtD(p.date)}</div></div>
       <div class="hi-amt">${window.fmtA(p.amount,p.currency||'TRY')}</div>
-      <button onclick="editHistItem(${i})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0">Düzenle</button>
-      <button onclick="restoreFromHist(${i})" style="background:rgba(74,222,128,.15);color:var(--ok);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">↩ Geri Al</button>
-      <button class="hi-del" onclick="delHist(${i})">Sil</button>
+      <button data-hist-edit="${i}" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0">Düzenle</button>
+      <button data-hist-restore="${i}" style="background:rgba(74,222,128,.15);color:var(--ok);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">↩ Geri Al</button>
+      <button class="hi-del" data-hist-del="${i}">Sil</button>
     </div>`).join('');
+
+  if (!_hlHandlersAttached) {
+    hl.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('button[data-hist-edit]');
+      if (editBtn) { editHistItem(parseInt(editBtn.dataset.histEdit)); return; }
+      const restBtn = e.target.closest('button[data-hist-restore]');
+      if (restBtn) { restoreFromHist(parseInt(restBtn.dataset.histRestore)); return; }
+      const delBtn = e.target.closest('button[data-hist-del]');
+      if (delBtn) delHist(parseInt(delBtn.dataset.histDel));
+    });
+    _hlHandlersAttached = true;
+  }
 }
 
 function editHistItem(idx) {
@@ -167,16 +240,12 @@ function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.Store.re
 
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
+// editPerson/delPerson/openPersonHist/editHistItem/restoreFromHist/delHist export'ları
+// silindi (v8.166) — yalnız PRL/HL event delegation'dan çağrılıyorlar, statik caller yok.
 window.renderPersons      = renderPersons;
 window.updateDatalist     = updateDatalist;
 window.openAddPerson      = openAddPerson;
-window.editPerson         = editPerson;
 window.savePerson         = savePerson;
-window.delPerson          = delPerson;
-window.openPersonHist     = openPersonHist;
 window.renderHist         = renderHist;
-window.editHistItem       = editHistItem;
 window.saveHistItem       = saveHistItem;
-window.restoreFromHist    = restoreFromHist;
-window.delHist            = delHist;
 window.clrHist            = clrHist;
