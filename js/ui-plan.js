@@ -102,10 +102,12 @@ function render() {
     });
   }
   if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+  // Sondaki sayiyi soy: 'QNB 1'→'QNB', 'DENİZBANK 2'→'DENİZBANK'
+  const baseOf=k=>(mx[k]._name||'').replace(/ \d+$/,'').trim()||mx[k]._name||'';
   const nameCountMap={};
-  rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
+  rowKeys.forEach(k=>{const b=baseOf(k);nameCountMap[b]=(nameCountMap[b]||0)+1;});
   const nameIdxMap={};
-  rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){const idx=nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=idx===1?n:n+' '+(idx-1);}else{mx[k]._displayName=n;}});
+  rowKeys.forEach(k=>{const b=baseOf(k);if(nameCountMap[b]>1){const idx=nameIdxMap[b]=(nameIdxMap[b]||0)+1;mx[k]._displayName=idx===1?b:b+' '+(idx-1);}else{mx[k]._displayName=b;}});
   const allMonths=Array.from(monthSet).sort();
   const showPaid = localStorage.getItem('v8-show-paid') === '1';
   const months = showPaid
