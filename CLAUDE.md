@@ -55,7 +55,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-_Liste boş — son madde (personId gruplama) v8.109 ile tamamlandı._
+1. **`window._fbUid` → `Store.fbUid` migrasyonu** — v8.108'in mantıksal devamı. Şu an `firebase.js` yerel `_fbUid`'i listener'da set ediyor + `window._fbUid` paralel tutuyor; `db.js`'in 10 Firestore helper'ı ve `crypto.js`/`migrateToV7` `window._fbUid` okuyor. Hedef: `Store.fbUid` tek otorite, `_persistState.fbUid` internal'a eklenir, getter/setter Store'da, `firebase.js#_planDoc`/`_metaDoc` closure'ı temizlenir. **Risk:** `_planDoc`/`_metaDoc` firebase.js'in lokal `_fbUid`'ini capture ediyor — closure'ı kıracak, fonksiyonları yeniden yazmak gerekir. Detaylı plan v8.113'te.
 
 ---
 
