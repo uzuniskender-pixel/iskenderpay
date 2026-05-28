@@ -175,17 +175,28 @@ function renderCredSummary() {
     if (el) el.style.display = 'none';
     return;
   }
-  // Plan matrisindeki gibi base name + suffix hesapla
+  // Plan matrisiyle ayni display name mantigi: pays base name'leri de say
   const baseOf = name => name.replace(/ \d+$/, '').trim() || name;
-  const credNames = (window.creds||[]).map(c => c.name);
   const baseCount = {};
-  credNames.forEach(n => { const b=baseOf(n); baseCount[b]=(baseCount[b]||0)+1; });
-  const baseIdx = {};
-  const displayNames = credNames.map(n => {
-    const b = baseOf(n);
+  // Pays'deki base name'leri say
+  const allItems = typeof window.getAllItems==='function' ? window.getAllItems() : window.pays||[];
+  const mx = typeof window.buildMx==='function' ? window.buildMx(allItems) : {};
+  Object.keys(mx).filter(k=>mx[k]._name!==undefined).forEach(k=>{
+    const b=baseOf(mx[k]._name||''); baseCount[b]=(baseCount[b]||0)+1;
+  });
+  // Sadece cred key'lerini sifirla ve yeniden say (pays'deki sayilar zaten eklendi)
+  const credBaseIdx = {};
+  const displayNames = (window.creds||[]).map(cr => {
+    const b = baseOf(cr.name);
+    const credKey = 'cred_'+cr.id;
     if(baseCount[b] > 1){
-      const idx = baseIdx[b] = (baseIdx[b]||0)+1;
-      return idx===1 ? b : b+' '+(idx-1);
+      // Plan matrisindeki sira ile ayni olsun
+      const keys = Object.keys(mx).filter(k=>mx[k]._name!==undefined)
+        .sort((a,b2)=>(mx[a]._name||'').localeCompare(mx[b2]._name||'','tr'));
+      const nameIdxMap={}, nameCountMap={};
+      keys.forEach(k=>{const n=baseOf(mx[k]._name||'');nameCountMap[n]=(nameCountMap[n]||0)+1;});
+      keys.forEach(k=>{const n=baseOf(mx[k]._name||'');if(nameCountMap[n]>1){const idx=nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._dn=idx===1?n:n+' '+(idx-1);}else{mx[k]._dn=n;}});
+      return mx[credKey]?._dn || b;
     }
     return b;
   });
