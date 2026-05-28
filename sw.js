@@ -72,6 +72,12 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // JS modülleri: her zaman network'ten al, HTTP cache atla
+  if (url.includes('/js/')) {
+    e.respondWith(fetch(new Request(url, {cache: 'no-cache'})).catch(() => caches.match(e.request)));
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(resp => resp || fetch(e.request))
   );

@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.80 / 20260528-08
+## Mevcut Durum (28 Mayıs 2026) — v8.81 / 20260528-09
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -102,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.81 | 20260528-09 | SW fix: JS dosyaları cache:no-cache ile her zaman network'ten alınır — unregister sorunu çözüldü |
 | v8.80 | 20260528-08 | Kredi paneli kart grid: auto-fill minmax(160px), kompakt layout |
 | v8.79 | 20260528-07 | SW güncelleme: activate sonrası SW_UPDATED mesajı → sayfa otomatik reload (unregister gerekmez) |
 | v8.78 | 20260528-06 | Display name: sondaki sayı soyulur, base name ile grupla — QNB 1/2/3 → QNB/QNB 1/QNB 2 (veri değişmez) |
