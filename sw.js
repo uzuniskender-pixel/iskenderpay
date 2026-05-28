@@ -18,6 +18,7 @@ const STATIC = [
   './js/modal.js',
   './js/data.js',
   './js/firestore.js',
+  './js/validate.js',
   './js/persist.js',
   './js/auth-pin.js',
   './js/app.js',
