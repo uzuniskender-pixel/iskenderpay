@@ -11,14 +11,16 @@ function renderPersons() {
   const sortedPersons = [...(window.persons||[])].sort((a,b) => a.name.localeCompare(b.name,'tr'));
   pl.innerHTML = `<div style="max-width:480px">` + sortedPersons.map(p => {
     const origIdx = (window.persons||[]).indexOf(p);
-    return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    const pid = p.id || '';
+    const clickAttr = pid ? `onclick="openPersonHist('${pid}')" style="cursor:pointer;` : `style="`;
+    return `<div data-person-id="${pid}" ${clickAttr}background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rs);padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.name)}</div>
         ${p.desc?`<div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.desc)}</div>`:''}
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0">
-        <button onclick="editPerson(${origIdx})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
-        <button onclick="delPerson(${origIdx})" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
+        <button onclick="event.stopPropagation();editPerson(${origIdx})" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Düzenle</button>
+        <button onclick="event.stopPropagation();delPerson(${origIdx})" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">Sil</button>
       </div>
     </div>`;
   }).join('') + `</div>`;
@@ -88,6 +90,33 @@ function delPerson(i) {
   renderPersons();
 }
 
+// ── KİŞİ GEÇMİŞ MODAL (v8.143) ───────────────────────────────────────────────
+function openPersonHist(personId) {
+  if (!personId) { alert('Bu kişinin ID\'si yok'); return; }
+  const person = (window.persons||[]).find(p => p.id === personId);
+  if (!person) return;
+  document.getElementById('PHIST_T').innerHTML = window.esc(person.name) + ' <span>Geçmişi</span>';
+  const entries = (window.actLog||[]).filter(e => e.personId === personId);
+  const list = document.getElementById('PHIST_LIST');
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty"><div class="ico">📋</div><p>Bu kişiye ait kayıt yok.</p></div>';
+  } else {
+    list.innerHTML = entries.map(e => {
+      const time = e.at ? window.fmtLogTime(e.at) : '';
+      const title = window.esc(e.title || '');
+      const detail = e.detail ? window.esc(e.detail) : '';
+      return '<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr)">'
+        + '<div style="font-size:11px;color:var(--muted);min-width:75px;flex-shrink:0">'+time+'</div>'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div style="font-size:12px;font-weight:600;color:#e2e8f0">'+title+'</div>'
+        +   (detail ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+detail+'</div>' : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+  ModalManager.open('PHIST');
+}
+
 function renderHist() {
   document.getElementById('HD').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   const hl=document.getElementById('HL');
@@ -144,6 +173,7 @@ window.openAddPerson      = openAddPerson;
 window.editPerson         = editPerson;
 window.savePerson         = savePerson;
 window.delPerson          = delPerson;
+window.openPersonHist     = openPersonHist;
 window.renderHist         = renderHist;
 window.editHistItem       = editHistItem;
 window.saveHistItem       = saveHistItem;

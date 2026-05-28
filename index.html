@@ -320,8 +320,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
         <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
           <!-- Mod seçimi -->
           <div style="display:flex;gap:6px;margin-bottom:10px">
-            <button id="LOG_MODE_RANGE" onclick="setLogDelMode('range')" class="btn" style="flex:1;font-size:11px;font-weight:700;background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)">📅 Saat Aralığı</button>
-            <button id="LOG_MODE_SEL" onclick="setLogDelMode('select')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">☑️ Seçerek Sil</button>
+            <button id="LOG_MODE_RANGE" onclick="setLogDelMode('range')" class="btn" style="flex:1;font-size:11px;font-weight:700;background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)">📅 Saat</button>
+            <button id="LOG_MODE_SEL" onclick="setLogDelMode('select')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">☑️ Seç</button>
+            <button id="LOG_MODE_PERSON" onclick="setLogDelMode('person')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">👤 Kişi</button>
           </div>
           <!-- Saat aralığı paneli -->
           <div id="LOG_RANGE_PANEL">
@@ -347,6 +348,15 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
             </div>
             <div style="display:flex;gap:6px">
               <button onclick="doLogDelSelected()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Seçilileri Sil</button>
+              <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+            </div>
+          </div>
+          <!-- Kişi bazlı silme paneli -->
+          <div id="LOG_PERSON_PANEL" style="display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Bu kişinin tüm log'ları silinecek</div>
+            <select id="LOG_PERSON_SEL" class="fi" style="width:100%;padding:7px 10px;font-size:12px;margin-bottom:8px"></select>
+            <div style="display:flex;gap:6px">
+              <button onclick="doLogDelByPerson()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Kişinin Log'larını Sil</button>
               <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
             </div>
           </div>
@@ -444,8 +454,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.140';
-var APP_BUILD   = '20260528-64';
+var APP_VERSION = 'v8.143';
+var APP_BUILD   = '20260528-65';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -608,6 +618,16 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="fg"><label class="fl">Tutar (₺)</label><input class="fi mono-inp" id="HIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
     <div class="fg"><label class="fl">Tarih</label><input class="fi" id="HIDAT" type="date"></div>
     <div class="brow"><button class="btn bc" data-modal-close="HIMOD">İptal</button><button class="btn bs" onclick="saveHistItem()">Kaydet</button></div>
+  </div>
+</div>
+
+<!-- KİŞİ GEÇMİŞ MODAL (v8.143) -->
+<div class="mov" id="PHIST">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2 id="PHIST_T">Kişi <span>Geçmişi</span></h2>
+    <div id="PHIST_LIST" style="max-height:60vh;overflow-y:auto;padding-right:4px;margin-bottom:10px"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="PHIST">Kapat</button></div>
   </div>
 </div>
 
