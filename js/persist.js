@@ -154,7 +154,3 @@ window.saveSecure    = saveSecure;
 window.saveSecureNow = saveSecureNow;
 window.loadSecure    = loadSecure;
 window.migrateToV7   = migrateToV7;
-window.save          = () => saveSecure();
-window.savePersons   = () => saveSecure();
-window.saveNotes     = () => saveSecure();
-window.loadNotes     = () => {};
