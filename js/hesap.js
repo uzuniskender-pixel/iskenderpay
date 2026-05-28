@@ -35,6 +35,7 @@ function _baseOf(name) {
 // personId varsa: ayni personId'nin birden fazla rowKey'i → "name (desc|category)"
 // personId yoksa (legacy): mevcut isim-suffix mantigi ("AHMET" / "AHMET 1")
 // cred rowKey'leri (cred_*): mevcut suffix'in sonuna "(Kredi)" eklenir (v8.125)
+// personId'siz pay satirlari (g_*, pay_*): sonuna " ⚠️" eklenir (v8.137, data quality signal)
 // keys verilirse sadece bu rowKey'leri dikkate alir (plan matrisi filtreliyse).
 function _displayNames(mx, keys) {
   const allKeys = (keys && keys.length)
@@ -95,6 +96,14 @@ function _displayNames(mx, keys) {
   allKeys.forEach(k => {
     if (k.startsWith('cred_')) {
       dnMap[k] = (dnMap[k] || _baseOf(mx[k]._name)) + ' (Kredi)';
+    }
+  });
+
+  // personId'si olmayan pay satirlarina (g_ ve pay_ prefix) uyari isareti (v8.137)
+  // data quality signal — backfill (v8.111/v8.112) personId atayinca kendiliginden kaybolur
+  allKeys.forEach(k => {
+    if ((k.startsWith('g_') || k.startsWith('pay_')) && !meta[k].pid) {
+      dnMap[k] = (dnMap[k] || _baseOf(mx[k]._name)) + ' ⚠️';
     }
   });
 
