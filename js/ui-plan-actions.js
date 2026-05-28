@@ -1,35 +1,9 @@
-// js/ui-plan-actions.js — iskenderpay (v8.150)
-// Hücre/satır CRUD + krediye dönüştürme + odendi-ay toggle.
-// ui-plan.js'ten v8.150'de ayrıştırıldı. Cross-module çağrılar:
-// window.getAllItems / window.buildMx (render.js), window.closeDV /
-// window.openCell (detail.js).
-
-// ── KREDİYE DÖNÜŞÜR ─────────────────────────
-function convertToCredit(keyEnc) {
-  const key=decodeURIComponent(keyEnc);
-  const gid=key.startsWith('g_')?key.replace('g_',''):null;
-  if(!gid){alert('Sadece normal odeme satirlari krediye donusturulebilir.');return;}
-  // Gruptaki tum kayitlar tarihe gore sirali
-  const srcPays=window.pays.filter(p=>p.groupId===gid).sort((a,b)=>a.date.localeCompare(b.date));
-  if(!srcPays.length){alert('Kayit bulunamadi.');return;}
-  const name=srcPays[0].name;
-  const count=srcPays.length;
-  const startDate=srcPays[0].date;
-  const monthly=Math.round(srcPays[0].amount);
-  // Odeme durumlarini sakla — saveCred sonrasi kredi taksitlerine islenecek
-  window._convertSourceKey=key;
-  window._convertSourcePays=srcPays.map(p=>({date:p.date,status:p.status||'pending',paid:p.paid||0,amount:p.amount}));
-  // Modali doldur
-  document.getElementById('CEID').value='';
-  document.getElementById('CN').value=name;
-  document.getElementById('CT').value='';
-  document.getElementById('CI').value=count;
-  document.getElementById('CM2').value=monthly;
-  document.getElementById('CS').value=startDate;
-  if(typeof window.updLP==='function') window.updLP();
-  window.closeDV();
-  setTimeout(()=>ModalManager.open('CM'),50);
-}
+// js/ui-plan-actions.js — iskenderpay (v8.152)
+// Hücre/satır CRUD + odendi-ay toggle.
+// ui-plan.js'ten v8.150'de ayrıştırıldı; convertToCredit + editByKey
+// v8.152'de detail.js'e taşındı (dialog-flow orchestrator'ları).
+// Cross-module çağrılar: window.getAllItems / window.buildMx (render.js),
+// window.closeDV / window.openCell (detail.js).
 
 // ── HÜCRE CRUD ──────────────────────────────
 function addToMonth(keyEnc,month) {
@@ -117,28 +91,7 @@ function resetPartial(keyEnc,month) {
   window.Store.touch(); window.closeDV();
 }
 
-// ── SATIR / AY CRUD ─────────────────────────
-function editByKey(keyEnc) {
-  const key=decodeURIComponent(keyEnc);
-  window.closeDV();
-  if(key.startsWith('cred_')){
-    const credId=key.replace('cred_','');
-    const c=window.findCredById(credId);
-    if(c) setTimeout(()=>window.editCred(c.id),50);
-    else alert('Düzenlenecek kayıt bulunamadı.');
-  } else if(key.startsWith('g_')){
-    const gid=key.replace('g_','');
-    const p=window.findPaysByGroup(gid)[0];
-    if(p) setTimeout(()=>window.editPay(p.id),50);
-    else alert('Düzenlenecek kayıt bulunamadı.');
-  } else {
-    const pid=key.replace('pay_','');
-    const p=window.pays.find(x=>String(Math.floor(Number(x.id)))===pid);
-    if(p) setTimeout(()=>window.editPay(p.id),50);
-    else alert('Düzenlenecek kayıt bulunamadı.');
-  }
-}
-
+// ── SATIR / AY SİL ──────────────────────────
 function delByKey(keyEnc) {
   const key=decodeURIComponent(keyEnc);
   const all=window.getAllItems(),mx=window.buildMx(all);
@@ -194,14 +147,12 @@ function togglePaidMonths() {
 }
 
 // ── GLOBAL COMPAT ──────────────────────────
-window.convertToCredit  = convertToCredit;
 window.addToMonth       = addToMonth;
 window.markOk           = markOk;
 window.undoCell         = undoCell;
 window.doPartial        = doPartial;
 window.saveCellAmt      = saveCellAmt;
 window.resetPartial     = resetPartial;
-window.editByKey        = editByKey;
 window.delByKey         = delByKey;
 window.delMonthEntry    = delMonthEntry;
 window.delCellItems     = delCellItems;
