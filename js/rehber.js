@@ -42,7 +42,7 @@ function renderRhb() {
     if(p.company)subParts.push(`<span>${window.esc(p.company)}</span>`);
     if(firstPhone)subParts.push(`<span style="font-family:'IBM Plex Mono',monospace">${window.esc(firstPhone)}</span>`);
     const sub=subParts.join('<span style="color:var(--bdr);margin:0 4px">·</span>');
-    return `<div class="rhb-card" onclick="openRhbDetail('${p.id}')">
+    return `<div class="rhb-card" data-detail-id="${p.id}">
       <div class="rhb-avatar">${initials}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(rhbGetName(p))}</div>
@@ -51,6 +51,13 @@ function renderRhb() {
       <div style="color:var(--muted);font-size:16px;font-weight:300">›</div>
     </div>`;
   }).join('');
+  if (!_rhbListHandlerAttached) {
+    el.addEventListener('click', e => {
+      const card = e.target.closest('.rhb-card[data-detail-id]');
+      if (card) openRhbDetail(card.dataset.detailId);
+    });
+    _rhbListHandlerAttached = true;
+  }
 }
 
 function openRhbDetail(id) {
@@ -61,11 +68,23 @@ function openRhbDetail(id) {
     <div style="font-size:18px;font-weight:700">${window.esc(rhbGetName(p))}</div>
     ${p.company?`<div style="font-size:12px;color:var(--muted);margin-top:3px">🏢 ${window.esc(p.company)}</div>`:''}
   </div>`;
-  if(p.phones?.length){p.phones.filter(ph=>ph.num).forEach(ph=>{h+=`<div class="rhb-field"><div style="min-width:0;flex:1">${ph.lbl?`<div class="rhb-field-lbl">${window.esc(ph.lbl)}</div>`:'<div class="rhb-field-lbl">Telefon</div>'}<div class="rhb-field-val mono">${window.esc(ph.num)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><a href="tel:${encodeURIComponent(ph.num)}" class="rhb-call-btn">📞</a><button class="rhb-copy-btn" onclick="rhbCopy('${ph.num.replace(/'/g,"\\'")}',this)">📋</button></div></div>`;});}
-  if(p.email){h+=`<div class="rhb-field"><div style="min-width:0;flex:1"><div class="rhb-field-lbl">E-posta</div><div class="rhb-field-val" style="word-break:break-all">${window.esc(p.email)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><a href="mailto:${encodeURIComponent(p.email)}" class="rhb-call-btn">✉️</a><button class="rhb-copy-btn" onclick="rhbCopy('${p.email.replace(/'/g,"\\'")}',this)">📋</button></div></div>`;}
+  if(p.phones?.length){p.phones.filter(ph=>ph.num).forEach(ph=>{h+=`<div class="rhb-field"><div style="min-width:0;flex:1">${ph.lbl?`<div class="rhb-field-lbl">${window.esc(ph.lbl)}</div>`:'<div class="rhb-field-lbl">Telefon</div>'}<div class="rhb-field-val mono">${window.esc(ph.num)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><a href="tel:${encodeURIComponent(ph.num)}" class="rhb-call-btn">📞</a><button class="rhb-copy-btn" data-copy="${window.esc(ph.num)}">📋</button></div></div>`;});}
+  if(p.email){h+=`<div class="rhb-field"><div style="min-width:0;flex:1"><div class="rhb-field-lbl">E-posta</div><div class="rhb-field-val" style="word-break:break-all">${window.esc(p.email)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><a href="mailto:${encodeURIComponent(p.email)}" class="rhb-call-btn">✉️</a><button class="rhb-copy-btn" data-copy="${window.esc(p.email)}">📋</button></div></div>`;}
   if(p.note){h+=`<div style="background:var(--surf2);border-radius:9px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--bdr)"><div class="rhb-field-lbl" style="margin-bottom:5px">Not</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${window.esc(p.note)}</div></div>`;}
-  h+=`<div class="dacts"><button class="dact da-edit" onclick="openRhbEdit('${p.id}')">Düzenle</button><button class="dact da-del" onclick="rhbDel('${p.id}')">Sil</button><button class="dact da-close" onclick="window.closeRDET()">Kapat</button></div>`;
+  h+=`<div class="dacts"><button class="dact da-edit" data-edit-id="${p.id}">Düzenle</button><button class="dact da-del" data-del-id="${p.id}">Sil</button><button class="dact da-close" data-close>Kapat</button></div>`;
   document.getElementById('RDET_C').innerHTML=h;
+  if (!_rdetHandlerAttached) {
+    document.getElementById('RDET_C').addEventListener('click', e => {
+      const copyBtn = e.target.closest('[data-copy]');
+      if (copyBtn) { rhbCopy(copyBtn.dataset.copy, copyBtn); return; }
+      const editBtn = e.target.closest('[data-edit-id]');
+      if (editBtn) { openRhbEdit(editBtn.dataset.editId); return; }
+      const delBtn  = e.target.closest('[data-del-id]');
+      if (delBtn)  { rhbDel(delBtn.dataset.delId); return; }
+      if (e.target.closest('[data-close]')) closeRDET();
+    });
+    _rdetHandlerAttached = true;
+  }
   ModalManager.open('RDET');
 }
 
@@ -164,6 +183,8 @@ function openRhbEdit(id) {
 }
 
 let _phoneHandlersAttached = false;
+let _rhbListHandlerAttached = false;
+let _rdetHandlerAttached = false;
 
 function renderRhbPhones() {
   const cont = document.getElementById('RMOD_PHONES');
@@ -228,17 +249,11 @@ window.normPhone          = normPhone;
 window.rhbGetName         = rhbGetName;
 window.rhbGetInitials     = rhbGetInitials;
 window.renderRhb          = renderRhb;
-window.openRhbDetail      = openRhbDetail;
 window.rhbExport          = rhbExport;
 window.rhbImport          = rhbImport;
 window.rhbParseCsv        = rhbParseCsv;
 window.rhbCsvRow          = rhbCsvRow;
-window.rhbCopy            = rhbCopy;
-window.rhbCopyFallback    = rhbCopyFallback;
-window.rhbCopyFeedback    = rhbCopyFeedback;
 window.openRhbAdd         = openRhbAdd;
-window.openRhbEdit        = openRhbEdit;
 window.renderRhbPhones    = renderRhbPhones;
 window.rhbAddPhone        = rhbAddPhone;
 window.rhbSavePerson      = rhbSavePerson;
-window.rhbDel             = rhbDel;

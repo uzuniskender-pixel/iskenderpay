@@ -157,6 +157,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.151 | 20260528-71 | rehber.js kalan 6 inline handler event delegation'a çevrildi (v8.121 pattern devamı): renderRhb card → data-detail-id + RHB_LIST container delegation; openRhbDetail 5 buton → data-copy/edit-id/del-id/close + RDET_C container delegation; 6 window export silindi (openRhbDetail/rhbCopy/Fallback/Feedback/openRhbEdit/rhbDel — 0 caller); closeRDET korundu (index.html caller) |
 | v8.148 | 20260528-69 | _backfillPersonIds Pass 3: actLog entry'lerine personId atanır — detail'in ilk ` · ` ayracından önceki name, Hesap._baseOf + persons Map lookup; rhb_* + cred_add + 'taksit' içeren detail'ler skip (false positive azalt) |
 | v8.146 | 20260528-68 | ui-plan.js'deki 6 addLog caller'ına `personId` eklendi (addToMonth/markOk/undoCell/delByKey×2/delMonthEntry) — v8.143 person-del + v8.145 person-filter artık bu entry'leri yakalar |
 | v8.145 | 20260528-67 | actLog person filter dropdown wiring (log.js + index.html): T7 üstüne LOG_FILT_PERSON `<select>` + `setLogPersonFilter` + date filter ile combine; module-local persistence |
