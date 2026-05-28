@@ -61,14 +61,12 @@ async function manualCheckUpdate() {
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.manualCheckUpdate  = manualCheckUpdate;
-window.initBuild          = initBuild;
 
 // Sayfa açılışında otomatik — modül yüklenince çalışır
 initBuild();
 setTimeout(checkVersion, 3000);
 setInterval(checkVersion, 5 * 60 * 1000);
 window.checkVersion       = checkVersion;
-window.showUpdBanner      = showUpdBanner;
 window.updApply           = updApply;
 
 // ── NAMED EXPORT (v8.118) ──────────────────────────────────────────────────

@@ -91,6 +91,5 @@ function renderSiradaki() {
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.fetchRates         = fetchRates;
-window.renderKur          = renderKur;
 window.renderSiradaki     = renderSiradaki;
 window.saveRates          = saveRates;

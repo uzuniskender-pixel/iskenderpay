@@ -21,7 +21,6 @@ const firebaseConfig = {
 const _app    = initializeApp(firebaseConfig);
 const _auth   = getAuth(_app);
 const _db     = getFirestore(_app);
-// _fbUid v8.113'te Store.fbUid'e, _planId v8.116'da Store.planId'ye taşındı — tek otorite Store
 
 // ── FIRESTORE YARDIMCI ────────────────────────────────────────────────────────
 function _planDoc(planId) {
@@ -71,7 +70,6 @@ onAuthStateChanged(_auth, (user) => {
   }
 });
 
-// _firebaseApp/_firebaseAuth/_firebaseDb window expose'ları silindi (v8.130) — 0 caller.
 // _planDoc/_metaDoc firestore.js closure ile yakalar.
 window._planDoc      = _planDoc;
 window._metaDoc      = _metaDoc;
