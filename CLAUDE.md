@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.112 / 20260528-40
+## Mevcut Durum (28 Mayıs 2026) — v8.113 / 20260528-41
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.113 | 20260528-41 | **`window._fbUid` → `Store.fbUid` migrasyonu (+ firebase.js load-order race kalıcı çözüm)** — v8.108'in mantıksal devamı; 9'uncu flag Store internal'a eklendi. (1) `store.js`: `_persistState.fbUid: null` + `Store.fbUid` getter/setter (8 mevcut flag'le birebir pattern). (2) `firebase.js`: yerel `let _fbUid` ve `window._fbUid = null` SİL, listener'da çift atama (`_fbUid = uid; window._fbUid = uid`) → tek `window.Store.fbUid = user.uid` (sign-in + sign-out); `_planDoc`/`_metaDoc` closure'dan `window.Store.fbUid`'i runtime'da okur; sign-out 2sn timeout race guard'ı da `!window.Store.fbUid`. (3) `db.js`: 10 Firestore helper guard + `migrateToV7` migKey → `window.Store.fbUid` (12 site). (4) `crypto.js#getSaltAsync`: `window._fbUid` → `window.Store.fbUid`. **Yan kazanım — load-order race kalıcı çözüm**: `firebase.js` `index.html:17-19`'da ayrı `<script type="module">` bloğunda yükleniyordu ve ana bloktan önce eval oluyordu — cached auth listener'ı `Store` yüklenmeden fire edebilirdi (TypeError riski). Ana modül bloğuna `store.js`'ten **hemen sonra** import edildi; ayrı blok silindi. v8.100'deki `if (typeof window.renderPlanNames === 'function')` defensive guard'ı (plan.js race için) artık gereksiz → kaldırıldı (bare `window.renderPlanNames()` çağrısı). Doğrulama: `grep "window._fbUid"` aktif kodda 0 sonuç; `Store.fbUid` 17 site. |
 | v8.112 | 20260528-40 | **Pays personId backfill**: v8.111'in tamamlayıcısı. `app.js#_backfillPersonIds`'e ikinci pass eklendi — pass 1 persons.id atar (v8.111), pass 2 `window.pays`'te `personId`'siz tüm kayıtlar için `Hesap._baseOf(p.name)` → `persons.find(q => q.name === base)` lookup yapar, eşleşme varsa `Store.mutateItem(p, {personId: person.id})` ile atar. Pass sırası kritik: persons.id pass 1'de garanti edildiği için pass 2 lookup'ı her zaman bulduğu kişide id görür. İdempotent — tüm pays personId taşıdığında no-op. **Ekran etkisi**: mevcut "HASAN KARAGÖZ 1/2" gibi numeric-suffix gösterimleri bir sonraki açılışta otomatik olarak "HASAN KARAGÖZ (Kira)/(Fatura)" formatına döner — kullanıcı müdahalesi gerekmez. **İsim eşleşmesi başarısız olduğunda**: pay'in person'u persons listesinde yoksa atlanır (legacy yol devam eder); kullanıcı person'u ekleyince bir sonraki backfill yakalar. |
 | v8.111 | 20260528-39 | **personId backfill (v8.109 boşluk kapatma)**: v8.109'da person.id yeni kayıtlara atanıyordu ama legacy persons (v8.109 öncesi eklenmiş) id'siz kalmıştı → `_resolvePersonId` null döndürüyor → `pays.personId` set olmuyor → `_displayNames` legacy yol → "HASAN KARAGÖZ 1/2" gibi numeric suffix (beklenen: "HASAN KARAGÖZ (Kira)/(Fatura)"). İki fix: (1) `app.js#enterApp` → `migrateToV7().then(_backfillPersonIds)` zincirine yeni helper eklendi — `window.persons`'taki id'siz tüm kişilere `Store.mutateItem` ile `per_<ts>_<5char>` atar (autoSave debounce'u tetikler). İdempotent — sonraki çağrılar no-op. (2) `ui-pay.js#_resolvePersonId` defensive: isim eşleşmesi bulunca person.id yoksa lazy üretip atar, sonra döndürür (backfill kaçırılan veya sonradan eklenmiş person için belt-and-suspenders). **Kapsanmayan**: mevcut KARAGÖZ pays kayıtlarına personId yine **set olmaz** — kullanıcı bu kayıtları **bir kez re-edit ederse** savePay → _resolvePersonId → personId set olur → ekran düzelir. Eski pays için otomatik propagation v8.112'ye not edildi. |
 | v8.110 | 20260528-38 | **`auth-pin.js` ayrımı**: `doLogin` (~68 satır) + `chPass` (~32 satır) `db.js`'ten yeni `js/auth-pin.js`'e taşındı. db.js artık sadece Firestore data ops + saveSecure/loadSecure/_doSave + migrateToV7 (~260 satır, %30 küçüldü). Auth concern hattı netleşti: `firebase.js` (Google auth init/listener) → `db.js` (Firestore data + persist) → `auth-pin.js` (PIN doğrulama + şifre değiştir). Bağımlılık: auth-pin.js index.html'de db.js'ten **hemen sonra** import edilir (aynı `<script type="module">` bloğu — sequential execution garantili, race riski yok). auth-pin.js'in yerel `loadSecure()` çağrıları `window.loadSecure()`'a çevrildi (artık aynı modül scope'unda değil). sw.js STATIC listesine eklendi (yeni dosya offline'da cache'lensin). db.js header yorumu güncellendi (v1.2 → v1.3). `window.doLogin`/`window.chPass` API'leri korundu — çağrı site'leri (PIN modal `onclick`, ŞİFRE DEĞİŞTİR butonu) etkilenmez. |
@@ -55,7 +56,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **`window._fbUid` → `Store.fbUid` migrasyonu** — v8.108'in mantıksal devamı. Şu an `firebase.js` yerel `_fbUid`'i listener'da set ediyor + `window._fbUid` paralel tutuyor; `db.js`'in 10 Firestore helper'ı ve `crypto.js`/`migrateToV7` `window._fbUid` okuyor. Hedef: `Store.fbUid` tek otorite, `_persistState.fbUid` internal'a eklenir, getter/setter Store'da, `firebase.js#_planDoc`/`_metaDoc` closure'ı temizlenir. **Risk:** `_planDoc`/`_metaDoc` firebase.js'in lokal `_fbUid`'ini capture ediyor — closure'ı kıracak, fonksiyonları yeniden yazmak gerekir. Detaylı plan v8.113'te.
+_Liste boş — son madde (`_fbUid` → Store) v8.113 ile tamamlandı._
 
 ---
 
@@ -113,7 +114,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.112", "build": "20260528-40"}
+version.json        {"v": "8.113", "build": "20260528-41"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -125,6 +126,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.113 | 20260528-41 | `window._fbUid` → `Store.fbUid` migrasyonu — 9. flag Store internal'a; firebase.js ana modül bloğuna taşındı (load-order race kalıcı çözüm), v8.100 renderPlanNames defensive guard kaldırıldı |
 | v8.112 | 20260528-40 | Pays personId backfill: _backfillPersonIds pass 2 — isim eşleşmesiyle eski pays kayıtlarına personId atar; mevcut numeric suffix gösterimleri otomatik düzelir |
 | v8.111 | 20260528-39 | personId backfill: enterApp'ta legacy persons'a id atanır + _resolvePersonId lazy id üretir (v8.109 boşluk kapatma) |
 | v8.110 | 20260528-38 | `auth-pin.js` ayrımı: doLogin + chPass db.js'ten yeni dosyaya taşındı — db.js %30 küçüldü, auth concern hattı netleşti |

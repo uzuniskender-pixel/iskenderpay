@@ -74,7 +74,7 @@ export async function hashPin(pin, salt) {
 }
 
 export async function getSaltAsync(key) {
-  const uid = window._fbUid || '';
+  const uid = window.Store.fbUid || '';
   if (uid) {
     const enc = new TextEncoder();
     const keyMat = await crypto.subtle.importKey('raw', enc.encode(uid + key), 'PBKDF2', false, ['deriveBits']);

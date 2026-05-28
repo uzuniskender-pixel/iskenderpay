@@ -21,8 +21,7 @@ const firebaseConfig = {
 const _app    = initializeApp(firebaseConfig);
 const _auth   = getAuth(_app);
 const _db     = getFirestore(_app);
-let   _fbUid  = null;
-window._fbUid = null;
+// _fbUid v8.113'te Store.fbUid'e tasindi — tek otorite Store
 
 // Aktif plan (plan1 veya plan2)
 // [state.js'e taşındı]
@@ -30,10 +29,10 @@ window._planId = localStorage.getItem('v6-active-plan') || 'plan1';
 
 // ── FIRESTORE YARDIMCI ────────────────────────────────────────────────────────
 function _planDoc(planId) {
-  return doc(_db, 'users', _fbUid + '_' + (planId || window._planId));
+  return doc(_db, 'users', window.Store.fbUid + '_' + (planId || window._planId));
 }
 function _metaDoc() {
-  return doc(_db, 'users', _fbUid + '_meta');
+  return doc(_db, 'users', window.Store.fbUid + '_meta');
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -52,23 +51,20 @@ onAuthStateChanged(_auth, (user) => {
   const appEl = document.getElementById('APP');
 
   if (user) {
-    _fbUid = user.uid;
-    window._fbUid = user.uid;
+    window.Store.fbUid = user.uid;
     if (glsEl) glsEl.style.display = 'none';
     const plsEl   = document.getElementById('PLS');
     const plsUser = document.getElementById('PLS_USER');
     if (plsUser) plsUser.textContent = '👤 ' + (user.displayName || user.email);
     if (plsEl) plsEl.style.display = 'flex';
     if (psEl)  { psEl.style.display = 'none'; psEl.classList.remove('active'); }
-    // firebase.js ayri <script> blogunda yukleniyor — plan.js'ten once eval olabilir; auth cache hizli fire ederse defensive guard gerekli
-    if (typeof window.renderPlanNames === 'function') window.renderPlanNames();
+    window.renderPlanNames();
   } else {
-    _fbUid = null;
-    window._fbUid = null;
+    window.Store.fbUid = null;
     // Signout: sync interval'i durdur — _fbStopListen aksi halde orphan
     if (window._fbStopListen) window._fbStopListen();
     setTimeout(() => {
-      if (!_fbUid) {
+      if (!window.Store.fbUid) {
         if (glsEl) glsEl.style.display = 'flex';
         const plsEl = document.getElementById('PLS');
         if (plsEl) plsEl.style.display = 'none';

@@ -48,6 +48,7 @@ const _persistState = {
   syncCb:        null,    // sync callback (db.js#_fbStartListen kayit ettigi)
   suppressSave:  false,   // bulk ops / migrasyon sirasinda auto-save'i bastir
   logSaveTimer:  null,    // app.js#addLog debounce timer handle
+  fbUid:         null,    // firebase auth UID (v8.113'te firebase.js'in lokal _fbUid'inden tasindi)
 };
 
 function _markDirty() { _persistState.dirty = true; }
@@ -220,6 +221,8 @@ export const Store = {
   set suppressSave(v) { _persistState.suppressSave = v; },
   get logSaveTimer()  { return _persistState.logSaveTimer; },
   set logSaveTimer(v) { _persistState.logSaveTimer = v; },
+  get fbUid()         { return _persistState.fbUid; },
+  set fbUid(v)        { _persistState.fbUid = v; },
 
   // ── BATCH ────────────────────────────────────────────────────────────────
   // tx icinde birden fazla mutation -> tek saveSecure (debounce zaten yapiyor

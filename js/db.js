@@ -7,21 +7,21 @@
 import { getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── Firestore yardımcıları ───────────────────────────────────────────────────
-// _planDoc / _metaDoc firebase.js'de tanımlı, firebase.js'in _db ve _fbUid'ini closure'la kullanır
+// _planDoc / _metaDoc firebase.js'de tanımlı, _db'yi closure'la, Store.fbUid'i runtime'da okur
 
 const _planDoc = window._planDoc;
 const _metaDoc = window._metaDoc;
 
 
 window._fbSave = async function(encData) {
-  if (!window._fbUid) return;
+  if (!window.Store.fbUid) return;
   await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
 // _syncTimer / _lastUpdated / _syncCb v8.108'de Store internal'a tasindi (Store.syncTimer vb.)
 
 window._fbStartListen = function(onData) {
-  if (!window._fbUid || !window._planId) return;
+  if (!window.Store.fbUid || !window._planId) return;
   window.Store.syncCb = onData;
   if (window.Store.syncTimer) clearInterval(window.Store.syncTimer);
   window.Store.syncTimer = setInterval(window._fbPoll, 30000);
@@ -30,7 +30,7 @@ window._fbStartListen = function(onData) {
 
 let _pollRunning = false;
 window._fbPoll = async function() {
-  if (!window._fbUid || !window._planId || !window.Store.syncCb) return;
+  if (!window.Store.fbUid || !window._planId || !window.Store.syncCb) return;
   if (window.Store.saveTimer !== null && window.Store.saveTimer !== undefined) return;
   if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync atla
   if (_pollRunning) return;   // Concurrent poll önle
@@ -68,20 +68,20 @@ window._fbStopListen = function() {
 };
 
 window._fbLoad = async function() {
-  if (!window._fbUid) return null;
+  if (!window.Store.fbUid) return null;
   const snap = await getDoc(_planDoc());
   return snap.exists() ? snap.data().data : null;
 };
 
 window._fbSaveSalt = async function(saltKey, saltVal) {
-  if (!window._fbUid) return;
+  if (!window.Store.fbUid) return;
   const update = {};
   update['salts.' + saltKey] = saltVal;
   await setDoc(_planDoc(), update, { merge: true });
 };
 
 window._fbLoadSalt = async function(saltKey) {
-  if (!window._fbUid) return null;
+  if (!window.Store.fbUid) return null;
   const snap = await getDoc(_planDoc());
   if (!snap.exists()) return null;
   const salts = snap.data().salts || {};
@@ -89,23 +89,23 @@ window._fbLoadSalt = async function(saltKey) {
 };
 
 window._fbSavePinHash = async function(hash) {
-  if (!window._fbUid) return;
+  if (!window.Store.fbUid) return;
   await setDoc(_planDoc(), { pinHash: hash }, { merge: true });
 };
 
 window._fbLoadPinHash = async function() {
-  if (!window._fbUid) return null;
+  if (!window.Store.fbUid) return null;
   const snap = await getDoc(_planDoc());
   return snap.exists() ? (snap.data().pinHash || null) : null;
 };
 
 window._fbSaveWrappedKey = async function(wrappedB64) {
-  if (!window._fbUid) return;
+  if (!window.Store.fbUid) return;
   await setDoc(_metaDoc(), { wrappedKey: wrappedB64 }, { merge: true });
 };
 
 window._fbLoadWrappedKey = async function() {
-  if (!window._fbUid) return null;
+  if (!window.Store.fbUid) return null;
   try {
     const snap = await getDoc(_metaDoc());
     return snap.exists() ? (snap.data().wrappedKey || null) : null;
@@ -217,7 +217,7 @@ async function loadSecure() {
 let _migrationRunning = false;
 
 async function migrateToV7() {
-  const migKey = 'v7-migrated-' + (window._fbUid||'local') + '-' + window._planId;
+  const migKey = 'v7-migrated-' + (window.Store.fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
   window.Store.suppressSave = true;
   const _migPays = (window.pays||[]).map(p => {
