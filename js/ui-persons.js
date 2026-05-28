@@ -112,21 +112,36 @@ function delPerson(i) {
 // Bekleyen tanımı: tüm aktif (paid değil) borç; gecikmiş alt-küme ayrı raporlanır.
 function _buildPersonSummary(personId, personName) {
   const today = window.todayMidnight ? window.todayMidnight() : (() => { const t=new Date(); t.setHours(0,0,0,0); return t; })();
-  const matches = (p) => (personId && p.personId === personId) || (!p.personId && p.name === personName);
-  const personPays = (window.pays || []).filter(matches);
-  const personPaidItems = (window.paidItems || []).filter(matches);
+  // v8.167: çoklu grup + kredi fix.
+  //  (1) İsim eşleşmesi taban-isim üzerinden (suffix soyulur) → "QNB 1"/"QNB (Kira)" gibi
+  //      legacy/disambigue satırlar da yakalanır (eski: tam eşleşme, suffix'liler kaçıyordu).
+  //  (2) Kredi taksitleri ayrıca taranır — cred objesinde personId yok, bağ yalnız isim;
+  //      bekleyen kredi taksitleri eskiden hiç sayılmıyordu (ödenmişler paidItems'tan geliyordu → asimetri).
+  const baseOf = window.Hesap ? window.Hesap._baseOf : (n => (n || '').replace(/ \d+$/, '').trim() || n);
+  const baseName = baseOf(personName);
+  const matches = (p) => (personId && p.personId === personId) || (!p.personId && baseOf(p.name) === baseName);
   let bekleyen = 0, gecikmis = 0, bekleyenCount = 0, gecikmisCount = 0;
-  personPays.forEach(p => {
-    if ((p.status || 'pending') === 'paid') return;
-    const t = window.toTRY(p.amount, p.currency || 'TRY');
-    const remaining = Math.max(0, t - (p.paid || 0));
+  const addPending = (remaining, dateStr) => {
     bekleyen += remaining;
     bekleyenCount++;
-    if (p.date && window.parseLocalDate(p.date) < today) {
-      gecikmis += remaining;
-      gecikmisCount++;
-    }
+    if (dateStr && window.parseLocalDate(dateStr) < today) { gecikmis += remaining; gecikmisCount++; }
+  };
+  // (1) Normal pays
+  (window.pays || []).filter(matches).forEach(p => {
+    if ((p.status || 'pending') === 'paid') return;
+    const t = window.toTRY(p.amount, p.currency || 'TRY');
+    addPending(Math.max(0, t - (p.paid || 0)), p.date);
   });
+  // (2) Kredi taksitleri (cred.pays.amount zaten TRY — toplamOzeti ile tutarlı)
+  (window.creds || []).forEach(c => {
+    if (baseOf(c.name) !== baseName) return;
+    (c.pays || []).forEach(p => {
+      if ((p.status || 'pending') === 'paid') return;
+      addPending(Math.max(0, (p.amount || 0) - (p.paid || 0)), p.date);
+    });
+  });
+  // (3) Ödenmiş toplam — paidItems (normal + cred paid item'ları; cred'ler name ile yakalanır)
+  const personPaidItems = (window.paidItems || []).filter(matches);
   const odenmisToplam = personPaidItems.reduce((s, pi) => s + (pi.paid || 0), 0);
   return {
     bekleyen, bekleyenCount,
