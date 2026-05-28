@@ -61,7 +61,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-_Liste boş — son madde (`_fbUid` → Store) v8.113 ile tamamlandı._
+_Liste boş — Store internal'a taşıma ailesi (`_dirty`/`_saveTimer`/... → Store flags v8.108, `_fbUid` → Store.fbUid v8.113, session → Store.session v8.115, `_planId` → Store.planId v8.116, `_knownBuild` → version.js module-private v8.118) tamamlandı._
 
 ---
 
@@ -95,8 +95,8 @@ Firebase (Firestore) ←→ loadSecure/saveSecure (db.js) ←→ window.pays/cre
 
 ```
 index.html          Ana uygulama — tüm JS import ile yükleniyor
-js/store.js         Merkezi Store — 8 dizi + rates + lookup maps (pays/creds) tek otorite, find* API, window.* getter/setter köprüsü
-js/state.js         UI durumu (curTab, sortMode, partialCtx) + _planId + clearState() — veri dizileri Store'da
+js/store.js         Merkezi Store — 8 dizi + rates + lookup maps (pays/creds) + persistence/sync flags (`_persistState`: dirty/saveTimer/syncTimer/fbSyncNeeded/lastUpdated/syncCb/suppressSave/logSaveTimer/fbUid/planId) + session namespace (`Store.session`: cryptoKey/dataKeyRaw/plainPin), find* API, window.* getter/setter köprüsü
+js/state.js         UI durumu (curTab, sortMode, partialCtx) + clearState() — veri dizileri ve _planId Store'da
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
 js/db.js            Firestore data ops + loadSecure/saveSecure/migrasyon
@@ -119,7 +119,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.113", "build": "20260528-41"}
+version.json        {"v": "8.120", "build": "20260528-45"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -131,8 +131,12 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
-| v8.120 | 20260528-45 | `window._planId` → `Store.planId` migrasyonu (10. Store flag) — setter localStorage'a otomatik yazar; state.js + firebase.js duplicate init silindi; plan.js + auth-pin.js'teki manuel localStorage.setItem'lar setter'a devredildi; 16 read site mekanik replace |
+| v8.120 | 20260528-45 | Bundle commit (5a91596 + b99e570 hotfix): v8.116 + v8.117 + v8.118 değişiklikleri tek commit'te + APP_VERSION/APP_BUILD hizalama hotfix |
+| v8.119 | — | (v8.120 commit'ine bundle edildi — ayrı commit yok) |
 | v8.118 | 20260528-43 | `window._knownBuild` → `version.js` modül-private + `getKnownBuild()` named export; `search.js` import eder; `index.html`'deki orphan `var _knownBuild = null;` (L721-723) silindi — boot-time `window.*` set yan etkisi de kalktı |
+| v8.117 | 20260528-44 | `rehber.js` _rhbPhones reassignment → splice in-place mutation (sessiz bug fix: inline handler'lar window.* üzerinden okuyordu, stale array tutuyordu) + `app.js` _migrationRunning window'dan modül-local'e |
+| v8.116 | 20260528-43 | `window._planId` → `Store.planId` migrasyonu (10. Store flag) — setter localStorage'a otomatik yazar; state.js + firebase.js duplicate init silindi; plan.js + auth-pin.js'teki manuel localStorage.setItem'lar setter'a devredildi; 16 read site mekanik replace |
+| v8.115 | 20260528-43 | Session state Store.session namespace'e taşındı — `_cryptoKey`/`_dataKeyRaw`/`_plainPin` artık `Store.session.X`; crypto.js'ten 5 dead export silindi |
 | v8.114 | 20260528-42 | savePay person-mismatch uyarısı — isim persons'ta yoksa engelleyici olmayan warn-toast + console.warn (sadece yeni kayıt veya edit'te isim değişti); `#warn-toast` element + `showWarnToast` helper (modal.js) |
 | v8.113 | 20260528-41 | `window._fbUid` → `Store.fbUid` migrasyonu — 9. flag Store internal'a; firebase.js ana modül bloğuna taşındı (load-order race kalıcı çözüm), v8.100 renderPlanNames defensive guard kaldırıldı |
 | v8.112 | 20260528-40 | Pays personId backfill: _backfillPersonIds pass 2 — isim eşleşmesiyle eski pays kayıtlarına personId atar; mevcut numeric suffix gösterimleri otomatik düzelir |
