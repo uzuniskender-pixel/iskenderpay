@@ -105,7 +105,7 @@ function render() {
   const nameCountMap={};
   rowKeys.forEach(k=>{const n=mx[k]._name||'';nameCountMap[n]=(nameCountMap[n]||0)+1;});
   const nameIdxMap={};
-  rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=n+' '+nameIdxMap[n];}else{mx[k]._displayName=n;}});
+  rowKeys.forEach(k=>{const n=mx[k]._name||'';if(nameCountMap[n]>1){const idx=nameIdxMap[n]=(nameIdxMap[n]||0)+1;mx[k]._displayName=idx===1?n:n+' '+(idx-1);}else{mx[k]._displayName=n;}});
   const allMonths=Array.from(monthSet).sort();
   const showPaid = localStorage.getItem('v8-show-paid') === '1';
   const months = showPaid
