@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.124 / 20260528-49
+## Mevcut Durum (28 Mayıs 2026) — v8.125 / 20260528-50
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.125 | 20260528-50 | **cred rowKey "(Kredi)" suffix** (`hesap.js#_displayNames`): cred satırları (`k.startsWith('cred_')`) display name'inin sonuna `(Kredi)` post-processing eklendi. Mevcut suffix mantığı (personId tag, legacy isim-suffix) **append** mode'da korunur — disambiguation kaybolmaz: "QNB" cred → `QNB (Kredi)`; iki cred aynı isimde → `QNB (Kredi)` + `QNB 1 (Kredi)` (legacy numeric suffix önce, sonra "(Kredi)"); cred + personId tag (rare) → `QNB (Kira) (Kredi)` (çift paren kabul). Defensive fallback: `dnMap[k]` set değilse `_baseOf(mx[k]._name)` kullanılır. Etki: plan matrisi (`ui-plan.js#render`), kredi kart paneli (`ui-pay.js#renderCredSummary` → `Hesap.krediler()`), arama (`search.js#renderAI`) — üç tüketici de aynı suffix'i görür. |
 | v8.124 | 20260528-49 | **`ui-plan.js` section header'ları**: 612 satırlık dosyaya 7 section header eklendi (kod düzeni değişmedi, sadece görsel navigasyon): `DATA / HESAPLAMA` (getAllItems, buildMx), `ANA RENDER` (render), `HAFTA WİDGET` (renderGecWidget, renderHaftaWidget), `DETAIL PANEL (DV)` (openRow, convertToCredit, openCell, closeDV, closeRDET, openEmptyCell), `HÜCRE CRUD` (addToMonth, markOk, undoCell, openKM, doPartial, saveCellAmt, resetPartial), `SATIR / AY CRUD` (editByKey, delByKey, delMonthEntry, delCellItems), `EVENT + TOGGLE` (store:change listener + togglePaidMonths). Mevcut `// ── STORE EVENT LISTENER (v9.0) ──` yorumu `EVENT + TOGGLE` ile replace edildi. 6 fonksiyon zaten doğru sırada, 2 küçük çelişki (convertToCredit DETAIL section'a, openKM HÜCRE CRUD section'a düştü — fiziksel sıra korundu). Bölme yok — v9.0'da modal HTML extraction'la birlikte ui-plan-detail/actions ayrımı düşünülebilir. |
 | v8.123 | 20260528-48 | **`_doSave` veri integrity check'i** (`db.js`): kayıt öncesi tip/varlık doğrulama, hata yakalanır ama save iptal EDİLMEZ — sadece `console.error` ile loglanır (forensic için). Kontroller: (1) **pays**: `id` (undefined/null değil), `name` (string), `amount` (number + NaN değil), `date` (string), `groupId` (truthy). (2) **creds**: `id`, `name` (string), `monthly` (number + NaN değil — "amount" konseptinin karşılığı). (3) **persons**: `id` (truthy), `name` (string). Sayım: her hata `errN++`, toplam sıfır değilse `console.warn('[integrity] toplam N veri hatasi tespit edildi — kayit yine de yapiliyor')`. Mevcut groupId tutarlılık check'inden **sonra**, encrypt'ten **önce** çalışır (silent fix önce, sonra validation). notes/paidItems/rehber/hist/actLog kapsanmadı (user talebi 3 ana koleksiyon). |
 | v8.122 | 20260528-47 | **`window.debugState()` konsol debug helper'ı eklendi** (`app.js`): 5 `console.table` grubu — (1) **Store flags**: dirty, saveTimer, syncTimer, fbSyncNeeded, lastUpdated (ISO formatlı), planId, fbUid. (2) **Session**: cryptoKey/dataKeyRaw varlığı (boolean), plainPin uzunluğu (cleartext loglamamak için sadece length). (3) **Veri sayıları**: 8 dizinin (pays/creds/hist/persons/notes/paidItems/rehber/actLog) length değerleri. (4) **Kur cache**: EUR/USD/GOLD + `_fetchedAt`. (5) **Service Worker**: `navigator.serviceWorker.controller` boolean. Başlıkta `APP_VERSION` + `APP_BUILD` colored log. Çağrı: konsoldan `debugState()` — production deploy'da kalır (sadece geliştirici tetikler). |
@@ -135,6 +136,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.125 | 20260528-50 | cred rowKey "(Kredi)" suffix (hesap.js#_displayNames) — append, mevcut suffix korunur; plan matrisi + kredi paneli + arama'da tutarlı |
 | v8.124 | 20260528-49 | ui-plan.js section header'ları (7 başlık) — kod düzeni değişmedi, sadece görsel navigasyon |
 | v8.123 | 20260528-48 | `_doSave` veri integrity check (db.js) — pays/creds/persons için tip+varlık doğrulama; hata yakalanır ama save iptal EDİLMEZ, console.error + toplam errN warn'i |
 | v8.122 | 20260528-47 | `window.debugState()` konsol debug helper'ı (app.js) — 5 console.table grubu: Store flags, session (PIN length only), 8 veri sayısı, kur cache, SW controller |

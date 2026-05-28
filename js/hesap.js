@@ -34,6 +34,7 @@ function _baseOf(name) {
 // Disambiguated display name map.
 // personId varsa: ayni personId'nin birden fazla rowKey'i → "name (desc|category)"
 // personId yoksa (legacy): mevcut isim-suffix mantigi ("AHMET" / "AHMET 1")
+// cred rowKey'leri (cred_*): mevcut suffix'in sonuna "(Kredi)" eklenir (v8.125)
 // keys verilirse sadece bu rowKey'leri dikkate alir (plan matrisi filtreliyse).
 function _displayNames(mx, keys) {
   const allKeys = (keys && keys.length)
@@ -87,6 +88,13 @@ function _displayNames(mx, keys) {
       dnMap[k] = idx === 1 ? b : b + ' ' + (idx - 1);
     } else {
       dnMap[k] = b;
+    }
+  });
+
+  // Cred rowKey'leri her zaman "(Kredi)" suffix tasir (v8.125) — append, mevcut suffix korunur
+  allKeys.forEach(k => {
+    if (k.startsWith('cred_')) {
+      dnMap[k] = (dnMap[k] || _baseOf(mx[k]._name)) + ' (Kredi)';
     }
   });
 
