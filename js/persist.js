@@ -16,28 +16,8 @@ async function saveSecure() {
 async function _doSave() {
   window.Store.saveTimer = null;
   if (!window.Store.session.cryptoKey) return;
-  // GroupId tutarlilik kontrolu: ayni groupId'de farkli isim varsa duzelt
-  try {
-    const byGroup = {};
-    (window.pays||[]).forEach(p => {
-      if (!p.groupId) return;
-      if (!byGroup[p.groupId]) byGroup[p.groupId] = [];
-      byGroup[p.groupId].push(p);
-    });
-    Object.values(byGroup).forEach(entries => {
-      if (entries.length <= 1) return;
-      const names = entries.map(e => e.name);
-      const freq = {};
-      names.forEach(n => { freq[n] = (freq[n]||0)+1; });
-      const canonical = Object.keys(freq).sort((a,b) => freq[b]-freq[a])[0];
-      const allSame = names.every(n => n === canonical);
-      if (!allSame) {
-        entries.forEach(e => { e.name = canonical; });
-        console.log('[integrity] GroupId', entries[0].groupId, '→ ad duzeltildi:', canonical);
-      }
-    });
-  } catch(e) { console.warn('[integrity] kontrol hatasi:', e); }
-  // Veri integrity kontrolu (v8.123) — v8.135'te validate.js'e tasindi
+  // Normalize (mutation) → integrity.js v8.153; Validate (read-only) → validate.js v8.135
+  window.normalizeBeforeSave && window.normalizeBeforeSave();
   window.validateBeforeSave && window.validateBeforeSave();
   const data = {
     pays: window.pays, creds: window.creds, hist: window.hist,
