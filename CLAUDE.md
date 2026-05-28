@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.96 / 20260528-24
+## Mevcut Durum (28 Mayıs 2026) — v8.98 / 20260528-26
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,8 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.98 | 20260528-26 | **data.js → Store entegrasyonu**: `_lookupDirty` + 3 lookup Map (`_mapPaysById`, `_mapPaysByGroup`, `_mapCredsById`) `data.js`'ten `store.js`'e taşındı. Store artık kendi `_rebuildLookups()` internal helper'ını çalıştırıyor ve `_state.pays`/`_state.creds`'ten direkt okuyor — `window.invalidateLookups` callout zinciri kırıldı. Yeni Store API: `Store.findPayById/findPaysByGroup/findCredById/invalidateLookups`. `data.js` ince compat katmanına indi (32 satır → sadece `xDec`/`xEnc` codec + 4 window shim). 0 çağrı site'i değiştirildi — tüm `window.findXxxById(...)` / `window.invalidateLookups()` çağrıları compat shim üzerinden Store'a yönleniyor. |
+| v8.97 | 20260528-25 | **Hotfix: Store.replace artık autoSave tetikler** — v8.96 Aşama 3 temizliğinde 2 yerde (`log.js#doLogDelAll` "Tüm log sil", `ui-persons.js#clrHist` "Tüm geçmiş sil") `Store.replace` sonrası manuel `saveSecure()` kaldırılmıştı, ama Store.replace silent davranıyordu (setter köprüsüyle aynı semantik). Kayıt tetiklenmiyordu → veri kaybı riski. Fix: `Store.replace` artık `_autoSave()` çağırır, diğer mutation API'leriyle tutarlı. Window setter (`window.pays = X`) silent kalmaya devam ediyor. `db.js#migrateToV7` etkilenmez (`_suppressSave` guard nötrler, ardından explicit `saveSecureNow()`). |
 | v8.96 | 20260528-24 | **Store Aşama 3 temizlik + bug fix**. (1) Store mutation API'leri zaten debounce save tetiklediği için redundant olan ~22 manuel `saveSecure()`/`save()`/`savePersons()`/`saveNotes()`/`rhbSave()` çağrısı kaldırıldı (log.js × 3, rehber.js × 3, ui-pay.js × 2, ui-plan.js × 9, ui-persons.js × 6, ui-notes.js × 4). Item-level mutation içeren fonksiyonlar (`saveCred`, `markOk`, `undoCell`, `doPartial`, `saveCellAmt`, `resetPartial`) için `Store.touch()` eklendi. `state.js` minimale indirildi — kullanılmayan setter'lar (`setState`, `setStateMany`, `setPlanId`, `setSortMode/CurTab/PartialCtx/SuppressSave/SaveTimer/LookupDirty/Rates`, `SAVE_DEBOUNCE_MS`) ve veri dizisi `let` bildirimleri (Store'a taşındı) silindi. Korunan: `addLog` 800ms timer (kasıtlı farklı zamanlama), `backup.js#saveSecureNow().then(...)` (senkronizasyon gerekli). (2) **Bug fix: convert-to-credit stale state** (`ui-pay.js#openCred`): Pays grubunu krediye dönüştürme akışında CM modal iptal/ESC/dış-tıklama ile kapatılırsa `window._convertSourceKey` ve `_convertSourcePays` window'da kalıyordu — sonraki "Yeni Kredi" kaydında stale kaynağa ait pays grubu silinebiliyordu. `openCred()` başına temizleme eklendi. |
 | v8.95 | 20260528-23 | **Merkezi Hesap modülü** (`js/hesap.js`): `Hesap.buAyOzeti({all,refDate})` / `Hesap.toplamOzeti()` / `Hesap.krediler()` / `Hesap.trend(n)` + paylaşılan `_baseOf` / `_displayNames(mx,keys?)`. Üç dosyada (`ui-plan.js#render`, `search.js#renderAI`, `ui-pay.js#renderCredSummary`) duplicate hesap+display name kodları Hesap çağrılarıyla değiştirildi — tutarsızlık çözüldü. |
 | v8.94 | 20260528-22 | `sync.js` realtime callback'ine `renderActLog` çağrısı eklendi — uzak sekmeden gelen actLog değişiklikleri artık aktivite log sekmesinde de yansıyor |
@@ -37,7 +39,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **data.js → Store entegrasyonu** — `data.js`'in kendi `_lookupDirty` flag'i Store'a taşı (state duplication)
+1. **Redundant manuel `window.invalidateLookups()` temizliği** — Store mutation API'leri (push/removeWhere/mutateItem/touch) ve hydrate zaten otomatik invalidate ediyor. Halen manuel çağrı yapan yerler: `ui-pay.js:142` (Store.removeWhere'in hemen sonrasında), `ui-plan.js:36` (`render()` başında — savunma amaçlı olabilir, dikkat), `app.js:63#genRec`, `db.js:194/248`, `backup.js:56/82`, `sync.js:40`. Tek tek doğrulanıp gereksizler kaldırılır.
 2. **Ölü dosyaları sil** — `ui.js`, `ui-data.js`, `ui-misc.js` FS'ten kaldır (v8.90'da import'tan çıkarıldı ama dosyalar duruyor)
 3. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
 
@@ -74,7 +76,7 @@ Firebase (Firestore) ←→ loadSecure/saveSecure (db.js) ←→ window.pays/cre
 
 ```
 index.html          Ana uygulama — tüm JS import ile yükleniyor
-js/store.js         Merkezi Store — 8 dizi + rates tek otorite, window.* getter/setter köprüsü
+js/store.js         Merkezi Store — 8 dizi + rates + lookup maps (pays/creds) tek otorite, find* API, window.* getter/setter köprüsü
 js/state.js         UI durumu (curTab, sortMode, partialCtx) + _planId + clearState() — veri dizileri Store'da
 js/util.js          Pure yardımcı fonksiyonlar
 js/crypto.js        Crypto altyapısı (AES-GCM + AES-KW + PBKDF2)
@@ -94,10 +96,10 @@ js/rehber.js        Rehber
 js/log.js           Aktivite logu
 js/search.js        Arama + Ayarlar (renderAI)
 js/modal.js         Modal yardımcıları
-js/data.js          Veri yardımcıları
+js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.97", "build": "20260528-25"}
+version.json        {"v": "8.98", "build": "20260528-26"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -109,7 +111,8 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
-| v8.96 | 20260528-24 | Bug fix: convert-to-credit modal iptal sonrası stale `_convertSourceKey` → openCred başında temizleme |
+| v8.98 | 20260528-26 | data.js → Store entegrasyonu — lookup maps + _lookupDirty Store'a taşındı, data.js ince compat katmanına indi |
+| v8.97 | 20260528-25 | Hotfix: Store.replace artık autoSave tetikler (log/persons "tümünü sil" sessizdi → veri kaybı riski) |
 | v8.96 | 20260528-24 | Store Aşama 3 temizlik (manuel saveSecure çağrıları + state.js dead setter'lar) + convert-to-credit bug fix |
 | v8.95 | 20260528-23 | Merkezi Hesap modülü — js/hesap.js + ui-plan.js/search.js/ui-pay.js duplicate hesaplar kaldırıldı |
 | v8.94 | 20260528-22 | sync.js callback'ine renderActLog eklendi |

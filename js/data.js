@@ -1,35 +1,6 @@
-// js/data.js — iskenderpay (v1.0)
-// Lookup haritaları ve yedek compat fonksiyonları.
-// saveSecure/loadSecure/doLogin db.js'te — buraya taşınmadı.
-
-// ── LOOKUP MAPS ───────────────────────────────────────────────────────────────
-// O(1) erişim için pays/creds haritaları — veri değişince invalidate edilir
-
-let _lookupDirty = true;
-const _mapPaysById    = new Map();
-const _mapPaysByGroup = new Map();
-const _mapCredsById   = new Map();
-
-function invalidateLookups() { _lookupDirty = true; }
-
-function rebuildLookups() {
-  if (!_lookupDirty) return;
-  _mapPaysById.clear();
-  _mapPaysByGroup.clear();
-  _mapCredsById.clear();
-  (window.pays || []).forEach(p => {
-    _mapPaysById.set(String(p.id), p);
-    const gid = p.groupId || String(Math.floor(Number(p.id)));
-    if (!_mapPaysByGroup.has(gid)) _mapPaysByGroup.set(gid, []);
-    _mapPaysByGroup.get(gid).push(p);
-  });
-  (window.creds || []).forEach(c => _mapCredsById.set(String(c.id), c));
-  _lookupDirty = false;
-}
-
-function findPayById(id)    { rebuildLookups(); return _mapPaysById.get(String(id)) || null; }
-function findPaysByGroup(gid){ rebuildLookups(); return _mapPaysByGroup.get(gid) || []; }
-function findCredById(id)   { rebuildLookups(); return _mapCredsById.get(String(id)) || null; }
+// js/data.js — iskenderpay (v2.0)
+// Yedek codec (xDec/xEnc) + Store lookup API'sine compat shim.
+// _lookupDirty + _mapPaysById/_mapPaysByGroup/_mapCredsById v8.98'de Store'a taşındı.
 
 // ── YEDEK UYUMLULUK ───────────────────────────────────────────────────────────
 // Yedek al/geri yükle (app.js confirmBackup + readRF tarafından kullanılır)
@@ -50,10 +21,11 @@ function xEnc(t, p) {
 }
 
 // ── GLOBAL COMPAT ─────────────────────────────────────────────────────────────
-window.invalidateLookups = invalidateLookups;
-window.rebuildLookups    = rebuildLookups;
-window.findPayById       = findPayById;
-window.findPaysByGroup   = findPaysByGroup;
-window.findCredById      = (id) => { rebuildLookups(); return _mapCredsById.get(String(id)) || null; };
+// Lookup API'leri Store'a delege — eski çağrı site'leri (window.findPayById vb.)
+// kırılmadan Store metotlarına yönlenir.
+window.invalidateLookups = () => window.Store.invalidateLookups();
+window.findPayById       = (id)  => window.Store.findPayById(id);
+window.findPaysByGroup   = (gid) => window.Store.findPaysByGroup(gid);
+window.findCredById      = (id)  => window.Store.findCredById(id);
 window.xDec              = xDec;
 window.xEnc              = xEnc;

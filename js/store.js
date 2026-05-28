@@ -6,12 +6,13 @@
 //   - Store, 8 dizi + rates icin canonical referansi tutar.
 //   - Object.defineProperty ile window.<key> getter -> Store.get(key),
 //     setter -> Store._setSilent(key, val). (Geriye uyum: eski "window.pays = X" calismaya devam eder.)
-//   - Setter "silent" davranir: yalniz referansi gunceller, invalidateLookups + dirty=true set eder.
+//   - Setter "silent" davranir: yalniz referansi gunceller, lookup invalidate + dirty=true set eder.
 //     saveSecure cagrisini cagiran kod yapar (mevcut davranis korunur).
 //   - Yeni call site'lar Store.push / Store.removeWhere / Store.spliceAt / Store.mutateItem kullanir;
-//     bu API'ler invalidateLookups + dirty=true + saveSecure() debounce'unu otomatik tetikler.
+//     bu API'ler lookup invalidate + dirty=true + saveSecure() debounce'unu otomatik tetikler.
 //   - Store.hydrate({pays, creds, ...}) — loadSecure / sync / restore icin: toplu sessiz atama,
 //     saveSecure tetiklemez (kayit cagiran tarafa birakilmistir).
+//   - Lookup haritalari (_mapPaysById vb.) Store icinde tutulur; find* metotlari Store API'sinde.
 
 const DATA_KEYS = ['pays','creds','hist','persons','notes','paidItems','rehber','actLog'];
 const ALL_KEYS  = [...DATA_KEYS, 'rates'];
@@ -36,7 +37,30 @@ ALL_KEYS.forEach(k => {
 });
 
 function _markDirty() { window._dirty = true; }
-function _invalidate() { if (window.invalidateLookups) window.invalidateLookups(); }
+
+// ── LOOKUP MAPS (data.js'ten taşındı) ──────────────────────────────────────
+// O(1) erişim için pays/creds haritaları — veri değişince invalidate edilir
+let _lookupDirty = true;
+const _mapPaysById    = new Map();
+const _mapPaysByGroup = new Map();
+const _mapCredsById   = new Map();
+
+function _invalidate() { _lookupDirty = true; }
+
+function _rebuildLookups() {
+  if (!_lookupDirty) return;
+  _mapPaysById.clear();
+  _mapPaysByGroup.clear();
+  _mapCredsById.clear();
+  (_state.pays || []).forEach(p => {
+    _mapPaysById.set(String(p.id), p);
+    const gid = p.groupId || String(Math.floor(Number(p.id)));
+    if (!_mapPaysByGroup.has(gid)) _mapPaysByGroup.set(gid, []);
+    _mapPaysByGroup.get(gid).push(p);
+  });
+  (_state.creds || []).forEach(c => _mapCredsById.set(String(c.id), c));
+  _lookupDirty = false;
+}
 
 // saveSecure suppress flag — Store.tx ve hydrate sirasinda otomatik kaydi durdurur
 let _suppressAutoSave = 0;
@@ -120,6 +144,12 @@ export const Store = {
     _invalidate();
     _autoSave();
   },
+
+  // ── LOOKUP API ───────────────────────────────────────────────────────────
+  invalidateLookups() { _lookupDirty = true; },
+  findPayById(id)      { _rebuildLookups(); return _mapPaysById.get(String(id))    || null; },
+  findPaysByGroup(gid) { _rebuildLookups(); return _mapPaysByGroup.get(gid)        || [];   },
+  findCredById(id)     { _rebuildLookups(); return _mapCredsById.get(String(id))   || null; },
 
   // ── BATCH ────────────────────────────────────────────────────────────────
   // tx icinde birden fazla mutation -> tek saveSecure (debounce zaten yapiyor
