@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.105 / 20260528-33
+## Mevcut Durum (28 Mayıs 2026) — v8.107 / 20260528-35
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,8 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.107 | 20260528-35 | **ModalManager bypass temizliği**: `index.html:885` floating "🔍 Ara" butonu doğrudan `document.getElementById('SRCHMOD').classList.add('open')` çağırıyordu — ModalManager'ın `_open` Set'ini ve `body.style.overflow='hidden'` lock'unu atlatıyordu. `window.ModalManager.open('SRCHMOD')` ile değiştirildi → stack tracking + scroll lock + ESC/click-outside davranışı artık tutarlı. `setTimeout(...focus(),100)` korundu (CSS .open transition'ı bitmeden focus mobil klavyeyi yanlış konumda açabilir). Modal envanteri taraması: 13 dialog (11 mov + 2 dov), hepsi `ModalManager.open()`/`data-modal-close` kullanıyor; `style.display` ile yönetilen modal yok — bu butondan başka bypass kalmadı. |
+| v8.107 | 20260528-35 | **Sync lifecycle finalizasyonu**: `_fbStopListen` (`db.js:66`) tanımlıydı ama hiçbir yerden çağrılmıyordu (orphan). Signout sonrası `_syncTimer` interval'i tikker olmaya devam ediyordu — `_fbPoll` guard'ı `!_fbUid` ile kısa devre yaptığı için pratik etki yoktu, ama kavramsal kirlilik vardı. Fix: `firebase.js#onAuthStateChanged` else-branch'ine (user=null) `if (window._fbStopListen) window._fbStopListen();` eklendi → signout'ta interval clear olur, `_syncCb` null'lanır. Plan switch yolu zaten temiz: `_fbStartListen` line 27 guard'ı (`if (window._syncTimer) clearInterval(...)`) eski interval'i temizliyordu. Önceden yapılan memory leak taraması: `addEventListener`/`setInterval`/`setTimeout` tüm kullanımları temiz — modül-level listener'lar (modal/visibility/store:change × 3) tek seferlik kayıt, per-input listener'lar (editPlanName) GC'lenir. Tek gerçek bulgu buydu. |
 | v8.105 | 20260528-33 | **state.js#clearState else fallback temizliği**: `if (window.Store) {...} else {...}` pattern'ındaki else dalı (8 satırlık manuel `window.pays/creds/...=[]`) silindi. Reachability: store.js index.html'de ilk modül import'u, state.js ikinci; ES modules sequential execute olduğundan store.js tamamlanmadan state.js yüklenemez → `window.Store.clearAll()` her zaman güvenli. clearState ayrıca runtime'da (console debug) çağrılır, modül body'sinde çağrılmaz. Aynı pattern v8.102'de backup/sync için yapılmıştı; aile tamamlandı. |
 | v8.105 | 20260528-33 | state.js#clearState else fallback silindi — Store her zaman tanımlı (v8.102 aile tamamlandı) |
 | v8.103 | 20260528-31 | **db.js auth duplikasyonu temizliği**: firebase.js ile birebir aynı olan `onAuthStateChanged` listener, `getRedirectResult`, `doGoogleLogin`, `doGoogleSignOut`, auth import'ları (`GoogleAuthProvider`/`signInWith*`/`signOut`/`onAuthStateChanged`/`getRedirectResult`), `const _auth = window._firebaseAuth`, yerel `let _fbUid` + `window._fbUid = null` (redundant init) db.js'den silindi. Firestore yardımcılarındaki 10 guard (`_fbSave`, `_fbStartListen`, `_fbPoll`, `_fbLoad`, `_fbSaveSalt`, `_fbLoadSalt`, `_fbSavePinHash`, `_fbLoadPinHash`, `_fbSaveWrappedKey`, `_fbLoadWrappedKey`) `if (!_fbUid)` → `if (!window._fbUid)` çevrildi. Ek temizlik: kullanılmayan `const _db = window._firebaseDb` ve `doc` import'u silindi. db.js artık Firestore data ops + PIN doLogin + loadSecure/saveSecure/migrasyon. Auth concern'lerinin tek sahibi: firebase.js. Davranış birebir aynı (önceden listener iki kez fire ediyordu, UI ops idempotent; şimdi bir kez — ufak perf kazancı). |
@@ -105,7 +107,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.105", "build": "20260528-33"}
+version.json        {"v": "8.107", "build": "20260528-35"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -117,6 +119,9 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.107 | 20260528-35 | ModalManager bypass temizliği: floating Ara butonu `classList.add('open')` yerine `ModalManager.open()` kullanıyor — stack + scroll lock tutarlı |
+| v8.107 | 20260528-35 | Sync lifecycle: signout'ta `_fbStopListen()` çağrılır — orphan dead code aktive edildi, interval kapanır |
+| v8.105 | 20260528-33 | state.js#clearState else fallback temizliği — v8.102 ailesinin son üyesi |
 | v8.103 | 20260528-31 | db.js auth duplikasyonu temizliği — firebase.js owns auth, db.js sadece Firestore data ops |
 | v8.102 | 20260528-30 | Ulaşılamaz else fallback temizliği: backup.js (×2), sync.js (×1) — Store her zaman tanımlı |
 | v8.100 | 20260528-28 | Hotfix: firebase.js race condition — onAuthStateChanged callback'i plan.js'ten önce fire ederse `renderPlanNames is not a function` hatası; defensive guard eklendi |

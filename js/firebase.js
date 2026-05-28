@@ -65,6 +65,8 @@ onAuthStateChanged(_auth, (user) => {
   } else {
     _fbUid = null;
     window._fbUid = null;
+    // Signout: sync interval'i durdur — _fbStopListen aksi halde orphan
+    if (window._fbStopListen) window._fbStopListen();
     setTimeout(() => {
       if (!_fbUid) {
         if (glsEl) glsEl.style.display = 'flex';

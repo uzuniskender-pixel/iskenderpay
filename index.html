@@ -707,8 +707,8 @@ var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.105';
-var APP_BUILD   = '20260528-33';
+var APP_VERSION = 'v8.107';
+var APP_BUILD   = '20260528-35';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -882,6 +882,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   <div class="upd-txt">🔄 Yeni sürüm mevcut</div>
   <button class="upd-btn" onclick="updApply()">Güncelle</button>
 </div>
-<button onclick="document.getElementById('SRCHMOD').classList.add('open'); setTimeout(()=>document.getElementById('SRCHINP').focus(),100);" style="position:fixed;bottom:20px;right:20px;z-index:9990;background:#ffd200;color:#0f0e17;border:none;padding:12px 18px;font-weight:700;font-size:14px;border-radius:50px;box-shadow:0 4px 20px rgba(0,0,0,.5);cursor:pointer;display:flex;align-items:center;gap:8px;">🔍 Ara</button>
+<button onclick="window.ModalManager.open('SRCHMOD'); setTimeout(()=>document.getElementById('SRCHINP').focus(),100);" style="position:fixed;bottom:20px;right:20px;z-index:9990;background:#ffd200;color:#0f0e17;border:none;padding:12px 18px;font-weight:700;font-size:14px;border-radius:50px;box-shadow:0 4px 20px rgba(0,0,0,.5);cursor:pointer;display:flex;align-items:center;gap:8px;">🔍 Ara</button>
 </body>
 </html>
