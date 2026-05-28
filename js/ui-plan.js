@@ -292,20 +292,25 @@ function openRow(keyEnc) {
 
 function convertToCredit(keyEnc) {
   const key=decodeURIComponent(keyEnc);
-  const all=getAllItems(),mx=buildMx(all);
-  const name=mx[key]?._name||'';
-  const months=Object.keys(mx[key]||{}).filter(k=>!k.startsWith('_')).sort();
-  const firstUnpaid=months.find(m=>mx[key][m]?.status!=='paid')||months[0];
-  const cell=firstUnpaid?mx[key][firstUnpaid]:null;
-  const monthly=cell?Math.round(cell.try):0;
-  const date=cell?(cell.items[0]?.date||''):'';
+  const gid=key.startsWith('g_')?key.replace('g_',''):null;
+  if(!gid){alert('Sadece normal odeme satirlari krediye donusturulebilir.');return;}
+  // Gruptaki tum kayitlar tarihe gore sirali
+  const srcPays=window.pays.filter(p=>p.groupId===gid).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!srcPays.length){alert('Kayit bulunamadi.');return;}
+  const name=srcPays[0].name;
+  const count=srcPays.length;
+  const startDate=srcPays[0].date;
+  const monthly=Math.round(srcPays[0].amount);
+  // Odeme durumlarini sakla — saveCred sonrasi kredi taksitlerine islenecek
   window._convertSourceKey=key;
+  window._convertSourcePays=srcPays.map(p=>({date:p.date,status:p.status||'pending',paid:p.paid||0,amount:p.amount}));
+  // Modali doldur
   document.getElementById('CEID').value='';
   document.getElementById('CN').value=name;
   document.getElementById('CT').value='';
-  document.getElementById('CI').value='';
+  document.getElementById('CI').value=count;
   document.getElementById('CM2').value=monthly;
-  document.getElementById('CS').value=date;
+  document.getElementById('CS').value=startDate;
   if(typeof window.updLP==='function') window.updLP();
   closeDV();
   setTimeout(()=>ModalManager.open('CM'),50);

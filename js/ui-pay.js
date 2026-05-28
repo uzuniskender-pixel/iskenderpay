@@ -91,9 +91,22 @@ function saveCred() {
     window.addLog('cred_add','Kredi eklendi',name+' · '+inst+' taksit · '+window.fmtAmt(monthly,'TRY'),0);
     const srcKey=window._convertSourceKey;
     if(srcKey){
+      // Odeme durumlarini yeni kredi taksitlerine isle
+      const srcPays=window._convertSourcePays||[];
+      const newCred=window.creds[window.creds.length-1];
+      if(newCred&&srcPays.length){
+        srcPays.forEach((sp,i)=>{
+          const taksit=newCred.pays[i];
+          if(!taksit)return;
+          if(sp.status==='paid'){taksit.status='paid';taksit.paid=taksit.amount;}
+          else if(sp.status==='partial'&&sp.paid>0){taksit.status='partial';taksit.paid=sp.paid;}
+        });
+      }
+      // Eski pays grubunu sil
       if(srcKey.startsWith('g_')){const gid=srcKey.replace('g_','');window.pays=window.pays.filter(p=>p.groupId!==gid);}
       else if(srcKey.startsWith('pay_')){const pid=srcKey.replace('pay_','');window.pays=window.pays.filter(p=>String(Math.floor(Number(p.id)))!==pid);}
       window._convertSourceKey=null;
+      window._convertSourcePays=null;
       if(window.invalidateLookups)window.invalidateLookups();
     }
   }
