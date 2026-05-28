@@ -49,7 +49,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     import './js/kur.js';
     import './js/backup.js';
     import './js/version.js';
-    import './js/ui-plan.js';
+    import './js/ui-plan-render.js';
+    import './js/ui-plan-detail.js';
+    import './js/ui-plan-actions.js';
     import './js/hesap.js';
     import './js/ui-pay.js';
     import './js/ui-persons.js';
@@ -463,8 +465,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.149';
-var APP_BUILD   = '20260528-70';
+var APP_VERSION = 'v8.150';
+var APP_BUILD   = '20260528-71';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
