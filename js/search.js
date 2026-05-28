@@ -66,7 +66,7 @@ function renderAI() {
   // Bu ay istatistikleri
   const now  = new Date();
   const nowY = now.getFullYear(), nowM = now.getMonth();
-  const buAy = window.pays.filter(p => {
+  const buAy = (window.getAllItems ? window.getAllItems() : window.pays).filter(p => {
     const d = window.parseLocalDate(p.date);
     return d.getFullYear()===nowY && d.getMonth()===nowM;
   });
