@@ -76,7 +76,7 @@ function renderAI() {
 
   // Genel toplam borç (tüm ödenmemiş)
   const toplamBekleyen = window.pays.filter(p=>(p.status||'pending')!=='paid')
-    .reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+    .reduce((s,p)=>s+Math.max(0,window.toTRY(p.amount,p.currency||'TRY')-(p.paid||0)),0);
   const krediBekleyen = window.creds.reduce((s,c)=>s+c.pays.filter(p=>(p.status||'pending')!=='paid')
     .reduce((a,p)=>a+p.amount,0),0);
 
