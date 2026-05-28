@@ -19,10 +19,10 @@ function showSyncToast() {
 async function startRealtimeSync() {
   if (!window._fbStartListen) return;
   setSyncDot('connecting');
-  window._lastUpdated = 0;
+  window.Store.lastUpdated = 0;
   window._fbStartListen(async encData => {
     if (!window._cryptoKey) return;
-    if (window._dirty) return;  // Bekleyen degisiklik var — sync ezmesin
+    if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync ezmesin
     try {
       const d = await window.decryptData(encData, window._cryptoKey);
       // Toplu sessiz atama — remote'tan gelen veri, saveSecure tetiklenmez

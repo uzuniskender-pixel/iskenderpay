@@ -8,9 +8,7 @@ window.partialCtx = null;
 window.curTab     = 0;
 window.sortMode   = 'date'; // 'date' | 'name'
 
-// ── Save kontrol bayraklari (db.js okur/yazar) ───────────────────────────────
-window._suppressSave = false;
-window._saveTimer    = null;
+// Persist/sync flag'leri v8.108'de Store internal'a tasindi (Store.dirty, Store.saveTimer vb.)
 
 // ── Aktif plan ID ────────────────────────────────────────────────────────────
 window._planId = localStorage.getItem('v6-active-plan') || 'plan1';

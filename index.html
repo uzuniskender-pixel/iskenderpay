@@ -707,8 +707,8 @@ var _plainPin   = '';
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.107';
-var APP_BUILD   = '20260528-35';
+var APP_VERSION = 'v8.108';
+var APP_BUILD   = '20260528-36';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -730,7 +730,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data && e.data.type === 'SW_UPDATED') {
       // Bekleyen kayıt varsa önce tamamlansın
-      const delay = (window._saveTimer) ? 600 : 0;
+      const delay = (window.Store && window.Store.saveTimer) ? 600 : 0;
       setTimeout(() => window.location.reload(), delay);
     }
   });

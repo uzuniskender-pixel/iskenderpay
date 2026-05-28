@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.107 / 20260528-35
+## Mevcut Durum (28 Mayıs 2026) — v8.108 / 20260528-36
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,9 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.108 | 20260528-36 | **Persistence/sync flags Store internal'a taşındı** — 8 flag (`_dirty`, `_saveTimer`, `_syncTimer`, `_fbSyncNeeded`, `_lastUpdated`, `_syncCb`, `_suppressSave`, `_logSaveTimer`) artık `window.*` yerine `Store.dirty`, `Store.saveTimer` vb. üzerinden erişiliyor. `js/store.js`'e module-local `_persistState` obj + 8 getter/setter eklendi; `_autoSave`/`_markDirty` Store internal'a yönlendi. `js/state.js`'in `_suppressSave`/`_saveTimer` init satırları silindi (Store default değerleri zaten karşılıyor). `js/db.js`'te ~30 site (`saveSecure`, `_doSave`, `saveSecureNow`, `loadSecure`, `_fbStartListen`, `_fbPoll`, `_fbStopListen`, `migrateToV7`) `window._X` → `window.Store.X` migrate edildi. `js/sync.js` (×2), `js/app.js#addLog` (×2), `index.html:733` (SW reload bekleyen kayıt check'i) de güncellendi. `_pollRunning` zaten module-local `let` idi — dokunulmadı. Backward compat: yok — `window._dirty` vb. okuyan harici kod artık `undefined` görür (istenen davranış). Doğrulama grep'i: aktif kodda `window\._(dirty|saveTimer|...)` 0 sonuç. |
+| v8.109 | 20260528-36 | **personId gruplama (v8.66 yeniden)** — 3 dosya değişti, migration yok (sadece yeni kayıtlar personId taşır). (1) `ui-persons.js#savePerson`: yeni person'a `id: 'per_'+Date.now()+'_'+rnd` atanır; edit dalı id'yi korur (`spliceAt` yeni obj'e `existing.id` taşır); rename propagation isim eşleşmesi yerine `personId` eşleşmesine geçti (fallback: id'siz eski kayıtlar için isim). (2) `ui-pay.js#savePay`: yeni `_resolvePersonId(name)` helper — `Hesap._baseOf(name)` ile suffix'i soyup persons'ta arar ("AHMET 2" datalist suggestion'ı → "AHMET" person'una eşleşir). Yeni push ve edit mutateItem patch'lerine `personId` (varsa) eklenir; aynı groupId'deki kardeş kayıtlara da propagate edilir. (3) `hesap.js#_displayNames`: rowKey'in ilk item'ından personId/tag (desc varsa, yoksa category) okunur. Aynı personId'nin birden fazla rowKey'i varsa "name (tag)" disambiguation; tek satırsa ham name. personId'siz rowKey'ler için **mevcut** _baseOf isim-suffix mantığı korunur — legacy data geriye uyumlu. Davranış değişikliği: groupId-bazlı satır mantığı KORUNDU; sadece display name kompozisyonu personId-aware oldu. Aynı personId + farklı groupId + farklı category → "AHMET (Kira)" + "AHMET (Elektrik)". |
+| v8.107 | 20260528-35 | **Ölü kod silindi: `migrateToV7b`** — v8.73'te early `return` ile devre dışı bırakılmıştı (isim bazlı gruplama veriyi bozuyordu, yerini `fix_groupids.js` aldı). Şimdi `db.js`'ten fonksiyon tanımı (~30 satır) + `window.migrateToV7b` export'u, `app.js#enterApp`'taki `.then(() => window.migrateToV7b())` zinciri tamamen silindi. Migrasyon yolu artık tek fonksiyon: `migrateToV7`. CLAUDE.md "groupId Mantığı" bölümündeki ölü referans da temizlendi (v8.73 history satırı korundu — o tarihteki durumu doğru yansıtıyor). |
 | v8.107 | 20260528-35 | **ModalManager bypass temizliği**: `index.html:885` floating "🔍 Ara" butonu doğrudan `document.getElementById('SRCHMOD').classList.add('open')` çağırıyordu — ModalManager'ın `_open` Set'ini ve `body.style.overflow='hidden'` lock'unu atlatıyordu. `window.ModalManager.open('SRCHMOD')` ile değiştirildi → stack tracking + scroll lock + ESC/click-outside davranışı artık tutarlı. `setTimeout(...focus(),100)` korundu (CSS .open transition'ı bitmeden focus mobil klavyeyi yanlış konumda açabilir). Modal envanteri taraması: 13 dialog (11 mov + 2 dov), hepsi `ModalManager.open()`/`data-modal-close` kullanıyor; `style.display` ile yönetilen modal yok — bu butondan başka bypass kalmadı. |
 | v8.107 | 20260528-35 | **Sync lifecycle finalizasyonu**: `_fbStopListen` (`db.js:66`) tanımlıydı ama hiçbir yerden çağrılmıyordu (orphan). Signout sonrası `_syncTimer` interval'i tikker olmaya devam ediyordu — `_fbPoll` guard'ı `!_fbUid` ile kısa devre yaptığı için pratik etki yoktu, ama kavramsal kirlilik vardı. Fix: `firebase.js#onAuthStateChanged` else-branch'ine (user=null) `if (window._fbStopListen) window._fbStopListen();` eklendi → signout'ta interval clear olur, `_syncCb` null'lanır. Plan switch yolu zaten temiz: `_fbStartListen` line 27 guard'ı (`if (window._syncTimer) clearInterval(...)`) eski interval'i temizliyordu. Önceden yapılan memory leak taraması: `addEventListener`/`setInterval`/`setTimeout` tüm kullanımları temiz — modül-level listener'lar (modal/visibility/store:change × 3) tek seferlik kayıt, per-input listener'lar (editPlanName) GC'lenir. Tek gerçek bulgu buydu. |
 | v8.105 | 20260528-33 | **state.js#clearState else fallback temizliği**: `if (window.Store) {...} else {...}` pattern'ındaki else dalı (8 satırlık manuel `window.pays/creds/...=[]`) silindi. Reachability: store.js index.html'de ilk modül import'u, state.js ikinci; ES modules sequential execute olduğundan store.js tamamlanmadan state.js yüklenemez → `window.Store.clearAll()` her zaman güvenli. clearState ayrıca runtime'da (console debug) çağrılır, modül body'sinde çağrılmaz. Aynı pattern v8.102'de backup/sync için yapılmıştı; aile tamamlandı. |
@@ -49,7 +52,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-1. **personId gruplama** (v8.66 yeniden yazılacak) — `ui-persons.js`, `ui-pay.js`, `ui-plan.js`
+_Liste boş — son madde (personId gruplama) v8.109 ile tamamlandı._
 
 ---
 
@@ -76,7 +79,6 @@ Firebase (Firestore) ←→ loadSecure/saveSecure (db.js) ←→ window.pays/cre
 - Her kayıt grubuna benzersiz `groupId` atanır — aynı groupId'li kayıtlar matriste tek satır
 - `savePay()` yeni gruba `String(Date.now())` atar
 - `fix_groupids.js` → konsola yapıştırılarak bozuk groupId'leri düzeltir (tek seferlik)
-- `migrateToV7b` DEVRE DIŞI — çalışırsa isim bazlı gruplama yaparak veriyi bozuyordu
 
 ---
 
@@ -107,7 +109,7 @@ js/modal.js         Modal yardımcıları
 js/data.js          Yedek codec (xDec/xEnc) + Store lookup API compat shim (window.findPayById vb.)
 js/compat.js        Eski uyumluluk shim'leri
 js/firebase.js      Firebase init
-version.json        {"v": "8.107", "build": "20260528-35"}
+version.json        {"v": "8.108", "build": "20260528-36"}
 sw.js               Service Worker — ip-static-v8
 manifest.json       PWA manifest
 fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
@@ -119,6 +121,9 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.109 | 20260528-36 | personId gruplama (v8.66 yeniden) — persons.id + pays.personId + Hesap._displayNames personId-aware; aynı personId + farklı category → "AHMET (Kira)" + "AHMET (Elektrik)" |
+| v8.108 | 20260528-36 | Persistence/sync flags Store internal'a taşındı — 8 flag (`_dirty`/`_saveTimer`/`_syncTimer`/`_fbSyncNeeded`/`_lastUpdated`/`_syncCb`/`_suppressSave`/`_logSaveTimer`) artık `Store.X` üzerinden, `window.*` yok |
+| v8.107 | 20260528-35 | Ölü kod silindi: `migrateToV7b` (v8.73'te devre dışı) — db.js fonksiyon + window export + app.js zinciri |
 | v8.107 | 20260528-35 | ModalManager bypass temizliği: floating Ara butonu `classList.add('open')` yerine `ModalManager.open()` kullanıyor — stack + scroll lock tutarlı |
 | v8.107 | 20260528-35 | Sync lifecycle: signout'ta `_fbStopListen()` çağrılır — orphan dead code aktive edildi, interval kapanır |
 | v8.105 | 20260528-33 | state.js#clearState else fallback temizliği — v8.102 ailesinin son üyesi |

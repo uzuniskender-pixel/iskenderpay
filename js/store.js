@@ -36,7 +36,21 @@ ALL_KEYS.forEach(k => {
   }
 });
 
-function _markDirty() { window._dirty = true; }
+// ── PERSISTENCE / SYNC STATE (v8.108) ──────────────────────────────────────
+// db.js, sync.js, app.js orchestration flag'leri. Eskiden window.* idi —
+// Store internal'a tasindi. Tek kaynak: Store.dirty/saveTimer/syncTimer vb.
+const _persistState = {
+  dirty:         false,   // bekleyen kaydedilmemis degisiklik var mi
+  saveTimer:     null,    // saveSecure debounce timer handle
+  syncTimer:     null,    // _fbPoll interval handle
+  fbSyncNeeded:  false,   // firebase push basarisiz, sonraki poll'da yeniden dene
+  lastUpdated:   0,       // son sync timestamp
+  syncCb:        null,    // sync callback (db.js#_fbStartListen kayit ettigi)
+  suppressSave:  false,   // bulk ops / migrasyon sirasinda auto-save'i bastir
+  logSaveTimer:  null,    // app.js#addLog debounce timer handle
+};
+
+function _markDirty() { _persistState.dirty = true; }
 
 // ── EVENT DISPATCH (microtask-coalesced) ───────────────────────────────────
 // Her mutation sonrasi 'store:change' CustomEvent fire eder.
@@ -91,7 +105,7 @@ let _suppressAutoSave = 0;
 
 function _autoSave() {
   if (_suppressAutoSave > 0) return;
-  if (window._suppressSave) return;
+  if (_persistState.suppressSave) return;
   if (typeof window.saveSecure === 'function') window.saveSecure();
 }
 
@@ -188,6 +202,24 @@ export const Store = {
   findPayById(id)      { _rebuildLookups(); return _mapPaysById.get(String(id))    || null; },
   findPaysByGroup(gid) { _rebuildLookups(); return _mapPaysByGroup.get(gid)        || [];   },
   findCredById(id)     { _rebuildLookups(); return _mapCredsById.get(String(id))   || null; },
+
+  // ── PERSISTENCE / SYNC STATE getter/setter (v8.108) ──────────────────────
+  get dirty()         { return _persistState.dirty; },
+  set dirty(v)        { _persistState.dirty = v; },
+  get saveTimer()     { return _persistState.saveTimer; },
+  set saveTimer(v)    { _persistState.saveTimer = v; },
+  get syncTimer()     { return _persistState.syncTimer; },
+  set syncTimer(v)    { _persistState.syncTimer = v; },
+  get fbSyncNeeded()  { return _persistState.fbSyncNeeded; },
+  set fbSyncNeeded(v) { _persistState.fbSyncNeeded = v; },
+  get lastUpdated()   { return _persistState.lastUpdated; },
+  set lastUpdated(v)  { _persistState.lastUpdated = v; },
+  get syncCb()        { return _persistState.syncCb; },
+  set syncCb(v)       { _persistState.syncCb = v; },
+  get suppressSave()  { return _persistState.suppressSave; },
+  set suppressSave(v) { _persistState.suppressSave = v; },
+  get logSaveTimer()  { return _persistState.logSaveTimer; },
+  set logSaveTimer(v) { _persistState.logSaveTimer = v; },
 
   // ── BATCH ────────────────────────────────────────────────────────────────
   // tx icinde birden fazla mutation -> tek saveSecure (debounce zaten yapiyor

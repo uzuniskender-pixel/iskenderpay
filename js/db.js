@@ -17,23 +17,21 @@ window._fbSave = async function(encData) {
   await setDoc(_planDoc(), { data: encData, updatedAt: Date.now() }, { merge: true });
 };
 
-window._syncTimer   = null;
-window._lastUpdated = 0;
-window._syncCb      = null;
+// _syncTimer / _lastUpdated / _syncCb v8.108'de Store internal'a tasindi (Store.syncTimer vb.)
 
 window._fbStartListen = function(onData) {
   if (!window._fbUid || !window._planId) return;
-  window._syncCb = onData;
-  if (window._syncTimer) clearInterval(window._syncTimer);
-  window._syncTimer = setInterval(window._fbPoll, 30000);
+  window.Store.syncCb = onData;
+  if (window.Store.syncTimer) clearInterval(window.Store.syncTimer);
+  window.Store.syncTimer = setInterval(window._fbPoll, 30000);
   setTimeout(window._fbPoll, 5000);
 };
 
 let _pollRunning = false;
 window._fbPoll = async function() {
-  if (!window._fbUid || !window._planId || !window._syncCb) return;
-  if (window._saveTimer !== null && window._saveTimer !== undefined) return;
-  if (window._dirty) return;  // Bekleyen degisiklik var — sync atla
+  if (!window._fbUid || !window._planId || !window.Store.syncCb) return;
+  if (window.Store.saveTimer !== null && window.Store.saveTimer !== undefined) return;
+  if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync atla
   if (_pollRunning) return;   // Concurrent poll önle
   _pollRunning = true;
   try {
@@ -42,18 +40,18 @@ window._fbPoll = async function() {
     const d = snap.data();
     const ts = d.updatedAt || 0;
     // Firebase'e yazılamamış veri varsa önce onu yükle
-    if (window._fbSyncNeeded && !window._dirty) {
+    if (window.Store.fbSyncNeeded && !window.Store.dirty) {
       const enc = localStorage.getItem('v5-data-' + window._planId);
       if (enc) {
-        try { await window._fbSave(enc); window._lastUpdated = Date.now(); window._fbSyncNeeded = false; } catch(e) {}
+        try { await window._fbSave(enc); window.Store.lastUpdated = Date.now(); window.Store.fbSyncNeeded = false; } catch(e) {}
       }
       return;
     }
-    if (ts > window._lastUpdated && window._lastUpdated > 0) {
-      window._lastUpdated = ts;
-      if (d.data) window._syncCb(d.data);
-    } else if (window._lastUpdated === 0) {
-      window._lastUpdated = ts;
+    if (ts > window.Store.lastUpdated && window.Store.lastUpdated > 0) {
+      window.Store.lastUpdated = ts;
+      if (d.data) window.Store.syncCb(d.data);
+    } else if (window.Store.lastUpdated === 0) {
+      window.Store.lastUpdated = ts;
     }
     window.setSyncDot && window.setSyncDot('active');
   } catch(e) {
@@ -64,8 +62,8 @@ window._fbPoll = async function() {
 };
 
 window._fbStopListen = function() {
-  if (window._syncTimer) { clearInterval(window._syncTimer); window._syncTimer = null; }
-  window._syncCb = null;
+  if (window.Store.syncTimer) { clearInterval(window.Store.syncTimer); window.Store.syncTimer = null; }
+  window.Store.syncCb = null;
 };
 
 window._fbLoad = async function() {
@@ -118,15 +116,15 @@ window._fbLoadWrappedKey = async function() {
 // ── saveSecure / loadSecure ───────────────────────────────────────────────────
 
 async function saveSecure() {
-  if (window._suppressSave) return;
+  if (window.Store.suppressSave) return;
   if (!window._cryptoKey) return;
-  if (window._saveTimer) clearTimeout(window._saveTimer);
-  window._dirty = true;  // Bekleyen degisiklik var — sync ezmesin
-  window._saveTimer = setTimeout(() => { _doSave(); }, 400);
+  if (window.Store.saveTimer) clearTimeout(window.Store.saveTimer);
+  window.Store.dirty = true;  // Bekleyen degisiklik var — sync ezmesin
+  window.Store.saveTimer = setTimeout(() => { _doSave(); }, 400);
 }
 
 async function _doSave() {
-  window._saveTimer = null;
+  window.Store.saveTimer = null;
   if (!window._cryptoKey) return;
   // GroupId tutarlilik kontrolu: ayni groupId'de farkli isim varsa duzelt
   try {
@@ -161,18 +159,18 @@ async function _doSave() {
   if (window._fbSave) {
     try {
       await window._fbSave(enc);
-      window._lastUpdated = Date.now();
-      window._fbSyncNeeded = false;
+      window.Store.lastUpdated = Date.now();
+      window.Store.fbSyncNeeded = false;
     } catch(e) {
       console.warn('Firebase kayıt hatası:', e);
-      window._fbSyncNeeded = true;  // Bir sonraki başarılı poll'da yeniden dene
-    } finally { window._dirty = false; }
+      window.Store.fbSyncNeeded = true;  // Bir sonraki başarılı poll'da yeniden dene
+    } finally { window.Store.dirty = false; }
   }
 }
 
 async function saveSecureNow() {
-  if (window._saveTimer) clearTimeout(window._saveTimer);
-  window._suppressSave = false;
+  if (window.Store.saveTimer) clearTimeout(window.Store.saveTimer);
+  window.Store.suppressSave = false;
   await _doSave();
 }
 
@@ -208,7 +206,7 @@ async function loadSecure() {
   } catch(e) {
     throw new Error('decrypt_failed');
   }
-  window._dirty = false;  // Yeni veri yüklendi — bekleyen değişiklik yok
+  window.Store.dirty = false;  // Yeni veri yüklendi — bekleyen değişiklik yok
   const r = localStorage.getItem('v5-rates-' + window._planId) || localStorage.getItem('v5-rates');
   if (r) try { Object.assign(window.rates, JSON.parse(r)); } catch(e) {}
 }
@@ -220,7 +218,7 @@ let _migrationRunning = false;
 async function migrateToV7() {
   const migKey = 'v7-migrated-' + (window._fbUid||'local') + '-' + window._planId;
   if (localStorage.getItem(migKey)) return;
-  window._suppressSave = true;
+  window.Store.suppressSave = true;
   const _migPays = (window.pays||[]).map(p => {
     const entry = {...p};
     if (!entry.groupId) entry.groupId = String(Math.floor(Number(entry.rp || entry.id)));
@@ -236,43 +234,10 @@ async function migrateToV7() {
       .map(p => ({...p, paidId: 'pi_' + Date.now() + '_' + Math.random()}));
     if (window.Store) window.Store.replace('paidItems', _migPaid); else window.paidItems = _migPaid;
   }
-  window._suppressSave = false;
+  window.Store.suppressSave = false;
   await saveSecureNow();
   localStorage.setItem(migKey, '1');
   console.log('v7 migrasyon tamamlandı');
-}
-
-async function migrateToV7b() { return; // v8.73: devre disi - fix_groupids.js kullan
-  const migKey = 'v7b-migrated-' + (window._fbUid||'local') + '-' + window._planId;
-  if (localStorage.getItem(migKey)) return;
-  window._suppressSave = true;
-  const byName = {};
-  (window.pays||[]).forEach(p => { if (!byName[p.name]) byName[p.name] = []; byName[p.name].push(p); });
-  Object.keys(byName).forEach(name => {
-    const entries = byName[name];
-    if (entries.length <= 1) {
-      if (!entries[0].groupId) entries[0].groupId = String(Math.floor(Number(entries[0].id)));
-      return;
-    }
-    entries.sort((a, b) => a.date.localeCompare(b.date));
-    const groups = [];
-    entries.forEach(entry => {
-      const em = entry.date.substring(0, 7);
-      let placed = false;
-      for (const g of groups) {
-        if (!g.some(e => e.date.substring(0, 7) === em)) { g.push(entry); placed = true; break; }
-      }
-      if (!placed) groups.push([entry]);
-    });
-    groups.forEach(group => {
-      const gid = String(Math.floor(Number(group[0].id)));
-      group.forEach(e => { e.groupId = gid; });
-    });
-  });
-  window._suppressSave = false;
-  await saveSecureNow();
-  localStorage.setItem(migKey, '1');
-  console.log('v7b migrasyon tamamlandı');
 }
 
 // ── doLogin ───────────────────────────────────────────────────────────────────
@@ -352,7 +317,6 @@ window.saveSecureNow = saveSecureNow;
 window.loadSecure    = loadSecure;
 window.doLogin       = doLogin;
 window.migrateToV7   = migrateToV7;
-window.migrateToV7b  = migrateToV7b;
 window.save          = () => saveSecure();
 window.savePersons   = () => saveSecure();
 window.saveNotes     = () => saveSecure();

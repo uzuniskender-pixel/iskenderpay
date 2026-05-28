@@ -14,7 +14,7 @@ function enterApp() {
   rhbNormalizeCompanies();
   if (!window._migrationRunning) {
     window._migrationRunning = true;
-    window.migrateToV7().then(() => window.migrateToV7b())
+    window.migrateToV7()
       .catch(e => console.warn('Migrasyon hatası:', e))
       .finally(() => { window._migrationRunning = false; });
   }
@@ -102,8 +102,8 @@ function addLog(type, title, detail, navTab) {
       at: new Date().toISOString()
     };
     (window.actLog || []).unshift(entry);
-    clearTimeout(window._logSaveTimer);
-    window._logSaveTimer = setTimeout(() => { try { window.saveSecure(); } catch(e) {} }, 800);
+    clearTimeout(window.Store.logSaveTimer);
+    window.Store.logSaveTimer = setTimeout(() => { try { window.saveSecure(); } catch(e) {} }, 800);
   } catch(e) { console.warn('addLog hata:', e); }
 }
 
