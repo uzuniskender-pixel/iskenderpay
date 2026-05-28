@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.89 / 20260528-17
+## Mevcut Durum (28 Mayıs 2026) — v8.90 / 20260528-18
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -79,7 +79,7 @@ js/sync.js          setSyncDot, startRealtimeSync
 js/kur.js           Döviz/altın kur çekme
 js/backup.js        Yedek alma/geri yükleme
 js/version.js       Versiyon kontrolü, güncelleme banner
-js/ui-plan.js       Plan matrisi, hücre işlemleri (openCell, markOk, saveCellAmt...)
+js/ui-plan.js       Plan matrisi, hücre işlemleri (openCell, markOk, saveCellAmt...) [ui.js/ui-data.js/ui-misc.js kaldırıldı]
 js/ui-pay.js        Ödeme ekleme/düzenleme modalı (savePay)
 js/ui-persons.js    Kişi yönetimi
 js/ui-notes.js      Notlar
@@ -102,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.90 | 20260528-18 | Dead code silindi: ui.js, ui-data.js, ui-misc.js kaldırıldı |
 | v8.89 | 20260528-17 | localStorage önce yaz; _fbPoll concurrent guard + _fbSyncNeeded retry; backup.js saveSecureNow |
 | v8.88 | 20260528-16 | kur.js: 30 dakika içinde çekildiyse API atlanır; 🔄 butonu force=true ile zorunlu yeniler |
 | v8.87 | 20260528-15 | Küçük fixler: _doSave finally→dirty=false, loadSecure dirty=false, SW install log, mx._dn pollution fix |
