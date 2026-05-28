@@ -124,8 +124,8 @@ function renderActLog() {
           +'<div style="flex:1;min-width:0;padding-right:8px">'
           +'<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:2px">'
           +  title
-          +  (e.personId?`<span onclick="event.stopPropagation();logJumpPerson('${e.personId}')" style="margin-left:5px;font-size:11px;opacity:.55;cursor:pointer" title="Kişiyi göster">👤</span>`:'')
-          +  (e.groupId?`<span onclick="event.stopPropagation();logJumpGroup('${e.groupId}')" style="margin-left:3px;font-size:11px;opacity:.55;cursor:pointer" title="Plan matrisinde göster">📋</span>`:'')
+          +  (e.personId?`<span class="log-jump" onclick="event.stopPropagation();logJumpPerson('${e.personId}')" title="Kişiyi göster">👤</span>`:'')
+          +  (e.groupId?`<span class="log-jump" onclick="event.stopPropagation();logJumpGroup('${e.groupId}')" title="Plan matrisinde göster">📋</span>`:'')
           +'</div>'
           +(detail?'<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+detail+'</div>':'')
           +'</div>'

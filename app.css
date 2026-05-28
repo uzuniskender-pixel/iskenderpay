@@ -272,3 +272,20 @@ select.fi{appearance:none}
   0% { background-color: rgba(232,192,125,.45); }
   100% { background-color: transparent; }
 }
+
+/* v8.149: log satirindaki kucuk jump ikonlari (👤/📋) — click area + hover feedback */
+.log-jump {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 1;
+  opacity: .55;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: opacity .15s, background .15s;
+}
+.log-jump:hover {
+  opacity: 1;
+  background: rgba(255,255,255,.07);
+}
