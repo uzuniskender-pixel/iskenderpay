@@ -43,6 +43,7 @@ window._fbStartListen = function(onData) {
 window._fbPoll = async function() {
   if (!_fbUid || !window._planId || !window._syncCb) return;
   if (window._saveTimer !== null && window._saveTimer !== undefined) return;
+  if (window._dirty) return;  // Bekleyen degisiklik var — sync atla
   try {
     const snap = await getDoc(_planDoc());
     if (!snap.exists()) { window.setSyncDot && window.setSyncDot('active'); return; }
@@ -179,6 +180,7 @@ async function saveSecure() {
   if (!window._cryptoKey) return;
   if (typeof invalidateLookups === 'function') window.invalidateLookups();
   if (window._saveTimer) clearTimeout(window._saveTimer);
+  window._dirty = true;  // Bekleyen degisiklik var — sync ezmesin
   window._saveTimer = setTimeout(() => { _doSave(); }, 400);
 }
 
@@ -213,7 +215,7 @@ async function _doSave() {
   };
   const enc = await window.encryptData(data, window._cryptoKey);
   if (window._fbSave) {
-    try { await window._fbSave(enc); window._lastUpdated = Date.now(); } catch(e) { console.warn('Firebase kayıt hatası:', e); }
+    try { await window._fbSave(enc); window._lastUpdated = Date.now(); window._dirty = false; } catch(e) { console.warn('Firebase kayıt hatası:', e); }
   }
   localStorage.setItem('v5-data-' + window._planId, enc);
   localStorage.setItem('v5-rates-' + window._planId, JSON.stringify(window.rates));

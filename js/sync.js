@@ -22,6 +22,7 @@ async function startRealtimeSync() {
   window._lastUpdated = 0;
   window._fbStartListen(async encData => {
     if (!window._cryptoKey) return;
+    if (window._dirty) return;  // Bekleyen degisiklik var — sync ezmesin
     try {
       const d = await window.decryptData(encData, window._cryptoKey);
       window.pays      = d.pays      || [];
