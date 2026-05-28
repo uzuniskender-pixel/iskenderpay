@@ -39,7 +39,11 @@ function renderActLog() {
           +cbHtml
           +'<div style="width:32px;height:32px;border-radius:50%;background:'+cfg.bg+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">'+cfg.icon+'</div>'
           +'<div style="flex:1;min-width:0;padding-right:8px">'
-          +'<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:2px">'+title+'</div>'
+          +'<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:2px">'
+          +  title
+          +  (e.personId?'<span style="margin-left:5px;font-size:11px;opacity:.55">👤</span>':'')
+          +  (e.groupId?'<span style="margin-left:3px;font-size:11px;opacity:.55">📋</span>':'')
+          +'</div>'
           +(detail?'<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+detail+'</div>':'')
           +'</div>'
           +'<div style="font-size:10px;color:#64748b;flex-shrink:0;margin-top:3px;white-space:nowrap">'+time+'</div>'
