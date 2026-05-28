@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.75 / 20260528-03
+## Mevcut Durum (28 Mayıs 2026) — v8.76 / 20260528-04
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -102,6 +102,7 @@ fix_groupids.js     Konsol fix scripti (groupId düzeltme, tek seferlik)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.76 | 20260528-04 | savePay edit: isim/kategori değişince gruptaki tüm kayıtlara yayılır |
 | v8.75 | 20260528-03 | Krediye Dönüştür: openRow butonu + convertToCredit() + saveCred sonrası pays temizleme |
 | v8.74 | 20260528-02 | Kredi taksit override UX (openCell isCreditCell) |
 | v8.73 | 20260528-01 | Veri kaybı fix: debounce, loadSecure, _fbPoll guard, migrateToV7b devre dışı, SW v8, search fix |

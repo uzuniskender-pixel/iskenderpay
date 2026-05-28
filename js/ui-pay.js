@@ -36,7 +36,15 @@ function savePay() {
   const eid=document.getElementById('EID').value;
   if(eid){
     const p=window.findPayById(eid);
-    if(p) Object.assign(p,{name,amount,currency,date,category});
+    if(p){
+      const oldName=p.name, oldCat=p.category;
+      Object.assign(p,{name,amount,currency,date,category});
+      // İsim veya kategori değiştiyse aynı gruptaki tüm kayıtları güncelle
+      if(oldName!==name || oldCat!==category){
+        window.pays.filter(x=>x.groupId===p.groupId && String(x.id)!==String(p.id))
+          .forEach(x=>{x.name=name;x.category=category;});
+      }
+    }
   } else {
     const groupId=String(Date.now());
     const[py,pm,pd]=date.split('-').map(Number);
