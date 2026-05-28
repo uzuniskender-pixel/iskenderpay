@@ -153,6 +153,60 @@ function initApp() {
 
 // ── GÜNCELLEME ───────────────────────────────────────────────────────────────
 
+// ── DEBUG ─────────────────────────────────────────────────────────────────────
+// Konsoldan window.debugState() — Store flag'leri, session, veri sayilari,
+// kur cache, SW durumu.
+function debugState() {
+  const s = window.Store;
+  const sess = s && s.session;
+  console.log('%c🔍 debugState — ' + (window.APP_VERSION||'') + ' / ' + (window.APP_BUILD||''),
+    'font-weight:700;color:#e8c07d');
+
+  console.log('Store flags');
+  console.table({
+    dirty:        s.dirty,
+    saveTimer:    s.saveTimer,
+    syncTimer:    s.syncTimer,
+    fbSyncNeeded: s.fbSyncNeeded,
+    lastUpdated:  s.lastUpdated ? new Date(s.lastUpdated).toISOString() : 0,
+    planId:       s.planId,
+    fbUid:        s.fbUid,
+  });
+
+  console.log('Session');
+  console.table({
+    cryptoKey:   !!(sess && sess.cryptoKey),
+    dataKeyRaw:  !!(sess && sess.dataKeyRaw),
+    plainPinLen: (sess && sess.plainPin || '').length,
+  });
+
+  console.log('Veri sayilari');
+  console.table({
+    pays:      (window.pays      || []).length,
+    creds:     (window.creds     || []).length,
+    hist:      (window.hist      || []).length,
+    persons:   (window.persons   || []).length,
+    notes:     (window.notes     || []).length,
+    paidItems: (window.paidItems || []).length,
+    rehber:    (window.rehber    || []).length,
+    actLog:    (window.actLog    || []).length,
+  });
+
+  console.log('Kur cache');
+  const r = window.rates || {};
+  console.table({
+    EUR:        r.EUR,
+    USD:        r.USD,
+    GOLD:       r.GOLD,
+    _fetchedAt: r._fetchedAt || null,
+  });
+
+  console.log('Service Worker');
+  console.table({
+    swController: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
+  });
+}
+
 // ── GLOBAL COMPAT ─────────────────────────────────────────────────────────────
 window.enterApp           = enterApp;
 window.rhbNormalizeCompanies = rhbNormalizeCompanies;
@@ -165,6 +219,7 @@ window.migrateCredDates   = migrateCredDates;
 window.toggleEye          = toggleEye;
 window.addLog             = addLog;
 window.initApp            = initApp;
+window.debugState         = debugState;
 
 // ── SAYFA AÇILIŞINDA OTOMATİK ────────────────────────────────────────────────
 // Modules deferred olduğundan DOM hazır olduğunda çalışır
