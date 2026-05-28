@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (28 Mayıs 2026) — v8.74 / 20260528-02
+## Mevcut Durum (28 Mayıs 2026) — v8.75 / 20260528-03
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `db.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
