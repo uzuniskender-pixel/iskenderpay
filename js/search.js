@@ -11,25 +11,29 @@ function execGlobalSearch() {
   (window.pays||[]).forEach(p => {
     if (!((p.name||'').toLocaleLowerCase('tr').includes(query)||(String(p.amount||'')).includes(query))) return;
     count++;
-    const a = Number(p.amount||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
+    // v8.193: Plan matrisi paritesi — TRY karsiligi ana deger + orijinal doviz kucuk rozet.
+    // Eskiden ham p.amount'a duz ₺ yapistiriliyordu (38 gr altin -> "₺38", 5820 EUR -> "₺5.820").
+    const a = window.fmt(window.toTRY(p.amount, p.currency||'TRY'));
+    const orig = (p.currency && p.currency!=='TRY') ? ` <span style="opacity:.55;font-size:.78em">${window.fmtA(p.amount,p.currency)}</span>` : '';
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ffd200">
       <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(p.name)}</div>
       <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
-        <span>📅 Plan Ödemesi (${p.date||''})</span><span class="mono" style="color:#ffd200">₺${a}</span>
+        <span>📅 Plan Ödemesi (${p.date||''})</span><span class="mono" style="color:#ffd200">${a}${orig}</span>
       </div></div>`;
   });
   (window.paidItems||[]).forEach(pi => {
     if (!((pi.name||'').toLocaleLowerCase('tr').includes(query)||(String(pi.amount||'')).includes(query))) return;
     count++;
     // v8.192: log.js/hesap.js paidOf paritesi — duzenleme p.paid'e yazilir (savePaidItem),
-    // markOk her zaman paid=toTRY(amount) yazar. Eskiden ham pi.amount gosteriliyordu
-    // -> duzenleme yok sayilir + FX kaleminde yabanci tutar ₺ ile yanlis basilirdi.
+    // markOk her zaman paid=toTRY(amount) yazar. Eskiden ham pi.amount gosteriliyordu.
+    // v8.193: orijinal doviz rozeti eklendi (Plan matrisi paritesi).
     const tryAmt = pi.paid != null ? pi.paid : window.toTRY(pi.amount, pi.currency||'TRY');
-    const a = Number(tryAmt||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
+    const a = window.fmt(tryAmt);
+    const orig = (pi.currency && pi.currency!=='TRY') ? ` <span style="opacity:.55;font-size:.78em">${window.fmtA(pi.amount,pi.currency)}</span>` : '';
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #00ebc7">
       <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(pi.name)}</div>
       <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">
-        <span>✅ Gerçekleşen Ödeme (${pi.date||''})</span><span class="mono" style="color:#00ebc7">₺${a}</span>
+        <span>✅ Gerçekleşen Ödeme (${pi.date||''})</span><span class="mono" style="color:#00ebc7">${a}${orig}</span>
       </div></div>`;
   });
   (window.creds||[]).forEach(c => {

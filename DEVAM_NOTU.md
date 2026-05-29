@@ -1,3 +1,15 @@
+## 2026-05-29 — search.js FX gosterimi matris paritesi (v8.192 -> v8.193) — KOD TAMAM, saha-test BEKLIYOR
+SAHA-TESTTE YAKALANDI (adim 6): kullanici "suleyman" aradi -> 38 gr altin "₺38", 5820 EUR "₺5.820" gosteriliyordu.
+KOK NEDEN: v8.192 yalniz paidItems (Gerceklesen Odeme) TRY cevrimini duzeltti; ama (1) PLAN ODEMESI (pays) blogu HIC dokunulmamisti, hala ham amount'a duz ₺; (2) paidItems'ta orijinal doviz rozeti yoktu.
+FIX (tek dosya, iki blok): ikisi de Plan matrisi paritesine alindi -> ana deger `fmt(toTRY(amount,currency))`, currency!==TRY ise yaninda kucuk rozet `fmtA(amount,currency)`.
+Ornek dogrulama (GOLD=6700, EUR=53.43): 38 GOLD -> "₺254.608 38,00gr"; 5820 EUR -> "₺310.987 €5.820,00"; 20000 TRY -> "₺20.000" (rozet yok).
+KORUNDU: arama eslesme kosulu + count hala ham amount (kullanici orijinal tutari arar); krediler blogu zaten currency:'TRY' normalize (matris L8), dokunulmadi.
+ACIK TASARIM SORUSU: kullanici "olmasi lazim" derken belki SADECE orijinali (₺ olmadan) istiyordu; uygulama geneli "TRY ana + orijinal kucuk" paritesi oldugundan o secildi. Kullanici sadece-orijinal isterse fmtA tek basina (tek satir degisiklik).
+SW CACHE bump GEREKMEZ. node --check PASS, mojibake yok.
+TEST (gizli sekme): Ayarlar > Ara -> doviz/altin cinsli bir plan odemesi ara -> "₺<TRY karsiligi> <orijinal>" gormeli (ham yabanci tutara ₺ degil).
+
+---
+
 ## 2026-05-29 — search.js odeme tutari tutarliligi (v8.191 -> v8.192) — KOD TAMAM, saha-test BEKLIYOR
 v8.189 capraz-tutarlilik zincirinin SON TUKETICISI kapandi. KALAN ISLER eski #1 (search.js).
 KOK NEDEN: execGlobalSearch paidItems sonucunda odeme tutarini ham `pi.amount` ile basiyordu
