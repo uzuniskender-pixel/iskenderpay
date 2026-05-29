@@ -1,6 +1,6 @@
 # iskenderpay — Devam Notu
 
-_Son güncelleme: 2026-05-28_
+_Son güncelleme: 2026-05-29_
 
 ---
 
@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-28_
 
 ---
 
-## Mevcut Durum (29 Mayıs 2026) — v8.165 / 20260529-04
+## Mevcut Durum (29 Mayıs 2026) — v8.188 / 20260529-28
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.188 | 20260529-28 | **Gizli sekme olu kod temizligi (Backlog #1 KAPANDI)**: v8.181'de display:none ile gizlenen T1 (Odemeler) + T4 (Gecmis) sekmelerinin tum olu kodu kaldirildi — islevleri zaten Log ledger'inda (v8.177). **index.html**: T1+T4 panel HTML (OPD/PFLT/PFLT2/PL/HD/HL) + gizli nav butonlari (s1/m1/s4/m4) silindi (Python ile, encoding korundu). **ui-notes.js**: renderPaid (~55 satir) + PL delegation + _plHandlersAttached + window.renderPaid export silindi. **ui-persons.js**: renderHist (~25 satir) + HL delegation + _hlHandlersAttached + window.renderHist export silindi. **app.js#go()**: `if(n===1)`/`if(n===4)` handler'lari + iterasyon dizisi [0,2,3,5,6,7]'ye daraltildi. **sync.js**: realtime callback'teki renderHist/renderPaid satirlari kaldirildi. **Cagri yeniden baglama**: savePaidItem/saveHistItem dead render cikti (mevcut `if(curTab===7)renderActLog()` self-refresh kaldi); delPaidItem/restoreFromHist/delHist/clrHist dead render -> self-refresh oldu; log.js ledger inline onclick'lerinden gereksiz `;renderActLog()` kaldirildi (cift-render onlendi). **Korundu**: PIMOD/HIMOD modallari + 8 ledger window export + renderNotes(T3)/renderPersons(T2). **Veri**: window.paidItems/window.hist DOKUNULMADI. Davranis degisikligi: 0 (UI sadeleti). Bununla v8.183 backlog'unun ucu de kapandi (#2 v8.184, #3 v8.187). |
 | v8.186 | 20260529-26 | log.js Ledger v1 rafine: Odemeler/Silinenler ledger'ine kisi+grup+tarih filtre kombinasyonu (onceden tur=odeme/silinen secilince renderActLog early-return tum filtreleri yok sayiyordu). Tarih mantigi tek kaynak _passesDateVal(dateVal); _passesLogFilter onu entry.at ile cagirir; ledger _ledgerPassesFilters(item,dateField) personId/groupId === + tarih (odeme=date, silinen=delAt). Cred filtresi ledger'da N/A. Sayac filtreliyken "X / Y", empty-state filtre-farkinda. KRITIK FIX: hist ledger artik orijinal window.hist index'ini (oi) korur — filtreleme sonrasi delHist/restoreFromHist/editHistItem'in yanlis kaydi vurmasini onler (eski positional i bug'i). Paid ledger paidId-bazli (zaten guvenli). Sandbox: node --check OK + index-preservation mantik testi gecti. Tek dosya, veri mutasyonu yok. |
 | v8.184 | 20260529-24 | persist.js loadSecure: idx-sizan kredi taksiti temizligi artik ACILISTA da calisir (hydrate sonrasi dar pass). Onceki: temizlik yalniz save'de (normalizeBeforeSave) calisiyordu -> bugun manuel console tetigi gerekti. Simdi yuklemede suzulur; temizlik olduysa _idxCleaned -> dirty=true + saveSecure ile kalicilasir, yoksa no-op (gereksiz save/sync ezmesi yok). v8.179 (save) + v8.182 (kaynak) ile birlikte 3 katmanli savunma. |
 | v8.183 | 20260529-23 | log.js _renderLogTypeFilterOptions: ledger-li kategorilerin (Odemeler/Silinenler) dropdown sayaci artik ledger kaynagindan (paidItems.length / hist.length) gelir, actLog aktivite sayisindan degil. Onceki: "Silinenler (3)" gosteriliyordu ama hist=0 (3 silme loglanmis, hepsi geri-yuklenmis) -> celiski. Artik sayac = gorunen liste; hist bos -> Silinenler kategorisi gizlenir. Odemeler sayaci paidItems ile tutarli. |

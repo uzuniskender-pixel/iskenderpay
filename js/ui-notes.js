@@ -1,9 +1,9 @@
 // js/ui-notes.js — iskenderpay
 // Notlar ve yapılan ödemeler
-// Event delegation (v8.166): NL (not Düzenle/Sil), PL (yapılan ödeme Düzenle/Sil)
+// Event delegation (v8.166): NL (not Düzenle/Sil)
+// renderPaid + PL delegation (v8.188): T1 sekmesi kaldirildi, defter Log ledger'inda
 
 let _nlHandlersAttached = false;
-let _plHandlersAttached = false;
 
 function renderNotes() {
   const nl=document.getElementById('NL');
@@ -73,62 +73,6 @@ function delNote(nid) {
   renderNotes();
 }
 
-function renderPaid() {
-  document.getElementById('OPD').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
-  const monthSet=new Set(window.paidItems.map(p=>{const d=window.parseLocalDate(p.date);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}));
-  const months=Array.from(monthSet).sort().reverse();
-  const sel=document.getElementById('PFLT2');
-  const curVal=sel.value;
-  sel.innerHTML='<option value="all">Tüm aylar</option>'+months.map(m=>{const[y,mo]=m.split('-');const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});return`<option value="${m}"${curVal===m?' selected':''}>${lbl}</option>`;}).join('');
-  const flt=(document.getElementById('PFLT')?.value||'').trim().toLowerCase();
-  const mflt=sel.value;
-  let filtered=[...window.paidItems];
-  if(flt) filtered=filtered.filter(p=>p.name.toLowerCase().includes(flt));
-  if(mflt!=='all') filtered=filtered.filter(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return mk===mflt;});
-  filtered.sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const pl=document.getElementById('PL');
-  if(!filtered.length){pl.innerHTML='<div class="empty"><div class="ico">✅</div><p>Henüz ödeme yok</p></div>';return;}
-  const grouped={};
-  filtered.forEach(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(!grouped[mk])grouped[mk]=[];grouped[mk].push(p);});
-  let html='';
-  Object.keys(grouped).sort().reverse().forEach(mk=>{
-    const[y,mo]=mk.split('-');
-    const lbl=new Date(+y,+mo-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
-    const mTotal=grouped[mk].reduce((s,p)=>s+(p.status==='paid'?window.toTRY(p.amount,p.currency||'TRY'):(p.paid||0)),0);
-    html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:10px 0 6px;border-top:1px solid var(--bdr);display:flex;justify-content:space-between"><span>${lbl}</span><span style="color:var(--ok);font-family:'IBM Plex Mono',monospace">${window.fmt(mTotal)}</span></div>`;
-    grouped[mk].forEach(p=>{
-      const tryAmt=window.toTRY(p.amount,p.currency||'TRY');
-      const paidAmt=p.status==='paid'?tryAmt:(p.paid||0);
-      const isPartial=p.status==='partial';
-      html+=`<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <div style="min-width:0;flex:1">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window.esc(p.name)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${window.fmtD(p.date)}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:${isPartial?'var(--ora)':'var(--ok)'}">${window.fmt(paidAmt)}</div>
-          ${isPartial?`<div style="font-size:10px;color:var(--muted)">${window.fmt(tryAmt-paidAmt)} kaldı</div>`:''}
-        </div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          <button data-paid-edit="${p.paidId}" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Düzenle</button>
-          <button data-paid-del="${p.paidId}" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer">Sil</button>
-        </div>
-      </div>`;
-    });
-  });
-  pl.innerHTML=html;
-
-  if (!_plHandlersAttached) {
-    pl.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('button[data-paid-edit]');
-      if (editBtn) { openPaidEdit(editBtn.dataset.paidEdit); return; }
-      const delBtn = e.target.closest('button[data-paid-del]');
-      if (delBtn) delPaidItem(delBtn.dataset.paidDel);
-    });
-    _plHandlersAttached = true;
-  }
-}
-
 function openPaidEdit(paidId) {
   const p=window.paidItems.find(x=>x.paidId===paidId);if(!p)return;
   document.getElementById('PIEID').value=paidId;
@@ -148,14 +92,14 @@ function savePaidItem() {
   if(isNaN(amt)||amt<0){alert('Geçerli bir tutar girin');return;}
   if(!date.match(/^\d{4}-\d{2}-\d{2}$/)){alert('Tarih YYYY-AA-GG formatında olmalı');return;}
   window.Store.mutateItem(p, {name, paid:amt, date});
-  window.closeMov('PIMOD');renderPaid();if(window.curTab===7)window.renderActLog();
+  window.closeMov('PIMOD');if(window.curTab===7)window.renderActLog();
 }
 
 function delPaidItem(paidId) {
   const p=window.paidItems.find(x=>x.paidId===paidId);if(!p)return;
   if(!confirm(p.name+' yapılan ödemelerden silinecek. Plan etkilenmez. Emin misin?'))return;
   const idx=window.paidItems.indexOf(p);if(idx!==-1)window.Store.spliceAt('paidItems', idx, 1);
-  renderPaid();
+  if(window.curTab===7)window.renderActLog();
 }
 
 
@@ -165,7 +109,6 @@ function delPaidItem(paidId) {
 window.renderNotes        = renderNotes;
 window.openNoteModal      = openNoteModal;
 window.saveNote           = saveNote;
-window.renderPaid         = renderPaid;
 window.savePaidItem       = savePaidItem;
 window.openPaidEdit       = openPaidEdit;
 window.delPaidItem        = delPaidItem;

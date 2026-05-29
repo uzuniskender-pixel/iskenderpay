@@ -31,8 +31,6 @@ async function startRealtimeSync() {
       // Toplu sessiz atama — remote'tan gelen veri, saveSecure tetiklenmez
       window.Store.hydrate(d);
       if (window.render)       window.render();
-      if (window.renderHist)   window.renderHist();
-      if (window.renderPaid)   window.renderPaid();
       if (window.renderPersons)window.renderPersons();
       if (window.renderNotes)  window.renderNotes();
       if (window.renderRhb)    window.renderRhb();

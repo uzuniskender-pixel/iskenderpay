@@ -1,3 +1,31 @@
+## 2026-05-29 — Gizli sekme olu kod temizligi (v8.187 -> v8.188) — KOD TAMAM, saha-test BEKLIYOR
+Backlog #1 KAPANDI. T1 (Odemeler) + T4 (Gecmis) sekmelerinin tum olu kodu kaldirildi. Boylece v8.183 backlog'unun UCU DE kapandi (#1 bu, #2 v8.184, #3 v8.187).
+
+NE KALDIRILDI:
+- index.html: T1 + T4 panel HTML'leri (OPD/PFLT/PFLT2/PL/HD/HL), gizli nav butonlari (s1/m1/s4/m4). Python ile duzenlendi (encoding korumasi).
+- ui-notes.js: renderPaid() fonksiyonu (~55 satir) + PL event delegation + _plHandlersAttached flag + window.renderPaid export.
+- ui-persons.js: renderHist() fonksiyonu (~25 satir) + HL event delegation + _hlHandlersAttached flag + window.renderHist export.
+- app.js#go(): `if(n===1)renderPaid()` + `if(n===4)renderHist()` handler'lari; iterasyon dizisi [0,1,2,3,4,5,6,7] -> [0,2,3,5,6,7].
+- sync.js: realtime callback'teki renderHist()/renderPaid() satirlari (artik tanimsiz, guard no-op olurdu — temizlendi).
+
+CAGRI YENIDEN BAGLAMA (davranis korundu):
+- Paid/Hist verisi (window.paidItems / window.hist) ve defter islevleri Log ledger'inda (v8.177) — DOKUNULMADI.
+- savePaidItem/saveHistItem: dead renderPaid()/renderHist() cikti, mevcut `if(curTab===7)renderActLog()` self-refresh kaldi.
+- delPaidItem/restoreFromHist/delHist/clrHist: dead render cagrisi -> `if(curTab===7)renderActLog()` self-refresh oldu (artik kendi kendini yeniler).
+- log.js ledger inline onclick'leri: action'lar self-refresh ettigi icin gereksiz `;renderActLog()` suffix'leri kaldirildi (cift-render onlendi).
+
+KORUNDU: PIMOD/HIMOD modallari (Log ledger edit akisi) + 8 ledger window export (openPaidEdit/delPaidItem/savePaidItem/editHistItem/restoreFromHist/delHist/clrHist/saveHistItem) + renderNotes(T3)/renderPersons(T2) ve flag'leri (_nlHandlersAttached/_prlHandlersAttached).
+
+DOGRULAMA: tum js `node --check` PASS; index.html'de T1/T4/s1/m1/s4/m4/renderPaid/renderHist 0 referans; Turkce karakter saglam (mojibake yok); tab yapisi tutarli (T0/T2/T3/T5/T6/T7). SW CACHE bump GEREKMEZ (index.html+js network-first no-store; STATIC dosya listesi degismedi). version v8.188 / 20260529-28.
+
+SONRAKI ADIM (saha-test, gizli sekme + cache temizle):
+1. Plan/Kisiler/Notlar/Ayarlar/Rehber/Log sekmeleri arasinda gecis — kayma/bos ekran olmamali.
+2. Log > "Odemeler" filtresi: Duzenle (PIMOD kaydet) + Sil -> liste aninda yenilenmeli.
+3. Log > "Silinenler" filtresi: Duzenle (HIMOD kaydet) + Geri Al + Sil + Tumunu temizle -> liste aninda yenilenmeli.
+4. Konsol: `window.renderPaid`/`window.renderHist` -> undefined olmali.
+
+---
+
 ## 2026-05-29 — Store.session hardening (v8.186 -> v8.187) — KOD TAMAM, saha-test BEKLIYOR
 Backlog #3/#5 KAPANDI. Sirlar artik module-private closure'da; window.Store.session KALDIRILDI.
 
@@ -43,10 +71,10 @@ LOG = KONTROL MERKEZI:
 - v8.180 ui-plan-render: tamami odenmis ay sutunu gizlenir (showPaid toggle ile geri)
 - v8.181 Odemeler(s1/m1)+Gecmis(s4/m4) nav butonlari display:none (islevler Log'da)
 
-ACIK BACKLOG (sonraki oturum, oncelik sirasi):
-1. 3C: gizlenen sekmelerin panel(T1/T4)+render(renderPaid/renderHist)+go() handler kodunu tamamen kaldir (kod temizligi, Buket istedi)
-2. idx-temizligini loadSecure'da da calistir (su an save'e bagli, manuel tetik gerekti)
-3. Store.session guvenlik (#5): console'dan cryptoKey/dataKeyRaw/plainPin erisilebilir -- ayri worktree + tam spec
+ACIK BACKLOG (sonraki oturum, oncelik sirasi): — ✅ HEPSI KAPANDI
+1. ✅ KAPANDI (v8.188): gizlenen sekmelerin panel(T1/T4)+render(renderPaid/renderHist)+go() handler olu kodu tamamen kaldirildi.
+2. ✅ KAPANDI (v8.184): idx-temizligi loadSecure'da da calisir (acilista dar pass + dirty->saveSecure ile kalicilasir). Manuel console tetigi artik gerekmiyor.
+3. ✅ KAPANDI (v8.187): Store.session module-private closure'a alindi; window.Store.session KALDIRILDI (key/pin disari sizamaz). Not: XSS'e tam koruma degil — saha-testi hala bekliyor.
 
 Cevre: makinede ag flaky (QUIC/DNS); offline-commit + ag donunce push paterni kullanildi.
 

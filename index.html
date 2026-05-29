@@ -128,10 +128,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <div class="slogo">💳 Ödeme <span>Takvimi</span></div>
     <nav class="snav">
       <button class="stab on" id="s0" onclick="go(0)">📊 Plan</button>
-      <button class="stab" id="s1" onclick="go(1)" style="display:none">✅ Ödemeler</button>
       <button class="stab" id="s2" onclick="go(2)">👥 Kişiler</button>
       <button class="stab" id="s3" onclick="go(3)">📝 Notlar</button>
-      <button class="stab" id="s4" onclick="go(4)" style="display:none">🗃 Geçmiş</button>
       <button class="stab" id="s5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="stab" id="s6" onclick="go(6)">📒 Rehber</button>
       <button class="stab" id="s7" onclick="go(7)">📋 Log</button>
@@ -142,10 +140,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div class="content">
     <div class="mnav">
       <button class="mtab on" id="m0" onclick="go(0)">📊 Plan</button>
-      <button class="mtab" id="m1" onclick="go(1)" style="display:none">✅ Ödemeler</button>
       <button class="mtab" id="m2" onclick="go(2)">👥 Kişiler</button>
       <button class="mtab" id="m3" onclick="go(3)">📝 Notlar</button>
-      <button class="mtab" id="m4" onclick="go(4)" style="display:none">🗃 Geçmiş</button>
       <button class="mtab" id="m5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="mtab" id="m6" onclick="go(6)">📒 Rehber</button>
       <button class="mtab" id="m7" onclick="go(7)">📋 Log</button>
@@ -197,20 +193,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     </div>
 
     <!-- YAPILAN ÖDEMELER -->
-    <div id="T1" style="display:none">
-      <div class="ph">
-        <div><h1>✅ <span>Yapılan Ödemeler</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">Ödediğiniz tüm ödemeler</div></div>
-        <div class="dbadge" id="OPD"></div>
-      </div>
-      <div style="padding:0 16px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input id="PFLT" type="text" placeholder="🔍 Ara..." oninput="renderPaid()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--txt);font-family:'Inter',sans-serif;font-size:12px;outline:none;flex:1;max-width:200px">
-        <select id="PFLT2" onchange="renderPaid()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--txt);font-family:'Inter',sans-serif;font-size:12px;outline:none">
-          <option value="all">Tüm aylar</option>
-        </select>
-      </div>
-      <div id="PL" style="padding:0 16px 70px"></div>
-    </div>
-
     <!-- KİŞİLER -->
     <div id="T2" style="display:none">
       <div class="ph">
@@ -230,14 +212,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     </div>
 
     <!-- GEÇMİŞ -->
-    <div id="T4" style="display:none">
-      <div class="ph"><h1>Geçmiş <span>İşlemler</span></h1><div class="dbadge" id="HD"></div></div>
-      <div style="padding:0 16px 70px">
-        <button class="clr-btn" onclick="clrHist()">Geçmişi Temizle</button>
-        <div id="HL"></div>
-      </div>
-    </div>
-
     <!-- AYARLAR -->
     <div id="T5" style="display:none">
       <div class="ph"><h1>⚙️ <span>Ayarlar</span></h1></div>
@@ -485,8 +459,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.187';
-var APP_BUILD   = '20260529-27';
+var APP_VERSION = 'v8.188';
+var APP_BUILD   = '20260529-28';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

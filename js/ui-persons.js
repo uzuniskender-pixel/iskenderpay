@@ -1,9 +1,9 @@
 // js/ui-persons.js — iskenderpay
 // Kişiler ve geçmiş
-// Event delegation (v8.166): PRL (kişi kartı + Düzenle/Sil), HL (geçmiş Düzenle/Geri Al/Sil)
+// Event delegation (v8.166): PRL (kişi kartı + Düzenle/Sil)
+// renderHist + HL delegation (v8.188): T4 sekmesi kaldirildi, defter Log ledger'inda
 
 let _prlHandlersAttached = false;
-let _hlHandlersAttached = false;
 
 function renderPersons() {
   const pl = document.getElementById('PRL');
@@ -224,32 +224,6 @@ function openPersonHist(personId) {
   ModalManager.open('PHIST');
 }
 
-function renderHist() {
-  document.getElementById('HD').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
-  const hl=document.getElementById('HL');
-  if(!window.hist.length){hl.innerHTML='<div class="empty"><div class="ico">🗃️</div><p>Silinmiş ödeme yok</p></div>';return;}
-  hl.innerHTML=window.hist.map((p,i)=>`
-    <div class="hi">
-      <div class="hi-inf"><div class="hi-name">${window.esc(p.name)}</div><div class="hi-date">Silindi: ${new Date(p.delAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})} · ${window.fmtD(p.date)}</div></div>
-      <div class="hi-amt">${window.fmtA(p.amount,p.currency||'TRY')}</div>
-      <button data-hist-edit="${i}" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0">Düzenle</button>
-      <button data-hist-restore="${i}" style="background:rgba(74,222,128,.15);color:var(--ok);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">↩ Geri Al</button>
-      <button class="hi-del" data-hist-del="${i}">Sil</button>
-    </div>`).join('');
-
-  if (!_hlHandlersAttached) {
-    hl.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('button[data-hist-edit]');
-      if (editBtn) { editHistItem(parseInt(editBtn.dataset.histEdit)); return; }
-      const restBtn = e.target.closest('button[data-hist-restore]');
-      if (restBtn) { restoreFromHist(parseInt(restBtn.dataset.histRestore)); return; }
-      const delBtn = e.target.closest('button[data-hist-del]');
-      if (delBtn) delHist(parseInt(delBtn.dataset.histDel));
-    });
-    _hlHandlersAttached = true;
-  }
-}
-
 function editHistItem(idx) {
   const p=window.hist[idx];if(!p)return;
   document.getElementById('HIIDX').value=idx;
@@ -270,7 +244,7 @@ function saveHistItem() {
   if(!isNaN(newAmt)&&newAmt>0) _patch.amount=newAmt;
   if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) _patch.date=newDate;
   if(Object.keys(_patch).length) window.Store.mutateItem(p, _patch);
-  ModalManager.close('HIMOD'); renderHist(); if(window.curTab===7)window.renderActLog();
+  ModalManager.close('HIMOD'); if(window.curTab===7)window.renderActLog();
 }
 
 function restoreFromHist(i) {
@@ -282,12 +256,12 @@ function restoreFromHist(i) {
   if(restored.id==null) restored.id=Date.now()+Math.random();
   if(!restored.groupId) restored.groupId=String(Date.now());
   window.Store.push('pays', restored);window.Store.spliceAt('hist', i, 1);
-  renderHist();
+  if(window.curTab===7)window.renderActLog();
 }
 
-function delHist(i) { window.Store.spliceAt('hist', i, 1); renderHist(); }
+function delHist(i) { window.Store.spliceAt('hist', i, 1); if(window.curTab===7)window.renderActLog(); }
 
-function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.Store.replace('hist', []); renderHist(); }
+function clrHist()  { if(!confirm('Tüm geçmişi sil?'))return; window.Store.replace('hist', []); if(window.curTab===7)window.renderActLog(); }
 
 
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
@@ -297,7 +271,6 @@ window.renderPersons      = renderPersons;
 window.updateDatalist     = updateDatalist;
 window.openAddPerson      = openAddPerson;
 window.savePerson         = savePerson;
-window.renderHist         = renderHist;
 window.saveHistItem       = saveHistItem;
 window.clrHist            = clrHist;
 window.editHistItem       = editHistItem;

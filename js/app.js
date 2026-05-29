@@ -91,16 +91,16 @@ function rhbSave() { saveSecure(); }
 // ── SEKME YÖNETİMİ ───────────────────────────────────────────────────────────
 function go(n) {
   window.curTab = n;
-  [0,1,2,3,4,5,6,7].forEach(i => {
+  // T1 (Ödemeler) + T4 (Geçmiş) v8.181'de gizlendi, v8.188'de tamamen kaldirildi —
+  // islevleri Log ledger'inda (v8.177). go(1)/go(4) artik no-op.
+  [0,2,3,5,6,7].forEach(i => {
     const t = document.getElementById('T'+i); if (t) t.style.display = i===n ? '' : 'none';
     const m = document.getElementById('m'+i); if (m) m.classList.toggle('on', i===n);
     const s = document.getElementById('s'+i); if (s) s.classList.toggle('on', i===n);
   });
   if (n===0) { window.render(); if (window.renderCredSummary) window.renderCredSummary(); }
-  if (n===1) window.renderPaid();
   if (n===2) window.renderPersons();
   if (n===3) window.renderNotes();
-  if (n===4) window.renderHist();
   if (n===5) window.renderAI();
   if (n===6) window.renderRhb();
   if (n===7) window.renderActLog();
