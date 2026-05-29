@@ -110,6 +110,16 @@ function _displayNames(mx, keys) {
   return dnMap;
 }
 
+// ── Tek "kalan tutar" kaynagi (v8.170) ─────────────────────────────────────
+// Bir kalemin bekleyen tutari = max(0, TRY tutar - kismi odenen). Partial paid'i
+// hesaba katar. currency verilirse toTRY ile cevrilir; cred taksitleri amount
+// zaten TRY oldugundan currency'siz cagrilir. toplamOzeti / krediler /
+// _buildPersonSummary HEPSI bunu kullanir -> formul tek yerde, sapamaz.
+function kalan(amount, paid, currency) {
+  const t = currency ? window.toTRY(amount, currency) : (amount || 0);
+  return Math.max(0, t - (paid || 0));
+}
+
 export const Hesap = {
   // ── Bu ay ozeti ──────────────────────────────────────────────────────────
   // opts.all  — caller'in zaten hesapladigi all items (perf)
@@ -140,12 +150,11 @@ export const Hesap = {
   toplamOzeti() {
     const paysBekleyen = (window.pays || [])
       .filter(p => (p.status || 'pending') !== 'paid')
-      .reduce((s, p) =>
-        s + Math.max(0, window.toTRY(p.amount, p.currency || 'TRY') - (p.paid || 0)), 0);
+      .reduce((s, p) => s + kalan(p.amount, p.paid, p.currency || 'TRY'), 0);
     const krediBekleyen = (window.creds || [])
       .reduce((s, c) => s + (c.pays || [])
         .filter(p => (p.status || 'pending') !== 'paid')
-        .reduce((a, p) => a + Math.max(0, p.amount - (p.paid || 0)), 0), 0);
+        .reduce((a, p) => a + kalan(p.amount, p.paid), 0), 0);
     return {
       paysBekleyen,
       krediBekleyen,
@@ -168,16 +177,13 @@ export const Hesap = {
       const remaining = total - paid;
       const bekleyen = items
         .filter(p => (p.status || 'pending') !== 'paid')
-        .reduce((s, p) => s + p.amount, 0);
+        .reduce((s, p) => s + kalan(p.amount, p.paid), 0);
       const pct = total > 0 ? Math.round((paid / total) * 100) : 0;
       const nextPay = items.find(p => (p.status || 'pending') !== 'paid');
       const done = paid === total;
       const lastDate = items.length ? items[items.length - 1].date : null;
       // Gecikmiş taksit sayısı: status!=='paid' && tarih < bugün
-      const overdueCount = items.filter(p =>
-        (p.status || 'pending') !== 'paid' &&
-        p.date && window.parseLocalDate(p.date) < today
-      ).length;
+      const overdueCount = items.filter(p => window.isOD(p)).length;
       // Bir sonraki ödenmemiş taksit için gün farkı (negatif=geçmiş, 0=bugün, pozitif=gelecek)
       const nextDays = nextPay && nextPay.date
         ? Math.round((window.parseLocalDate(nextPay.date) - today) / 86400000)
@@ -213,7 +219,8 @@ export const Hesap = {
     return out;
   },
 
-  // ── Paylasilan display name yardimcilari ──────────────────────────────────
+  // ── Paylasilan yardimcilar ────────────────────────────────────────────────
+  kalan,
   _baseOf,
   _displayNames
 };

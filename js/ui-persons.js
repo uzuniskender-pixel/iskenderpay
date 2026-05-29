@@ -118,30 +118,35 @@ function _buildPersonSummary(personId, personName) {
   //  (2) Kredi taksitleri ayrıca taranır — cred objesinde personId yok, bağ yalnız isim;
   //      bekleyen kredi taksitleri eskiden hiç sayılmıyordu (ödenmişler paidItems'tan geliyordu → asimetri).
   const baseOf = window.Hesap ? window.Hesap._baseOf : (n => (n || '').replace(/ \d+$/, '').trim() || n);
+  // v8.170: kalan tutar + gecikmiş tek kaynaktan (Hesap.kalan / isOD) — toplamOzeti/krediler ile birebir.
+  const kalan = (window.Hesap && window.Hesap.kalan)
+    ? window.Hesap.kalan
+    : ((a, pd, c) => Math.max(0, (c ? window.toTRY(a, c) : (a || 0)) - (pd || 0)));
+  const isOverdue = (p) => window.isOD ? window.isOD(p) : (p.date && window.parseLocalDate(p.date) < today);
   const baseName = baseOf(personName);
   const matches = (p) => (personId && p.personId === personId) || (!p.personId && baseOf(p.name) === baseName);
   let bekleyen = 0, gecikmis = 0, bekleyenCount = 0, gecikmisCount = 0;
   // v8.169: bekleyen tutarı yükümlülük bazında (pay grubu / kredi) ayrı raporla.
   const breakdownMap = {}; // key -> { label, bekleyen, gecikmis }
-  const addPending = (remaining, dateStr, key, label) => {
+  const addPending = (remaining, overdue, key, label) => {
     bekleyen += remaining;
     bekleyenCount++;
-    const overdue = dateStr && window.parseLocalDate(dateStr) < today;
     if (overdue) { gecikmis += remaining; gecikmisCount++; }
     if (!breakdownMap[key]) breakdownMap[key] = { label, bekleyen: 0, gecikmis: 0 };
     breakdownMap[key].bekleyen += remaining;
     if (overdue) breakdownMap[key].gecikmis += remaining;
   };
+  // (1) Normal pays — yükümlülük = groupId (yoksa pay id'si)
   (window.pays || []).filter(matches).forEach(p => {
     if ((p.status || 'pending') === 'paid') return;
-    const t = window.toTRY(p.amount, p.currency || 'TRY');
-    addPending(Math.max(0, t - (p.paid || 0)), p.date, p.groupId || ('pay:' + p.id), p.name || personName);
+    addPending(kalan(p.amount, p.paid, p.currency || 'TRY'), isOverdue(p), p.groupId || ('pay:' + p.id), p.name || personName);
   });
+  // (2) Kredi taksitleri (cred.pays.amount zaten TRY — toplamOzeti ile tutarlı). Yükümlülük = kredi.
   (window.creds || []).forEach(c => {
     if (baseOf(c.name) !== baseName) return;
     (c.pays || []).forEach(p => {
       if ((p.status || 'pending') === 'paid') return;
-      addPending(Math.max(0, (p.amount || 0) - (p.paid || 0)), p.date, 'cred:' + c.id, c.name + ' (kredi)');
+      addPending(kalan(p.amount, p.paid), isOverdue(p), 'cred:' + c.id, c.name + ' (kredi)');
     });
   });
   const personPaidItems = (window.paidItems || []).filter(matches);
