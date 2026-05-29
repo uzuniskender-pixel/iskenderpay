@@ -1,5 +1,8 @@
 // js/sync.js — iskenderpay
 // Realtime sync, sync dot, toast
+// v8.187: Store.session -> Session closure.
+
+import { Session } from './session.js';
 
 function setSyncDot(state) {
   const d = document.getElementById('sync-dot');
@@ -21,10 +24,10 @@ async function startRealtimeSync() {
   setSyncDot('connecting');
   window.Store.lastUpdated = 0;
   window._fbStartListen(async encData => {
-    if (!window.Store.session.cryptoKey) return;
+    if (!Session.hasKey()) return;
     if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync ezmesin
     try {
-      const d = await window.decryptData(encData, window.Store.session.cryptoKey);
+      const d = await Session.decrypt(encData);
       // Toplu sessiz atama — remote'tan gelen veri, saveSecure tetiklenmez
       window.Store.hydrate(d);
       if (window.render)       window.render();

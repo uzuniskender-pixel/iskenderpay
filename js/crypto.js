@@ -1,7 +1,7 @@
 // js/crypto.js — iskenderpay (v1.1)
 // AES-256-GCM + AES-KW + PBKDF2.
-// Session state (cryptoKey/dataKeyRaw/plainPin) v8.115'te Store.session'a tasindi —
-// module-local mirrors ve get/set/clear export'lari silindi (dead code, caller'i yoktu).
+// Session state (cryptoKey/plainPin) v8.187'de js/session.js MODUL-PRIVATE
+// CLOSURE'ina tasindi — bu modul yalniz saf kripto primitifleri saglar (key tutmaz).
 
 export async function importDataKey(rawBytes) {
   return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);

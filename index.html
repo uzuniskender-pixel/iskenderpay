@@ -37,6 +37,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     import './js/util.js';
     import './js/compat.js';
     import './js/crypto.js';
+    import './js/session.js';
     import './js/firestore.js';
     import './js/validate.js';
     import './js/integrity.js';
@@ -475,7 +476,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 </div>
 
 <script>
-// _cryptoKey · _dataKeyRaw · _plainPin → Store.session (v8.115)
+// _cryptoKey · _plainPin → js/session.js closure (v8.187, Store.session kaldırıldı)
 
 // UI state — sadece partialCtx burada (state.js curTab/sortMode yönetiyor)
 var partialCtx=null;
@@ -484,8 +485,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.186';
-var APP_BUILD   = '20260529-26';
+var APP_VERSION = 'v8.187';
+var APP_BUILD   = '20260529-27';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

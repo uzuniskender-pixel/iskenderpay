@@ -1,13 +1,15 @@
 // js/persist.js — iskenderpay (v1.0)
 // Encrypt + storage (localStorage + Firestore hybrid) + schema migration.
-// firestore.js'ten window._fbSave/_fbLoad'i, crypto.js'ten encryptData/decryptData'yi tuketir.
-// v8.127'de db.js'ten ayristirildi.
+// firestore.js'ten window._fbSave/_fbLoad'i, oturum sirlari icin Session'i tuketir.
+// v8.127'de db.js'ten ayristirildi. v8.187: Store.session -> Session closure.
+
+import { Session } from './session.js';
 
 // ── saveSecure / loadSecure ───────────────────────────────────────────────────
 
 async function saveSecure() {
   if (window.Store.suppressSave) return;
-  if (!window.Store.session.cryptoKey) return;
+  if (!Session.hasKey()) return;
   if (window.Store.saveTimer) clearTimeout(window.Store.saveTimer);
   window.Store.dirty = true;  // Bekleyen degisiklik var — sync ezmesin
   window.Store.saveTimer = setTimeout(() => { _doSave(); }, 400);
@@ -15,7 +17,7 @@ async function saveSecure() {
 
 async function _doSave() {
   window.Store.saveTimer = null;
-  if (!window.Store.session.cryptoKey) return;
+  if (!Session.hasKey()) return;
   // Normalize (mutation) → integrity.js v8.153; Validate (read-only) → validate.js v8.135
   window.normalizeBeforeSave && window.normalizeBeforeSave();
   window.validateBeforeSave && window.validateBeforeSave();
@@ -24,7 +26,7 @@ async function _doSave() {
     persons: window.persons, notes: window.notes, paidItems: window.paidItems,
     rehber: window.rehber, actLog: window.actLog
   };
-  const enc = await window.encryptData(data, window.Store.session.cryptoKey);
+  const enc = await Session.encrypt(data);
   // localStorage ÖNCE yaz — Firebase başarısız olsa bile veri güvende
   localStorage.setItem('v5-data-' + window.Store.planId, enc);
   localStorage.setItem('v5-rates-' + window.Store.planId, JSON.stringify(window.rates));
@@ -59,7 +61,7 @@ async function loadSecure() {
   if (!enc) enc = localStorage.getItem('v5-data-' + window.Store.planId) || localStorage.getItem('v5-data');
   if (!enc) return;
   try {
-    const data = await window.decryptData(enc, window.Store.session.cryptoKey);
+    const data = await Session.decrypt(enc);
     // Toplu sessiz atama — saveSecure tetiklenmez (veri zaten kaynak)
     if (window.Store) {
       window.Store.hydrate(data);

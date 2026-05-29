@@ -39,7 +39,8 @@ function renderPlanNames() {
 
 function selectPlan(planId) {
   window.Store.planId = planId;
-  // Veri dizilerini sıfırla — Store.session KORUNUYOR (Store.clearAll session'a dokunmaz)
+  // Veri dizilerini sıfırla — oturum anahtarı (Session) KORUNUR; Store.clearAll
+  // yalnız veri dizilerini sıfırlar, oturum sırları js/session.js closure'ındadır.
   if (window.Store) {
     window.Store.clearAll();
   } else {

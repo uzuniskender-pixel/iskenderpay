@@ -7,6 +7,7 @@ import { getAuth, GoogleAuthProvider,
          getRedirectResult, onAuthStateChanged,
          signOut }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { Session } from './session.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCZOvzCp4l0y2rJS2xFS1pSwoDWGcnUY6E",
@@ -91,5 +92,8 @@ window.doGoogleLogin = async function() {
 // Çıkış
 window.doGoogleSignOut = async function() {
   if (!confirm('Çıkış yapmak istiyor musunuz?')) return;
+  // v8.187: cikista oturum sirlarini bellekten temizle (cryptoKey/plainPin).
+  // Onceki davranis: signOut sonrasi sirlar reload'a kadar bellekte kaliyordu.
+  Session.clear();
   await signOut(_auth);
 };

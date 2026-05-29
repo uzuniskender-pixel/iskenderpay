@@ -1,3 +1,31 @@
+## 2026-05-29 — Store.session hardening (v8.186 -> v8.187) — KOD TAMAM, saha-test BEKLIYOR
+Backlog #3/#5 KAPANDI. Sirlar artik module-private closure'da; window.Store.session KALDIRILDI.
+
+YENI DOSYA: js/session.js — module-private closure.
+- Sirlar (_cryptoKey non-extractable, _plainPin) closure scope'unda; window'a HIC baglanmaz.
+- Disari yalniz FIIL metotlari: encrypt/decrypt/verifyPin/decryptBackup/hasKey/clear/debugInfo. ISIM (key/pin) asla donmez.
+- Tuketiciler ES named import: `import { Session } from './session.js'` (window uzerinden yol yok).
+
+EPHEMERAL KEY WRAP:
+- dataKeyRaw ARTIK RESIDENT DEGIL (eskiden chPass re-wrap icin window'da Uint8Array dururdu).
+- chPass: ham anahtari MEVCUT PIN ile depodaki wrapped-blob'tan anlik unwrap -> nw ile wrap -> GC. Sira duzeltildi (once re-wrap dogrula, sonra hash kaydet -> tutarsizlik yok).
+- doLogin her iki yol: cryptoKey importDataKey ile NON-EXTRACTABLE re-import; rawBytes fonksiyon scope'unda kalip GC'ye birakilir.
+
+DEGISEN DOSYALAR: store.js (session+clearSession kaldirildi), persist.js/sync.js (Session.hasKey + Session.encrypt/decrypt), auth-pin.js (set/setPin/verifyPin + ephemeral chPass), app.js (debugState Session.debugInfo + readRF Session.decryptBackup), firebase.js (signOut'ta Session.clear -- LATENT BUG: cikista sirlar bellekte kaliyordu, kapatildi), plan.js+crypto.js (yorum), index.html (session.js import + APP_VERSION v8.187 + yorum), sw.js (STATIC'e session.js + CACHE v9->v10), version.json.
+
+DURUST GUVENLIK SINIRI: bu refactor KEY/PIN HIRSIZLIGINI engeller (sir disari sizamaz/yeniden kullanilamaz). Oturum ACIKKEN arbitrary JS calistirabilen saldirgan (XSS) uygulama fiillerini hala kotuye kullanabilir -- XSS'e tam koruma DEGIL.
+
+SONRAKI ADIM (saha-test, gizli sekme + cache temizle):
+1. Ilk kurulum (storedHash yok) -> PIN belirle -> giris.
+2. Cikip ayni PIN ile tekrar giris (returning/unwrap yolu).
+3. chPass: sifre degistir -> cikis -> yeni sifre ile giris (ephemeral re-wrap dogrula).
+4. Yedek al -> geri yukle (Session.decryptBackup).
+5. Plan1<->Plan2 gecisi (ayni key korunmali).
+6. Konsol: `window.Store.session` -> undefined olmali; `debugState()` Session tablosu hasKey/pinLen gostermeli (sir yok).
+NOT: version dosyalari user-managed -- paralel terminal v8.187'yi ileri bumpladiysa ayarla.
+
+---
+
 ## 2026-05-29 — Tutarlilik + Log kontrol-merkezi sprint (v8.170 -> v8.183)
 Baseline: v8.183 (8902a43). Hepsi push'li + saha-test yesili.
 

@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.127: db.js -> firestore.js + persist.js)
+// sw.js — iskenderpay PWA cache (v8.187: Store.session -> session.js closure)
 
-const CACHE = 'ip-static-v9';
+const CACHE = 'ip-static-v10';
 const STATIC = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const STATIC = [
   './js/util.js',
   './js/compat.js',
   './js/crypto.js',
+  './js/session.js',
   './js/modal.js',
   './js/data.js',
   './js/firestore.js',

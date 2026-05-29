@@ -2,6 +2,12 @@
 // PIN dogrulama (doLogin) + sifre degistir (chPass) akislari.
 // db.js'ten ayristirildi (v8.110) — auth concern'leri tek dosyada.
 // Bagimliliklar: crypto.js, compat.js, persist.js (loadSecure), firestore.js (PIN/wrappedKey helpers).
+// v8.187: oturum sirlari Store.session -> Session closure (js/session.js).
+//   - cryptoKey her iki yolda da NON-EXTRACTABLE olarak resident tutulur.
+//   - dataKeyRaw ARTIK resident DEGIL; chPass re-wrap'i ham anahtari mevcut PIN ile
+//     wrapped-blob'tan anlik unwrap edip kullanir (ephemeral key wrap).
+
+import { Session } from './session.js';
 
 // ── doLogin ───────────────────────────────────────────────────────────────────
 
@@ -9,7 +15,7 @@ async function doLogin() {
   const val = document.getElementById('PI').value;
   if (!val) return;
 
-  if (window.Store.session.cryptoKey && window.Store.session.plainPin && window.Store.session.plainPin === val) {
+  if (Session.hasKey() && Session.verifyPin(val)) {
     try { await window.loadSecure(); window.enterApp && window.enterApp(); return; } catch(e) {}
   }
 
@@ -28,9 +34,9 @@ async function doLogin() {
     const wrappedB64 = await window.wrapDataKey(dataKeyRaw, val, pinSalt);
     window._saveWrappedKeyLocal(wrappedB64);
     await window._saveWrappedKeyFirebase(wrappedB64);
-    window.Store.session.dataKeyRaw = dataKeyRaw;
-    window.Store.session.plainPin   = val;
-    window.Store.session.cryptoKey  = await window.importDataKey(dataKeyRaw);
+    // importDataKey -> NON-EXTRACTABLE CryptoKey; dataKeyRaw fonksiyon scope'unda
+    // kalir, return sonrasi GC'ye birakilir (resident tutulmaz).
+    Session.set({ cryptoKey: await window.importDataKey(dataKeyRaw), plainPin: val });
     await window.loadSecure();
     window.enterApp && window.enterApp();
     return;
@@ -52,9 +58,13 @@ async function doLogin() {
   try { unwrapped = await window.unwrapDataKey(wrappedB64, val, pinSalt); }
   catch(e) { window.showPinErr && window.showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return; }
 
-  window.Store.session.dataKeyRaw = unwrapped.rawBytes;
-  window.Store.session.plainPin   = val;
-  window.Store.session.cryptoKey  = unwrapped.cryptoKey;
+  // unwrapDataKey extractable key + rawBytes verir; resident anahtari
+  // NON-EXTRACTABLE olarak re-import ediyoruz. rawBytes + extractable key
+  // bu scope'ta kalir ve return sonrasi GC'ye birakilir (resident tutulmaz).
+  Session.set({
+    cryptoKey: await window.importDataKey(unwrapped.rawBytes),
+    plainPin:  val
+  });
   window._saveWrappedKeyLocal(wrappedB64);
 
   try {
@@ -93,15 +103,25 @@ async function chPass() {
   if (!nw || nw.length < 4)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 4 karakter'; return; }
   if (nw !== nw2)             { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreler eşleşmiyor'; return; }
 
+  // Ephemeral re-wrap: data key DEGISMEZ, yalniz sarmalama (wrap) yenilenir.
+  // dataKeyRaw resident tutulmadigindan, ham anahtari MEVCUT PIN (cur) ile
+  // depodaki wrapped-blob'tan ANLIK unwrap edip kullaniyoruz; islem sonrasi
+  // ham bytes GC'ye birakilir. Once re-wrap'i dogrula, SONRA hash'i kaydet
+  // (boylece unwrap fail olursa pin-hash / wrapped-key tutarsizligi olmaz).
+  const curWrappedB64 = await window._loadWrappedKeyFirebase() || window._getWrappedKey();
+  if (!curWrappedB64) { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreleme anahtarı bulunamadı'; return; }
+  let unwrapped;
+  try { unwrapped = await window.unwrapDataKey(curWrappedB64, cur, pinSalt); }
+  catch(e) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut anahtar çözülemedi'; return; }
+  const newWrappedB64 = await window.wrapDataKey(unwrapped.rawBytes, nw, pinSalt);
+
   const newHash = await window.hashPin(nw, pinSalt);
   if (window._fbSavePinHash) {
     try { await window._fbSavePinHash(newHash); } catch(e) {}
   }
-
-  const newWrappedB64 = await window.wrapDataKey(window.Store.session.dataKeyRaw, nw, pinSalt);
   window._saveWrappedKeyLocal(newWrappedB64);
   await window._saveWrappedKeyFirebase(newWrappedB64);
-  window.Store.session.plainPin = nw;
+  Session.setPin(nw);
 
   msg.style.color='var(--ok)'; msg.textContent='✅ Şifre güncellendi!';
   ['CP','NP','NP2'].forEach(id => document.getElementById(id).value='');

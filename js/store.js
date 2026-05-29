@@ -52,16 +52,11 @@ const _persistState = {
   planId:        localStorage.getItem('v6-active-plan') || 'plan1',  // aktif plan (v8.116)
 };
 
-// ── SESSION STATE (v8.115) ─────────────────────────────────────────────────
-// Ephemeral auth credentials. Eskiden index.html ve crypto.js'te window.* idi —
-// Store.session uzerine tasindi. Tek nokta clear icin Store.clearSession().
-// Security trade-off (cleartext PIN, raw key bytes, CryptoKey window'da erisilebilir)
-// v8.115'te DEGISMEDI — sadece sahiplik konsolide edildi.
-const _sessionState = {
-  cryptoKey:  null,   // CryptoKey (AES-GCM, importDataKey/unwrapDataKey sonuclari)
-  dataKeyRaw: null,   // Uint8Array (32 byte — re-wrap icin chPass'ta gerek)
-  plainPin:   '',     // string — restore xDec icin cleartext PIN (app.js#readRF)
-};
+// ── SESSION STATE — v8.187'de js/session.js'e TASINDI ──────────────────────
+// Eskiden burada _sessionState (cryptoKey/dataKeyRaw/plainPin) vardi ve
+// Store.session getter'i ile window uzerinden erisilebiliyordu (konsol sizinti).
+// v8.187: sirlar js/session.js'in MODUL-PRIVATE CLOSURE'ina tasindi; Store artik
+// oturum sirlarina sahip DEGIL. Tuketiciler: import { Session } from './session.js'.
 
 function _markDirty() { _persistState.dirty = true; }
 
@@ -241,15 +236,9 @@ export const Store = {
     try { localStorage.setItem('v6-active-plan', v); } catch(e) {}
   },
 
-  // ── SESSION API (v8.115) ─────────────────────────────────────────────────
-  // Store.session.cryptoKey / dataKeyRaw / plainPin — namespace acilir, mutate
-  // edilebilir obj doner. Clear icin Store.clearSession().
-  get session()       { return _sessionState; },
-  clearSession() {
-    _sessionState.cryptoKey  = null;
-    _sessionState.dataKeyRaw = null;
-    _sessionState.plainPin   = '';
-  },
+  // ── SESSION API — v8.187'de js/session.js'e TASINDI ──────────────────────
+  // Store.session / clearSession kaldirildi. Oturum sirlari artik module-private
+  // closure'da (js/session.js). Bkz: import { Session } from './session.js'.
 
   // ── BATCH ────────────────────────────────────────────────────────────────
   // tx icinde birden fazla mutation -> tek saveSecure (debounce zaten yapiyor

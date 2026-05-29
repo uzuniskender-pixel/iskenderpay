@@ -1,6 +1,9 @@
 // js/app.js — iskenderpay (v1.0)
 // Uygulama yaşam döngüsü, sekme yönetimi, kur, yedek/geri yükleme, versiyon.
 // Tüm state window.* üzerinden okunur/yazılır.
+// v8.187: oturum sirlari Store.session -> Session closure (js/session.js).
+
+import { Session } from './session.js';
 
 // ── PLAN ADI ─────────────────────────────────────────────────────────────────
 
@@ -182,7 +185,7 @@ function initApp() {
 // kur cache, SW durumu.
 function debugState() {
   const s = window.Store;
-  const sess = s && s.session;
+  const sess = Session.debugInfo();
   console.log('%c🔍 debugState — ' + (window.APP_VERSION||'') + ' / ' + (window.APP_BUILD||''),
     'font-weight:700;color:#e8c07d');
 
@@ -199,9 +202,8 @@ function debugState() {
 
   console.log('Session');
   console.table({
-    cryptoKey:   !!(sess && sess.cryptoKey),
-    dataKeyRaw:  !!(sess && sess.dataKeyRaw),
-    plainPinLen: (sess && sess.plainPin || '').length,
+    cryptoKey:   sess.hasKey,
+    plainPinLen: sess.pinLen,
   });
 
   console.log('Veri sayilari');
@@ -269,10 +271,9 @@ function readRF(inp) {
   fr.onload = e => {
     try {
       const raw = JSON.parse(e.target.result);
-      const pin = window.Store.session.plainPin;
       let data;
       if (raw.enc && raw.data) {
-        const dec = window.xDec(raw.data, pin);
+        const dec = Session.decryptBackup(raw.data);
         if (!dec) { st.style.color='var(--danger)'; st.textContent='Şifre eşleşmiyor.'; return; }
         data = JSON.parse(dec);
       } else { st.style.color='var(--danger)'; st.textContent='Geçersiz dosya'; return; }
