@@ -202,7 +202,7 @@ Bu bölüm "ne yapıldı" değil **"neden öyle yapıldı"** anlatır.
 ## 3. AÇIK HATALAR / NOTLAR
 
 1. ✅ KAPANDI (v8.190): QNB çoklu grup özet — breakdown etiket çakışması düzeltildi. (Eski not:) Çoklu grupta kişi özeti — `openPersonHist` özet kartı bir kişinin **birden çok groupId'si** varsa (örn QNB cred + QNB pay grupları) bunları kayıp/eksik gösterebiliyor. `_buildPersonSummary` personId filter > name fallback yapıyor; multi-group durumunda groupId çözümü net değil. Repro: aynı kişiye birden fazla farklı `groupId`'li pay → özet kayıp.
-2. **Boş ay sütunu gizleme test edilemedi (SW cache)** — v8.163 kod doğru (`grep "filter(m =>"` ui-plan-render.js 1 sonuç), ama service worker eski versiyonu cache'liyor. Test: gizli sekme + hard reload (Ctrl+Shift+R) + `caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())`. SW cache `ip-static-v9` (v8.126'da bumped) — yeni CACHE bump gerekirse `sw.js#CACHE` artırılmalı.
+2. ✅ KOD DOĞRULANDI (v8.190 oturumu, review + sandbox harness) — v8.163 + v8.180 boş/ödenmiş ay gizleme mantığı 4 senaryoda doğru çalışıyor (showPaid aç/kapa × boş ay/tamamı-paid ay). buildMx `status='paid'` ancak `items.every(paid)` ile set ediyor; ay filtresi `c.status!=='paid'` buna güvenli dayanıyor. Geriye yalnız tarayıcı onayı kaldı (SW cache): Test: gizli sekme + hard reload (Ctrl+Shift+R) + `caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload())`. SW cache `ip-static-v9` (v8.126'da bumped) — yeni CACHE bump gerekirse `sw.js#CACHE` artırılmalı.
 3. **openCell istatistik bölümü veri yetersiz** — DV cell'inde kişi/grup history bölümü v8.159'da eklendi ama eski entry'ler henüz personId/groupId taşımıyor (v8.148 Pass 3 sadece personId) → bazı hücreler boş history görüyor. Zamanla yeni entry'ler birikince dolacak. groupId backfill düşünülebilir (yeni Pass 4: detail.split(' · ')[0] → findPaysByGroup match).
 4. **`Store.session` security trade-off** — `Store.session.cryptoKey/dataKeyRaw/plainPin` console-accessible. v8.115'te kabul edildi (organizational, security değil). Real hardening: closure scope + ephemeral key wrap.
 5. **`personId` data quality ⚠️ göstergesi** — v8.137'de hesap.js'de `g_*/pay_*` personId-siz rowKey'lere `⚠️` suffix eklenir. Kalıcı UX mı yoksa geçici teşvik mi belirsiz. Gözlem altında.
@@ -213,7 +213,7 @@ Bu bölüm "ne yapıldı" değil **"neden öyle yapıldı"** anlatır.
 ## 4. KALAN İŞLER (öncelik sırası)
 
 1. ✅ KAPANDI (v8.190): QNB çoklu grup özet breakdown etiketleri ayrıştırıldı (`name (desc||category)` + sayısal disambiguator). Toplamlar zaten doğruydu (v8.170); sorun etiket çakışmasıydı.
-2. **Boş ay sütunu debug** — v8.163 fix'ini gizli sekme + cache temizleyerek tarayıcıda doğrula. Çalışmıyorsa: `monthSet` filter mantığını tekrar incele. SW CACHE bump gerekebilir.
+2. ✅ KOD DOĞRULANDI (v8.190 oturumu): boş/ödenmiş ay gizleme mantığı review + harness ile doğru bulundu. Kod değişikliği gerekmedi. Geriye yalnız tarayıcı onayı: gizli sekme + cache temizle → boş gelecek aylar ve tamamı ödenmiş aylar sütun olarak görünmemeli; 'Ödendiler' toggle açınca geri gelmeli.
 3. **`Store.session` security hardening — ⏭️ SIRADAKİ** — closure scope + ephemeral key wrap (büyük refactor, dikkatli incele). `Store.session.cryptoKey/dataKeyRaw/plainPin` console-accessible; gerçek hardening için module-private closure + ephemeral key wrap gerekir.
 4. **Tarihi `db.js` yorum referansları** — `app.js:227`, `index.html:442`, `store.js:40,48`, `firebase.js:74` — kozmetik temizlik.
 
