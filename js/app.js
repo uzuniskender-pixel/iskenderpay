@@ -249,7 +249,7 @@ window.debugState         = debugState;
 // ── SAYFA AÇILIŞINDA OTOMATİK ────────────────────────────────────────────────
 // Modules deferred olduğundan DOM hazır olduğunda çalışır
 
-// ── SYNC UI (db.js tarafından çağrılır) ───────────────────────────────────────
+// ── SYNC UI (sync.js / firestore.js tarafından çağrılır) ─────────────────────
 
 function showPinErr(msg) {
   const inp = document.getElementById('PI');

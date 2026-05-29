@@ -455,7 +455,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 // UI state — sadece partialCtx burada (state.js curTab/sortMode yönetiyor)
 var partialCtx=null;
 
-// _suppressSave · _saveTimer · SAVE_DEBOUNCE_MS · _migrationRunning → db.js
+// _suppressSave · _saveTimer → Store (store.js); SAVE_DEBOUNCE_MS → persist.js; _migrationRunning → app.js (modül-local)
 
 // visibilitychange → app.js startRealtimeSync içinde
 

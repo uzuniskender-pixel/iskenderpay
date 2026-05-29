@@ -37,7 +37,7 @@ ALL_KEYS.forEach(k => {
 });
 
 // ── PERSISTENCE / SYNC STATE (v8.108) ──────────────────────────────────────
-// db.js, sync.js, app.js orchestration flag'leri. Eskiden window.* idi —
+// persist.js, firestore.js, sync.js, app.js orchestration flag'leri. Eskiden window.* idi —
 // Store internal'a tasindi. Tek kaynak: Store.dirty/saveTimer/syncTimer vb.
 const _persistState = {
   dirty:         false,   // bekleyen kaydedilmemis degisiklik var mi
@@ -45,7 +45,7 @@ const _persistState = {
   syncTimer:     null,    // _fbPoll interval handle
   fbSyncNeeded:  false,   // firebase push basarisiz, sonraki poll'da yeniden dene
   lastUpdated:   0,       // son sync timestamp
-  syncCb:        null,    // sync callback (db.js#_fbStartListen kayit ettigi)
+  syncCb:        null,    // sync callback (firestore.js#_fbStartListen kayit ettigi)
   suppressSave:  false,   // bulk ops / migrasyon sirasinda auto-save'i bastir
   logSaveTimer:  null,    // app.js#addLog debounce timer handle
   fbUid:         null,    // firebase auth UID (v8.113'te firebase.js'in lokal _fbUid'inden tasindi)

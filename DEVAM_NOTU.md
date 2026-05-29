@@ -1,5 +1,5 @@
 ## 2026-05-29 — DEPLOY DUZELTME (v8.190 -> v8.191): log.js gercekten gonderildi
-v8.190 paketinde log.js Downloads'ta bulunamadigi icin commit'e GIRMEMISTI (repo v8.190 diyordu ama Log odeme-duzenle fix'i [v8.189 paidOf] canlida yoktu). v8.191 = ayni log.js fix'i + dürüst versiyon etiketi. Baska kod degisikligi yok.
+v8.190 paketinde log.js Downloads'ta bulunamadigi icin commit'e GIRMEMISTI (repo v8.190 diyordu ama Log odeme-duzenle fix'i [v8.189 paidOf] canlida yoktu). v8.191 = ayni log.js fix'i + dürüst versiyon etiketi + #4 bayat 'db.js' yorum referanslari temizligi (store.js:40/48, app.js SYNC UI header, index.html flag yorumu -> gercek sahip: persist.js/firestore.js/store.js). Dogru tarihsel referanslar (firestore/persist/auth-pin 'db.js'ten ayristirildi') korundu. Runtime degisikligi yok (yorumlar).
 
 ---
 
@@ -220,7 +220,7 @@ Bu bölüm "ne yapıldı" değil **"neden öyle yapıldı"** anlatır.
 1. ✅ KAPANDI (v8.190): QNB çoklu grup özet breakdown etiketleri ayrıştırıldı (`name (desc||category)` + sayısal disambiguator). Toplamlar zaten doğruydu (v8.170); sorun etiket çakışmasıydı.
 2. ✅ KOD DOĞRULANDI (v8.190 oturumu): boş/ödenmiş ay gizleme mantığı review + harness ile doğru bulundu. Kod değişikliği gerekmedi. Geriye yalnız tarayıcı onayı: gizli sekme + cache temizle → boş gelecek aylar ve tamamı ödenmiş aylar sütun olarak görünmemeli; 'Ödendiler' toggle açınca geri gelmeli.
 3. **`Store.session` security hardening — ⏭️ SIRADAKİ** — closure scope + ephemeral key wrap (büyük refactor, dikkatli incele). `Store.session.cryptoKey/dataKeyRaw/plainPin` console-accessible; gerçek hardening için module-private closure + ephemeral key wrap gerekir.
-4. **Tarihi `db.js` yorum referansları** — `app.js:227`, `index.html:442`, `store.js:40,48`, `firebase.js:74` — kozmetik temizlik.
+4. ✅ KAPANDI (v8.191): bayat `db.js` yorum referansları gerçek sahibine yönlendirildi (store.js/app.js/index.html). Doğru tarihsel referanslar korundu. (firebase.js:74 zaten önceki temizlikte gitmişti.)
 
 ---
 
