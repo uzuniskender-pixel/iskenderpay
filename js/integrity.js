@@ -64,6 +64,20 @@ function normalizeBeforeSave() {
       if (fixed > 0) console.log('[integrity]', fixed, 'kirik actLog referansi temizlendi');
     }
   } catch(e) { console.warn('[integrity] orphan temizlik hatasi:', e); }
+
+  // v8.176: id/groupId'siz (zombi) pay kayitlarini onar. id yoksa pay silinemez,
+  // eslesmez ve rawKey 'pay_NaN'de birlesir (coklu zombi tek hayalet satira cokerdi).
+  // Floor cakismasini onlemek icin id'ye seq offset eklenir. Idempotent.
+  try {
+    let _bf = 0, _seq = 0;
+    (window.pays || []).forEach(p => {
+      let t = false;
+      if (p.id == null)  { p.id = Date.now() + (_seq++) + Math.random(); t = true; }
+      if (!p.groupId)    { p.groupId = 'fix_' + Date.now() + '_' + (_seq++) + '_' + Math.random().toString(36).slice(2,6); t = true; }
+      if (t) _bf++;
+    });
+    if (_bf) console.log('[integrity] ' + _bf + ' eksik pay id/groupId backfill edildi');
+  } catch(e) { console.warn('[integrity] pay backfill hatasi:', e); }
 }
 
 window.normalizeBeforeSave = normalizeBeforeSave;
