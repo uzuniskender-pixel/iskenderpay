@@ -1,3 +1,16 @@
+## 2026-05-29 — Pass 4 actLog groupId backfill (v8.194 -> v8.195) — KOD TAMAM, saha-test BEKLIYOR
+ACIK HATA #3 kapaniyor. app.js#_backfillPersonIds'a Pass 4 eklendi.
+SORUN: eski actLog entry'leri groupId tasimiyordu -> DV detay paneli + openCell grup-history (actLog.filter(e=>e.groupId===gid)) bazi hucrelerde bos.
+COZUM: v8.148 Pass 3 (personId) pattern'i groupId icin klonlandi. baz isim (detail ilk segment) -> groupsByBase Map (base -> Set<groupId>).
+KRITIK KISIT: atama YALNIZ ismin tek grubu varsa (gset.size===1). Coklu grup (QNB Kira+Elektrik) -> isimden hangisi belli degil -> ATLA. Yanlis atama riski yok.
+SKIP: rhb_*, cred_add, ' taksit' iceren, isimsiz, zaten groupId'li (idempotent). Self-cleaning.
+HARNESS DOGRULANDI: AHMET (tek grup) -> g1 atandi; QNB (2 grup) atlandi; taksit/rhb/cred/grup-yok/isimsiz/mevcut atlandi.
+node --check PASS, mojibake yok. SW cache bump GEREKMEZ (js network-first).
+TEST (gizli sekme): coklu kaydi olan tek-gruplu bir kisi/grubun DV detay panelini (satira tikla) ve hucresini ac -> alt history bolumu eski entry'leri de gostermeli (onceden bos olabilirdi). Coklu gruplu isimde (QNB) degisiklik beklenmez (guvenli atlama).
+NOT: actLog'da groupId hic tasimayan ve adi coklu-gruplu olan eski entry'ler hala history'de gorunmez (kasitli — ambiguous). Tam cozum icin entry'ye uretim aninda groupId yazilmasi gerekir (v8.146 sonrasi yeni entry'ler zaten tasiyor).
+
+---
+
 ## 2026-05-29 — SPRINT KAPANIS (v8.193 -> v8.194): saha-test 7/7 PASS + cift-v kozmetik
 Bu oturumun ve onceki bekleyen patch'lerin saha-testi TAMAMLANDI. v8.187-v8.193 araliginda "saha-test BEKLIYOR" olan her sey artik PASS.
 

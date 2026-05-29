@@ -54,9 +54,36 @@ function _backfillPersonIds() {
     const pid = personByName.get(base);
     if (pid) { window.Store.mutateItem(e, { personId: pid }); nal++; }
   });
+  // Pass 4: actLog'a groupId ata — baz isim → groupId eşlemesi, YALNIZ tek-gruplu isimde (v8.195)
+  // Coklu grup (QNB Kira + QNB Elektrik) -> isimden hangi grup belli degil -> ATLA (yanlis atama riski).
+  // DV/openCell grup-history (actLog.filter(e=>e.groupId===gid)) eski entry'leri de yakalasin diye.
+  const groupsByBase = new Map(); // base -> Set<groupId>
+  (window.pays || []).forEach(p => {
+    if (!p.groupId) return;
+    const b = baseOf(p.name);
+    if (!groupsByBase.has(b)) groupsByBase.set(b, new Set());
+    groupsByBase.get(b).add(p.groupId);
+  });
+  let ngl = 0;
+  (window.actLog || []).forEach(e => {
+    if (e.groupId) return;
+    if (e.type && e.type.startsWith('rhb_')) return;
+    if (e.type === 'cred_add') return;
+    const detail = e.detail || '';
+    if (detail.includes(' taksit')) return;
+    const firstSep = detail.indexOf(' · ');
+    const namePart = (firstSep > 0 ? detail.substring(0, firstSep) : detail).trim();
+    if (!namePart) return;
+    const gset = groupsByBase.get(baseOf(namePart));
+    if (gset && gset.size === 1) {        // yalniz tek grup -> guvenli
+      window.Store.mutateItem(e, { groupId: [...gset][0] });
+      ngl++;
+    }
+  });
   if (np > 0)  console.log('[backfill] ' + np + ' persons id atandı');
   if (npy > 0) console.log('[backfill] ' + npy + ' pays personId atandı');
   if (nal > 0) console.log('[backfill] ' + nal + ' actLog personId atandı');
+  if (ngl > 0) console.log('[backfill] ' + ngl + ' actLog groupId atandı');
 }
 
 function enterApp() {
