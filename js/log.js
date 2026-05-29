@@ -127,6 +127,9 @@ function _renderLogTypeFilterOptions() {
   if (!sel) return;
   const catCount = {};
   (window.actLog || []).forEach(e => { const c = LOG_TYPE_CAT[e.type]; if (c) catCount[c] = (catCount[c]||0)+1; });
+  // v8.183: ledger-li kategoriler gercek defter uzunlugunu gosterir (dropdown sayisi = ledger satir sayisi).
+  catCount.odeme = (window.paidItems || []).length;
+  catCount.silinen = (window.hist || []).length;
   const order = ['odeme','eklenen','silinen','geri','duzenleme','rehber'];
   const opts = ['<option value=""' + (!_logTypeFilter ? ' selected' : '') + '>Tüm türler / loglar</option>'];
   order.forEach(cat => {
