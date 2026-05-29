@@ -21,7 +21,11 @@ function execGlobalSearch() {
   (window.paidItems||[]).forEach(pi => {
     if (!((pi.name||'').toLocaleLowerCase('tr').includes(query)||(String(pi.amount||'')).includes(query))) return;
     count++;
-    const a = Number(pi.amount||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
+    // v8.192: log.js/hesap.js paidOf paritesi — duzenleme p.paid'e yazilir (savePaidItem),
+    // markOk her zaman paid=toTRY(amount) yazar. Eskiden ham pi.amount gosteriliyordu
+    // -> duzenleme yok sayilir + FX kaleminde yabanci tutar ₺ ile yanlis basilirdi.
+    const tryAmt = pi.paid != null ? pi.paid : window.toTRY(pi.amount, pi.currency||'TRY');
+    const a = Number(tryAmt||0).toLocaleString('tr-TR',{maximumFractionDigits:0});
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #00ebc7">
       <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(pi.name)}</div>
       <div style="font-size:.8rem;opacity:.7;display:flex;justify-content:space-between;margin-top:4px">

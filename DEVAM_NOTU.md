@@ -1,3 +1,16 @@
+## 2026-05-29 — search.js odeme tutari tutarliligi (v8.191 -> v8.192) — KOD TAMAM, saha-test BEKLIYOR
+v8.189 capraz-tutarlilik zincirinin SON TUKETICISI kapandi. KALAN ISLER eski #1 (search.js).
+KOK NEDEN: execGlobalSearch paidItems sonucunda odeme tutarini ham `pi.amount` ile basiyordu
+-> (1) Log duzenlemesini (savePaidItem -> p.paid) yok sayiyor, (2) FX kaleminde yabanci tutari ₺ ile yanlis gosteriyordu.
+FIX (tek dosya): log.js/hesap.js `paidOf` paritesi -> `tryAmt = pi.paid != null ? pi.paid : toTRY(pi.amount, pi.currency||'TRY')`.
+KORUNDU: arama eslesme kosulu + count HALA ham pi.amount uzerinde (kullanici orijinal fatura tutarini arar — kasitli).
+Artik dort tuketici paritede: search / log (paidOf) / hesap (trend) / ui-persons (_buildPersonSummary).
+SW CACHE bump GEREKMEZ (search.js network-first/no-store; STATIC liste degismedi). node --check PASS, mojibake yok.
+TEST (gizli sekme): Ayarlar > global arama -> FX'li bir gerceklesen odemeyi ara -> TRY karsiligi gosterilmeli (yabanci tutar degil);
+Log'dan tutari duzenlenmis bir odemeyi ara -> duzenlenen deger gorunmeli.
+
+---
+
 ## 2026-05-29 — DEPLOY DUZELTME (v8.190 -> v8.191): log.js gercekten gonderildi
 v8.190 paketinde log.js Downloads'ta bulunamadigi icin commit'e GIRMEMISTI (repo v8.190 diyordu ama Log odeme-duzenle fix'i [v8.189 paidOf] canlida yoktu). v8.191 = ayni log.js fix'i + dürüst versiyon etiketi + #4 bayat 'db.js' yorum referanslari temizligi (store.js:40/48, app.js SYNC UI header, index.html flag yorumu -> gercek sahip: persist.js/firestore.js/store.js). Dogru tarihsel referanslar (firestore/persist/auth-pin 'db.js'ten ayristirildi') korundu. Runtime degisikligi yok (yorumlar).
 
