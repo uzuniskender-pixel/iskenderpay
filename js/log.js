@@ -148,9 +148,11 @@ function setLogTypeFilter(cat) {
 
 // ── LEDGER-VIEW (v8.174) ───────────────────────────────────────────────────
 function _renderLogLedgerPaid(el) {
-  const items = (window.paidItems || []).slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
-  const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = items.length + ' ödeme';
-  if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">💰</div><p>Yapılan ödeme yok.</p></div>'; return; }
+  const _all = (window.paidItems || []).slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  const items = _all.filter(p => _ledgerPassesFilters(p, 'date'));
+  const _flt = _ledgerFltActive();
+  const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = (_flt && items.length !== _all.length) ? (items.length + ' / ' + _all.length + ' ödeme') : (items.length + ' ödeme');
+  if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">' + (_flt ? '🔍' : '💰') + '</div><p>' + (_flt ? 'Bu filtreye uyan ödeme yok.' : 'Yapılan ödeme yok.') + '</p></div>'; return; }
   const paidOf = p => p.status==='paid' ? window.toTRY(p.amount,p.currency||'TRY') : (p.paid||0);
   const totAll = items.reduce((s,p)=>s+paidOf(p),0);
   const now=new Date(); const curMk=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
@@ -177,23 +179,25 @@ function _renderLogLedgerPaid(el) {
 }
 
 function _renderLogLedgerHist(el) {
-  const items = (window.hist || []);
-  const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = items.length + ' silinmiş';
-  if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">🗑️</div><p>Silinmiş kayıt yok.</p></div>'; return; }
-  const totAll=items.reduce((s,p)=>s+window.toTRY(p.amount,p.currency||'TRY'),0);
+  const _all = (window.hist || []);
+  const items = _all.map((p, oi) => ({ p, oi })).filter(o => _ledgerPassesFilters(o.p, 'delAt'));
+  const _flt = _ledgerFltActive();
+  const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = (_flt && items.length !== _all.length) ? (items.length + ' / ' + _all.length + ' silinmiş') : (items.length + ' silinmiş');
+  if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">' + (_flt ? '🔍' : '🗑️') + '</div><p>' + (_flt ? 'Bu filtreye uyan silinmiş kayıt yok.' : 'Silinmiş kayıt yok.') + '</p></div>'; return; }
+  const totAll=items.reduce((s,o)=>s+window.toTRY(o.p.amount,o.p.currency||'TRY'),0)
   let html='<div style="display:flex;gap:8px;margin-bottom:10px;align-items:stretch">'
     + '<div style="flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Silinmiş ('+items.length+')</div><div style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-weight:700;color:#94a3b8;font-size:15px">'+window.fmt(totAll)+'</div></div>'
     + '<button onclick="if(window.clrHist){clrHist();renderActLog();}" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:0 14px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Tümünü temizle</button></div>';
-  html+=items.map((p,i)=>{
+  html+=items.map(({p,oi})=>{
     const amt=window.fmt(window.toTRY(p.amount,p.currency||'TRY'));
     const when=p.delAt?window.fmtLogTime(p.delAt):(p.date||'');
     return '<div style="display:flex;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);align-items:center">'
       + '<div style="width:30px;height:30px;border-radius:50%;background:rgba(248,113,113,.15);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🗑️</div>'
       + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+window.esc(p.name||'')+'</div><div style="font-size:11px;color:#94a3b8">silindi · '+when+'</div></div>'
       + '<div style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-weight:600;color:#94a3b8;font-size:13px;white-space:nowrap">'+amt+'</div>'
-      + '<button onclick="editHistItem('+i+')" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0">Düzenle</button>'
-      + '<button onclick="restoreFromHist('+i+');renderActLog()" style="background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0;white-space:nowrap">↩️ Geri</button>'
-      + '<button onclick="delHist('+i+');renderActLog()" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.7;flex-shrink:0">🗑</button></div>';
+      + '<button onclick="editHistItem('+oi+')" style="background:rgba(192,132,252,.15);color:var(--acc2);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:4px 7px;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0">Düzenle</button>'
+      + '<button onclick="restoreFromHist('+oi+');renderActLog()" style="background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0;white-space:nowrap">↩️ Geri</button>'
+      + '<button onclick="delHist('+oi+');renderActLog()" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.7;flex-shrink:0">🗑</button></div>';
   }).join('');
   el.innerHTML=html;
 }
@@ -224,25 +228,34 @@ function setLogPersonFilter(pid) {
   renderActLog();
 }
 
-function _passesLogFilter(entry) {
+// v8.186: tarih filtre mantigi tek kaynak — actLog (entry.at) + ledger (p.date/p.delAt) paylasir
+function _passesDateVal(dateVal) {
   if (_logFilter === 'all') return true;
-  const t = new Date(entry.at);
+  const t = new Date(dateVal);
   if (isNaN(t.getTime())) return false;
   const now = new Date();
-  if (_logFilter === 'today') {
-    return t.toDateString() === now.toDateString();
-  }
+  if (_logFilter === 'today') return t.toDateString() === now.toDateString();
   if (_logFilter === 'week') {
-    // ISO hafta — Pazartesi 00:00 baslangic
     const wkStart = new Date(now);
     const dow = (wkStart.getDay() + 6) % 7; // Pzt=0, Paz=6
     wkStart.setHours(0,0,0,0);
     wkStart.setDate(wkStart.getDate() - dow);
     return t >= wkStart;
   }
-  if (_logFilter === 'month') {
-    return t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth();
-  }
+  if (_logFilter === 'month') return t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth();
+  return true;
+}
+
+function _passesLogFilter(entry) { return _passesDateVal(entry.at); }
+
+// v8.186: ledger (Odemeler/Silinenler) kisi+grup+tarih filtre kombinasyonu.
+// paidItems/hist spread'le personId/groupId'yi miras alir; tarih alani parametrik.
+// Cred filtresi ledger'da N/A.
+function _ledgerFltActive() { return !!_logPersonFilter || !!_logGroupFilter || _logFilter !== 'all'; }
+function _ledgerPassesFilters(item, dateField) {
+  if (_logPersonFilter && item.personId !== _logPersonFilter) return false;
+  if (_logGroupFilter  && item.groupId  !== _logGroupFilter)  return false;
+  if (_logFilter !== 'all' && !_passesDateVal(item[dateField])) return false;
   return true;
 }
 

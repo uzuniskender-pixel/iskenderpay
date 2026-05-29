@@ -18,8 +18,7 @@ LOG = KONTROL MERKEZI:
 ACIK BACKLOG (sonraki oturum, oncelik sirasi):
 1. 3C: gizlenen sekmelerin panel(T1/T4)+render(renderPaid/renderHist)+go() handler kodunu tamamen kaldir (kod temizligi, Buket istedi)
 2. idx-temizligini loadSecure'da da calistir (su an save'e bagli, manuel tetik gerekti)
-3. Ledger v1 rafine: kisi/tarih filtresi ledger modunda kombine olsun; edit-sonrasi yenileme
-4. Store.session guvenlik (#5): console'dan cryptoKey/dataKeyRaw/plainPin erisilebilir -- ayri worktree + tam spec
+3. Store.session guvenlik (#5): console'dan cryptoKey/dataKeyRaw/plainPin erisilebilir -- ayri worktree + tam spec
 
 Cevre: makinede ag flaky (QUIC/DNS); offline-commit + ag donunce push paterni kullanildi.
 
