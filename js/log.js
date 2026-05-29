@@ -106,6 +106,43 @@ function setLogGroupFilter(gid) {
   renderActLog();
 }
 
+// ── TÜR (kategori) FİLTRESİ (v8.173) ───────────────────────────────────────
+const LOG_TYPE_CAT = {
+  paid:'odeme',
+  plan_add:'eklenen', cred_add:'eklenen',
+  plan_del:'silinen', hist_del:'silinen', rhb_del:'silinen',
+  restore:'geri', plan_undo:'geri',
+  plan_edit:'duzenleme', rhb_edit:'duzenleme',
+  rhb_add:'rehber', rhb_import:'rehber',
+};
+const LOG_CAT_LABELS = { odeme:'Ödemeler', eklenen:'Eklenenler', silinen:'Silinenler', geri:'Geri alma', duzenleme:'Düzenleme', rehber:'Rehber' };
+let _logTypeFilter = '';
+
+function _passesTypeFilter(entry) {
+  return !_logTypeFilter || LOG_TYPE_CAT[entry.type] === _logTypeFilter;
+}
+
+function _renderLogTypeFilterOptions() {
+  const sel = document.getElementById('LOG_FILT_TYPE');
+  if (!sel) return;
+  const catCount = {};
+  (window.actLog || []).forEach(e => { const c = LOG_TYPE_CAT[e.type]; if (c) catCount[c] = (catCount[c]||0)+1; });
+  const order = ['odeme','eklenen','silinen','geri','duzenleme','rehber'];
+  const opts = ['<option value=""' + (!_logTypeFilter ? ' selected' : '') + '>Tüm türler / loglar</option>'];
+  order.forEach(cat => {
+    if (!catCount[cat]) return;
+    const isSel = cat === _logTypeFilter ? ' selected' : '';
+    opts.push('<option value="' + cat + '"' + isSel + '>' + LOG_CAT_LABELS[cat] + ' (' + catCount[cat] + ')</option>');
+  });
+  sel.innerHTML = opts.join('');
+}
+
+function setLogTypeFilter(cat) {
+  _logTypeFilter = cat || '';
+  _logSelected.clear();
+  renderActLog();
+}
+
 // Dropdown options'i actLog'tan benzersiz personId'ler + persons.name join ile uret (v8.141)
 function _renderLogPersonFilterOptions() {
   const sel = document.getElementById('LOG_FILT_PERSON');
@@ -173,11 +210,12 @@ function renderActLog() {
   _renderLogPersonFilterOptions();
   _renderLogGroupFilterOptions();
   _renderLogCredFilterOptions();
+  _renderLogTypeFilterOptions();
   const total=window.actLog.length;
-  // Date + person + group + cred filter birlikte uygulanir (v8.141 + v8.156, AND-combine)
-  const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e));
+  // Date + person + group + cred + tur filter birlikte uygulanir (v8.141 + v8.156 + v8.173, AND-combine)
+  const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e)&&_passesTypeFilter(e));
   const shown=entries.length;
-  const filterActive=(_logFilter!=='all')||!!_logPersonFilter||!!_logGroupFilter||!!_logCredFilter;
+  const filterActive=(_logFilter!=='all')||!!_logPersonFilter||!!_logGroupFilter||!!_logCredFilter||!!_logTypeFilter;
   const cntEl=document.getElementById('LOG_CNT');
   if(cntEl){
     cntEl.textContent=(!filterActive||shown===total)
@@ -313,7 +351,7 @@ function _populateLogGroupSelect() {
 }
 
 function toggleSelectAllLogs(checked) {
-  if(checked){window.actLog.forEach((e,i)=>{if(_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e))_logSelected.add(i);});}else{_logSelected.clear();}
+  if(checked){window.actLog.forEach((e,i)=>{if(_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e)&&_passesTypeFilter(e))_logSelected.add(i);});}else{_logSelected.clear();}
   renderActLog();_updateLogSelCount();
 }
 
@@ -323,7 +361,7 @@ function toggleLogItem(idx) {
   const cb=document.getElementById('LOG_CB_'+idx);if(cb)cb.checked=_logSelected.has(idx);
   const allCb=document.getElementById('LOG_SEL_ALL');
   if(allCb){
-    const visibleCount=window.actLog.filter(e=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e)).length;
+    const visibleCount=window.actLog.filter(e=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e)&&_passesTypeFilter(e)).length;
     allCb.checked=_logSelected.size===visibleCount && visibleCount>0;
   }
 }
@@ -409,6 +447,7 @@ window.setLogFilter       = setLogFilter;
 window.setLogPersonFilter = setLogPersonFilter;
 window.setLogGroupFilter  = setLogGroupFilter;
 window.setLogCredFilter   = setLogCredFilter;
+window.setLogTypeFilter   = setLogTypeFilter;
 window.logNav             = logNav;
 window.logJumpGroup       = logJumpGroup;
 window.logJumpPerson      = logJumpPerson;

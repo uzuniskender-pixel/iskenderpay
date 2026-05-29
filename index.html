@@ -334,6 +334,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
         <select id="LOG_FILT_PERSON" class="fi" onchange="setLogPersonFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px"></select>
         <select id="LOG_FILT_GROUP" class="fi" onchange="setLogGroupFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
         <select id="LOG_FILT_CRED" class="fi" onchange="setLogCredFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
+        <select id="LOG_FILT_TYPE" class="fi" onchange="setLogTypeFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
       </div>
       <div id="LOG_DEL_BAR" style="padding:0 16px 8px;display:none">
         <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
@@ -483,8 +484,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.172';
-var APP_BUILD   = '20260529-12';
+var APP_VERSION = 'v8.173';
+var APP_BUILD   = '20260529-13';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
