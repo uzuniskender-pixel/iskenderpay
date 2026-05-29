@@ -6,6 +6,19 @@
 // Pays groupId tutarliligi: ayni groupId farkli isim tasiyorsa en sik ismi canonical
 // sec, digerlerini ona normalize et. Side-effect: pay item'in name field'i mutate edilir.
 function normalizeBeforeSave() {
+  // v8.179: window.pays'e sizan kredi taksitlerini temizle. idx alani SADECE
+  // kredi taksitinde bulunur, normal pay'de asla. idx'li pay = duplike sizinti
+  // (gercek taksit creds'te). v8.176 backfill'inden ONCE calismali ki backfill
+  // bunlara fix_ groupId vermesin. Silent setter: invalidate+dirty, autoSave yok.
+  try {
+    const _arr = window.pays || [];
+    const _kept = _arr.filter(p => p.idx === undefined);
+    if (_kept.length !== _arr.length) {
+      window.pays = _kept;
+      console.log('[integrity] ' + (_arr.length - _kept.length) + ' sizan kredi taksiti (idx) pays temizlendi');
+    }
+  } catch(e) { console.warn('[integrity] idx-leak temizlik hatasi:', e); }
+
   try {
     const byGroup = {};
     (window.pays||[]).forEach(p => {
