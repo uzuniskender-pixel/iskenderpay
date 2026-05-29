@@ -1,3 +1,8 @@
+## 2026-05-29 — DEPLOY DUZELTME (v8.190 -> v8.191): log.js gercekten gonderildi
+v8.190 paketinde log.js Downloads'ta bulunamadigi icin commit'e GIRMEMISTI (repo v8.190 diyordu ama Log odeme-duzenle fix'i [v8.189 paidOf] canlida yoktu). v8.191 = ayni log.js fix'i + dürüst versiyon etiketi. Baska kod degisikligi yok.
+
+---
+
 ## 2026-05-29 — QNB coklu grup ozet etiket fix (v8.189 -> v8.190) — KOD TAMAM, saha-test BEKLIYOR
 KALAN ISLER #1 / ACIK HATA #1 KAPANDI. ui-persons.js#_buildPersonSummary.
 KOK NEDEN: ayni kisinin coklu pay grubu, ozet breakdown'unda hepsi ham p.name ile ("QNB" x3) -> ayirt edilemiyor.
