@@ -23,6 +23,11 @@ ACIK BACKLOG (sonraki oturum, oncelik sirasi):
 
 Cevre: makinede ag flaky (QUIC/DNS); offline-commit + ag donunce push paterni kullanildi.
 
+### OTURUM HIJYENI (Claude'a kalici hatirlatma)
+- Bir sprint/konu = bir sohbet. Is mantiksal olarak bitince (baseline yesil + DEVAM_NOTU guncel) YENI sohbete gec; token dolusunu bekleme.
+- Claude proaktif uyarsin: ~10+ versiyon cikinca, numara/durum kaymasi baslayinca, ya da konu degisince "yeni sohbet acalim, DEVAM_NOTU'dan devam" onerisini KENDISI getirsin.
+- Yeni sohbet acilisinda Claude once DEVAM_NOTU.md + CLAUDE.md okur, kaldigi yerden surdurur.
+
 ---
 
 # DEVAM NOTU — sonraki oturum için brief
