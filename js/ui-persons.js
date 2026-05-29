@@ -121,32 +121,39 @@ function _buildPersonSummary(personId, personName) {
   const baseName = baseOf(personName);
   const matches = (p) => (personId && p.personId === personId) || (!p.personId && baseOf(p.name) === baseName);
   let bekleyen = 0, gecikmis = 0, bekleyenCount = 0, gecikmisCount = 0;
-  const addPending = (remaining, dateStr) => {
+  // v8.169: bekleyen tutarı yükümlülük bazında (pay grubu / kredi) ayrı raporla.
+  const breakdownMap = {}; // key -> { label, bekleyen, gecikmis }
+  const addPending = (remaining, dateStr, key, label) => {
     bekleyen += remaining;
     bekleyenCount++;
-    if (dateStr && window.parseLocalDate(dateStr) < today) { gecikmis += remaining; gecikmisCount++; }
+    const overdue = dateStr && window.parseLocalDate(dateStr) < today;
+    if (overdue) { gecikmis += remaining; gecikmisCount++; }
+    if (!breakdownMap[key]) breakdownMap[key] = { label, bekleyen: 0, gecikmis: 0 };
+    breakdownMap[key].bekleyen += remaining;
+    if (overdue) breakdownMap[key].gecikmis += remaining;
   };
-  // (1) Normal pays
   (window.pays || []).filter(matches).forEach(p => {
     if ((p.status || 'pending') === 'paid') return;
     const t = window.toTRY(p.amount, p.currency || 'TRY');
-    addPending(Math.max(0, t - (p.paid || 0)), p.date);
+    addPending(Math.max(0, t - (p.paid || 0)), p.date, p.groupId || ('pay:' + p.id), p.name || personName);
   });
-  // (2) Kredi taksitleri (cred.pays.amount zaten TRY — toplamOzeti ile tutarlı)
   (window.creds || []).forEach(c => {
     if (baseOf(c.name) !== baseName) return;
     (c.pays || []).forEach(p => {
       if ((p.status || 'pending') === 'paid') return;
-      addPending(Math.max(0, (p.amount || 0) - (p.paid || 0)), p.date);
+      addPending(Math.max(0, (p.amount || 0) - (p.paid || 0)), p.date, 'cred:' + c.id, c.name + ' (kredi)');
     });
   });
-  // (3) Ödenmiş toplam — paidItems (normal + cred paid item'ları; cred'ler name ile yakalanır)
   const personPaidItems = (window.paidItems || []).filter(matches);
   const odenmisToplam = personPaidItems.reduce((s, pi) => s + (pi.paid || 0), 0);
+  const breakdown = Object.values(breakdownMap)
+    .filter(b => b.bekleyen > 0.005)
+    .sort((a, b) => b.bekleyen - a.bekleyen);
   return {
     bekleyen, bekleyenCount,
     gecikmis, gecikmisCount,
-    odenmisToplam, odenmisCount: personPaidItems.length
+    odenmisToplam, odenmisCount: personPaidItems.length,
+    breakdown
   };
 }
 
@@ -170,6 +177,16 @@ function openPersonHist(personId) {
     +     '<div style="font-size:10px;color:var(--muted)">'+s.odenmisCount+' ödeme</div>'
     +   '</div>'
     + '</div>'
+    + (s.breakdown && s.breakdown.length > 1 ?
+        '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)">'
+        + s.breakdown.map(b =>
+            '<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0">'
+            + '<span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+window.esc(b.label)+'</span>'
+            + '<span style="font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:'+(b.gecikmis>0?'var(--danger)':'var(--txt)')+';white-space:nowrap">'+window.fmt(b.bekleyen)+'</span>'
+            + '</div>'
+          ).join('')
+        + '</div>'
+      : '')
     + (s.gecikmis > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr);font-size:12px;color:var(--danger);font-weight:600">⚠ Gecikmiş: '+window.fmt(s.gecikmis)+' ('+s.gecikmisCount+' ödeme)</div>' : '')
     + '</div>';
   // v8.167: personId-siz eski/cred entry'lerini de yakala — _buildPersonSummary taban-isim mantığıyla tutarlı
