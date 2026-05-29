@@ -270,7 +270,7 @@ function saveHistItem() {
   if(!isNaN(newAmt)&&newAmt>0) _patch.amount=newAmt;
   if(newDate.match(/^\d{4}-\d{2}-\d{2}$/)) _patch.date=newDate;
   if(Object.keys(_patch).length) window.Store.mutateItem(p, _patch);
-  ModalManager.close('HIMOD'); renderHist();
+  ModalManager.close('HIMOD'); renderHist(); if(window.curTab===7)window.renderActLog();
 }
 
 function restoreFromHist(i) {
@@ -295,3 +295,6 @@ window.savePerson         = savePerson;
 window.renderHist         = renderHist;
 window.saveHistItem       = saveHistItem;
 window.clrHist            = clrHist;
+window.editHistItem       = editHistItem;
+window.restoreFromHist    = restoreFromHist;
+window.delHist            = delHist;

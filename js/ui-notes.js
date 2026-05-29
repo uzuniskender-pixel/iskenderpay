@@ -148,7 +148,7 @@ function savePaidItem() {
   if(isNaN(amt)||amt<0){alert('Geçerli bir tutar girin');return;}
   if(!date.match(/^\d{4}-\d{2}-\d{2}$/)){alert('Tarih YYYY-AA-GG formatında olmalı');return;}
   window.Store.mutateItem(p, {name, paid:amt, date});
-  window.closeMov('PIMOD');renderPaid();
+  window.closeMov('PIMOD');renderPaid();if(window.curTab===7)window.renderActLog();
 }
 
 function delPaidItem(paidId) {
@@ -167,3 +167,5 @@ window.openNoteModal      = openNoteModal;
 window.saveNote           = saveNote;
 window.renderPaid         = renderPaid;
 window.savePaidItem       = savePaidItem;
+window.openPaidEdit       = openPaidEdit;
+window.delPaidItem        = delPaidItem;
