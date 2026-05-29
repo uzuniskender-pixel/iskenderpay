@@ -179,7 +179,7 @@ export const Store = {
 
   removeWhere(key, predicate) {
     if (!Array.isArray(_state[key])) return;
-    _state[key] = _state[key].filter(x => !predicate(x));
+    _state[key] = _state[key].filter((x, i) => !predicate(x, i));
     _invalidate();
     _autoSave();
     _dispatchChange([key]);
