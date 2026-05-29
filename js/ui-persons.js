@@ -275,7 +275,12 @@ function saveHistItem() {
 
 function restoreFromHist(i) {
   const p=window.hist[i];if(!p)return;
-  const restored={...p};delete restored.delAt;restored.status='pending';restored.paid=0;
+  // v8.182: taksit-ozel alanlari soy. Silinen kredinin taksitleri hist'e idx/_cid/_ii ile
+  // dusuyordu; geri yuklenince window.pays'e sizip zombi taksit uretiyordu.
+  const restored={...p};delete restored.delAt;delete restored.idx;delete restored._cid;delete restored._ii;
+  restored.status='pending';restored.paid=0;
+  if(restored.id==null) restored.id=Date.now()+Math.random();
+  if(!restored.groupId) restored.groupId=String(Date.now());
   window.Store.push('pays', restored);window.Store.spliceAt('hist', i, 1);
   renderHist();
 }
