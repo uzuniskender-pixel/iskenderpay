@@ -123,8 +123,13 @@ function render() {
   const dnMap = window.Hesap._displayNames(mx, rowKeys);
   rowKeys.forEach(k => { mx[k]._displayName = dnMap[k]; });
   const allMonths=Array.from(monthSet).sort();
-  // v8.163: sadece en az bir kayit olan aylari goster (visible rowKeys'te); "+" empty cell affordance kaybi kabul
-  const months = allMonths.filter(m => rowKeys.some(k => mx[k]?.[m]?.items?.length > 0));
+  // v8.180: ay sutunu, gorunur satirlarda odenmemis (status!=='paid') kayit varsa gosterilir.
+  // showPaid kapaliyken tamami odenmis aylar gizlenir; toggle acikken kayit olan tum aylar gorunur.
+  const months = allMonths.filter(m => rowKeys.some(k => {
+    const c = mx[k]?.[m];
+    if (!c?.items?.length) return false;
+    return showPaid ? true : c.status !== 'paid';
+  }));
   // Toggle buton görünümü
   const tb = document.getElementById('PAID_TOGGLE');
   if (tb) {
