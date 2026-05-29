@@ -28,7 +28,7 @@ function showUpdBanner(newVer) {
   const b = document.getElementById('upd-banner');
   if (!b) return;
   const txt = b.querySelector('.upd-txt');
-  if (txt) txt.textContent = '🔄 Yeni sürüm: ' + (newVer || '');
+  if (txt) txt.textContent = '🔄 Yeni sürüm: v' + (newVer || '');
   b.classList.add('show');
 }
 
@@ -47,10 +47,10 @@ async function manualCheckUpdate() {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d.build && d.build !== _knownBuild) {
-      if (statusEl) statusEl.textContent = '🔄 Yeni sürüm mevcut: ' + d.v;
+      if (statusEl) statusEl.textContent = '🔄 Yeni sürüm mevcut: v' + d.v;
       showUpdBanner(d.v);
     } else {
-      if (statusEl) statusEl.textContent = '✅ Güncel sürümdesiniz (v' + window.APP_VERSION + ')';
+      if (statusEl) statusEl.textContent = '✅ Güncel sürümdesiniz (' + window.APP_VERSION + ')';
     }
   } catch(e) {
     if (statusEl) statusEl.textContent = '❌ Kontrol edilemedi: ' + e.message;

@@ -1,3 +1,26 @@
+## 2026-05-29 — SPRINT KAPANIS (v8.193 -> v8.194): saha-test 7/7 PASS + cift-v kozmetik
+Bu oturumun ve onceki bekleyen patch'lerin saha-testi TAMAMLANDI. v8.187-v8.193 araliginda "saha-test BEKLIYOR" olan her sey artik PASS.
+
+SAHA-TEST SONUCLARI (gizli sekme + cache temizle, canli v8.193/34 uzerinde):
+1. Session hardening (v8.187): window.Store.session=undefined ✓; debugState Session tablosu cryptoKey:true + plainPinLen:6 (sir yok) ✓ — PASS
+2. Sekme gecisleri + olu kod (v8.188): gecisler temiz; window.renderPaid/renderHist=undefined ✓ — PASS
+3. Log odeme duzenle (v8.189): Log>Odemeler>Duzenle ledger aninda guncelleniyor ✓ — PASS
+4. Log Silinenler (v8.188): Duzenle/GeriAl/Sil/Tumunu temizle aninda yeniliyor ✓ — PASS
+5. Kisi ozet etiketleri (v8.190): coklu grup breakdown ayirt edilebilir ✓ — PASS
+6. Global arama FX (v8.192+v8.193): "suleyman" -> ₺254.608 38,00gr / ₺310.987 €5.820,00 (TRY karsiligi + orijinal rozet) ✓ — PASS
+7. Bos/odenmis ay sutunlari (v8.190 mantik): gizleniyor, Odendiler toggle ile geri ✓ — PASS
+
+v8.194 (bu kapanis commit'i): version.js cift-v kozmetik — "Guncel surumdesiniz (vv8.192)" -> APP_VERSION zaten v'li, ekstra v kaldirildi. Bonus: d.v gosterimleri (Yeni surum mevcut / banner) v-prefix tutarli hale getirildi. Salt metin, davranis degisikligi yok.
+
+TASARIM KARARLARI (bu oturum, kapali):
+- Arama FX gosterimi: "TRY karsiligi + orijinal doviz kucuk rozet" hali KORUNDU (sadece-orijinal'e gecilmedi — kullanici onayladi, matris paritesi).
+
+BASELINE: v8.194 / 20260529-34 — tam yesil. Aktif acik kod isi YOK. Backlog (DEVAM_NOTU bolum 4 + ACIK HATALAR): Pass 4 groupId backfill (DV history bos hucreler), personId ⚠️ gostergesi karari, openCell istatistik veri yetersizligi — hicbiri acil degil.
+
+OTURUM HIJYENI: Sprint bitti + baseline yesil -> SONRAKI KONU/IS ICIN YENI SOHBET. Yeni sohbette once DEVAM_NOTU.md + CLAUDE.md oku, kaldigin yerden surdur.
+
+---
+
 ## 2026-05-29 — search.js FX gosterimi matris paritesi (v8.192 -> v8.193) — KOD TAMAM, saha-test BEKLIYOR
 SAHA-TESTTE YAKALANDI (adim 6): kullanici "suleyman" aradi -> 38 gr altin "₺38", 5820 EUR "₺5.820" gosteriliyordu.
 KOK NEDEN: v8.192 yalniz paidItems (Gerceklesen Odeme) TRY cevrimini duzeltti; ama (1) PLAN ODEMESI (pays) blogu HIC dokunulmamisti, hala ham amount'a duz ₺; (2) paidItems'ta orijinal doviz rozeti yoktu.

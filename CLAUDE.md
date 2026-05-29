@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-29_
 
 ---
 
-## Mevcut Durum (29 Mayıs 2026) — v8.193 / 20260529-33
+## Mevcut Durum (29 Mayıs 2026) — v8.194 / 20260529-34 — SPRINT TAM YEŞİL (v8.187–193 saha-test PASS)
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
@@ -29,6 +29,7 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.194 | 20260529-34 | **version.js çift-v kozmetik fix + sürüm-metni v-prefix tutarlılığı**: Ayarlar > Güncelleme "✅ Güncel sürümdesiniz (vv8.192)" gösteriyordu — `APP_VERSION` zaten `v` ile başladığından koddaki `'(v' + APP_VERSION` çift-v üretiyordu. Fix: ekstra `v` kaldırıldı → `'(' + APP_VERSION`. Tutarlılık için iki sürüm-metni daha (`d.v` version.json'dan v'siz gelir): "Yeni sürüm mevcut: " + `'v'+d.v` ve showUpdBanner "Yeni sürüm: " + `'v'+newVer`. Salt metin, runtime/davranış değişikliği yok. node --check PASS. **Bu commit ile v8.187–193 sprintinin saha-testi tamamlandı (7/7 adım PASS) — baseline tam yeşil.** |
 | v8.193 | 20260529-33 | **search.js global arama FX gösterimi → Plan matrisi paritesi** (saha-testte yakalandı, v8.192 takibi): hem **Plan Ödemesi** (`pays`) hem **Gerçekleşen Ödeme** (`paidItems`) blokları ham `amount`'a düz `₺` yapıştırıyordu → 38 gr altın `₺38`, 5820 EUR `₺5.820` gibi yanlış. v8.192 yalnız paidItems TRY çevrimini düzeltmişti ama orijinal döviz rozeti yoktu; pays bloğu hiç dokunulmamıştı. Fix: ikisi de `fmt(toTRY(amount,currency))` ana değer + currency≠TRY ise `fmtA(amount,currency)` küçük rozet (matris satır-hücre paritesi). Örnek: `₺254.608 38,00gr` / `₺310.987 €5.820,00`. Krediler bloğu zaten `currency:'TRY'` normalize (matris L8) — dokunulmadı. Arama eşleşmesi + count hâlâ ham amount (kasıtlı). SW cache bump gerekmez. Tek dosya, node --check PASS, mojibake yok. |
 | v8.192 | 20260529-32 | **search.js Gerçekleşen Ödeme tutarı tutarlılığı** (v8.189 çapraz-tutarlılık zincirinin son tüketicisi): global arama paidItems sonucunda ödeme tutarı ham `pi.amount` ile gösteriliyordu → (1) Log düzenlemesini (savePaidItem → `p.paid`) yok sayıyor, (2) FX kaleminde yabancı tutarı `₺` ile yanlış basıyordu. Fix: log.js/hesap.js `paidOf` paritesi — `pi.paid != null ? pi.paid : toTRY(pi.amount, pi.currency||'TRY')`. Arama eşleşmesi + count hâlâ ham `pi.amount` üzerinde (kullanıcı orijinal fatura tutarını arar — kasıtlı korundu); yalnız gösterilen değer düzeltildi. Artık dört tüketici (search/log/hesap/ui-persons) paritede. SW cache bump gerekmez (search.js network-first/no-store, STATIC liste değişmedi). Tek dosya, davranış: yalnız düzeltme. |
 | v8.191 | 20260529-31 | **DEPLOY DUZELTME**: v8.190 paketinde log.js Downloads'ta bulunamadigindan commit'e girmemisti (repo v8.190 diyordu ama Log odeme-duzenle fix'i [v8.189 paidOf p.paid'i okusun] canlida yoktu). v8.191 ayni log.js fix'ini dogru sekilde gonderir + durust versiyon etiketi + KALAN ISLER #4: bayat 'db.js' yorum referanslari gercek sahibe yonlendirildi (store.js:40/48 -> persist.js/firestore.js; app.js SYNC UI header -> sync.js/firestore.js; index.html flag yorumu -> Store/persist.js). Dogru tarihsel 'db.js'ten ayristirildi' yorumlari korundu. Runtime degisikligi yok. |
