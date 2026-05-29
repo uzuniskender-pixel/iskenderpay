@@ -143,6 +143,44 @@ function setLogTypeFilter(cat) {
   renderActLog();
 }
 
+// ── LEDGER-VIEW (v8.174) ───────────────────────────────────────────────────
+function _renderLogLedgerPaid(el) {
+  const items = (window.paidItems || []).slice().reverse();
+  const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = items.length + ' ödeme';
+  if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">💰</div><p>Yapılan ödeme yok.</p></div>'; return; }
+  el.innerHTML = items.map(p => {
+    const amt = window.fmt(p.paid || window.toTRY(p.amount, p.currency || 'TRY'));
+    const when = p.paidAt ? window.fmtLogTime(p.paidAt) : (p.date || '');
+    const pid = window.esc(p.paidId || '');
+    return '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);align-items:center">'
+      + '<div style="width:32px;height:32px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✅</div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + window.esc(p.name || '') + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8">' + when + '</div></div>'
+      + '<div style="font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:#4ade80;font-size:13px;white-space:nowrap">' + amt + '</div>'
+      + '<button onclick="openPaidEdit(\'' + pid + '\')" title="Düzenle" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.7;flex-shrink:0">✏️</button>'
+      + '<button onclick="delPaidItem(\'' + pid + '\');renderActLog()" title="Sil" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.7;flex-shrink:0">🗑</button>'
+      + '</div>';
+  }).join('');
+}
+
+function _renderLogLedgerHist(el) {
+  const items = (window.hist || []);
+  const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = items.length + ' silinmiş';
+  if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">🗑️</div><p>Silinmiş kayıt yok.</p></div>'; return; }
+  el.innerHTML = items.map((p, i) => {
+    const amt = window.fmt(window.toTRY(p.amount, p.currency || 'TRY'));
+    const when = p.delAt ? window.fmtLogTime(p.delAt) : (p.date || '');
+    return '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);align-items:center">'
+      + '<div style="width:32px;height:32px;border-radius:50%;background:rgba(248,113,113,.15);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🗑️</div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + window.esc(p.name || '') + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8">silindi · ' + when + '</div></div>'
+      + '<div style="font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:#94a3b8;font-size:13px;white-space:nowrap">' + amt + '</div>'
+      + '<button onclick="restoreFromHist(' + i + ');renderActLog()" title="Geri yükle" style="background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0;white-space:nowrap">↩️ Geri yükle</button>'
+      + '<button onclick="delHist(' + i + ');renderActLog()" title="Kalıcı sil" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.7;flex-shrink:0">🗑</button>'
+      + '</div>';
+  }).join('');
+}
+
 // Dropdown options'i actLog'tan benzersiz personId'ler + persons.name join ile uret (v8.141)
 function _renderLogPersonFilterOptions() {
   const sel = document.getElementById('LOG_FILT_PERSON');
@@ -211,6 +249,8 @@ function renderActLog() {
   _renderLogGroupFilterOptions();
   _renderLogCredFilterOptions();
   _renderLogTypeFilterOptions();
+  if (_logTypeFilter === 'odeme')   { _renderLogLedgerPaid(el); return; }
+  if (_logTypeFilter === 'silinen') { _renderLogLedgerHist(el); return; }
   const total=window.actLog.length;
   // Date + person + group + cred + tur filter birlikte uygulanir (v8.141 + v8.156 + v8.173, AND-combine)
   const entries=window.actLog.map((e,i)=>({e,i})).filter(({e})=>_passesLogFilter(e)&&_passesPersonFilter(e)&&_passesGroupFilter(e)&&_passesCredFilter(e)&&_passesTypeFilter(e));
