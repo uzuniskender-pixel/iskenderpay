@@ -1,3 +1,12 @@
+## 2026-05-29 — Log 'odeme duzenle' bug fix (v8.188 -> v8.189) — KOD TAMAM, saha-test BEKLIYOR
+Kullanici raporu: Log > Odemeler > Duzenle -> kaydet -> ekranda degisiklik yok.
+KOK NEDEN (eski-beri, v8.188 ile ilgisiz): log.js `paidOf` status==='paid' kaleminde p.paid'i yok sayip toTRY(p.amount)'tan yeniden hesapliyordu; savePaidItem ise duzenlemeyi p.paid'e yaziyordu -> ledger okumuyor.
+FIX (1 satir, log.js): `paidOf = p.paid!=null ? p.paid : (status==='paid'?toTRY(amount):0)`. markOk her zaman paid=toTRY(amount) yazdigindan duzenlenmemis kalem AYNI gorunur (regresyon yok). Yan kazanim: FX kalem artik odeme anindaki sabit TRY'yi gosterir (guncel kura gore kaymaz).
+NOT (acik): hesap.js/search.js/ui-persons.js'teki odenen-toplam tuketicileri kendi mantigini kullanir; duzenleme su an YALNIZ Log ledger gorunumunu gunceller. Tam capraz-tutarlilik (tum ozetler duzenlemeyi yansitsin) ayri/buyuk is — gerekirse KALAN ISLER'e eklenir.
+TEST (gizli sekme): Log > Odemeler > Duzenle -> tutar/ad/tarih degis -> kaydet -> ledger aninda guncellenmeli.
+
+---
+
 ## 2026-05-29 — Gizli sekme olu kod temizligi (v8.187 -> v8.188) — KOD TAMAM, saha-test BEKLIYOR
 Backlog #1 KAPANDI. T1 (Odemeler) + T4 (Gecmis) sekmelerinin tum olu kodu kaldirildi. Boylece v8.183 backlog'unun UCU DE kapandi (#1 bu, #2 v8.184, #3 v8.187).
 

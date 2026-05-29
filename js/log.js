@@ -153,7 +153,10 @@ function _renderLogLedgerPaid(el) {
   const _flt = _ledgerFltActive();
   const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = (_flt && items.length !== _all.length) ? (items.length + ' / ' + _all.length + ' ödeme') : (items.length + ' ödeme');
   if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">' + (_flt ? '🔍' : '💰') + '</div><p>' + (_flt ? 'Bu filtreye uyan ödeme yok.' : 'Yapılan ödeme yok.') + '</p></div>'; return; }
-  const paidOf = p => p.status==='paid' ? window.toTRY(p.amount,p.currency||'TRY') : (p.paid||0);
+  // v8.189: p.paid ayarliysa onu kullan (markOk her zaman paid=toTRY(amount) yazar; savePaidItem
+  // duzenlemede paid'i gunceller). Eskiden status==='paid' icin p.amount'tan yeniden hesaplaniyordu
+  // -> duzenleme gorunmuyordu + FX kalemlerde guncel kura gore kayiyordu. Artik odeme anindaki deger sabit.
+  const paidOf = p => p.paid != null ? p.paid : (p.status==='paid' ? window.toTRY(p.amount,p.currency||'TRY') : 0);
   const totAll = items.reduce((s,p)=>s+paidOf(p),0);
   const now=new Date(); const curMk=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const grouped={}; items.forEach(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');(grouped[mk]=grouped[mk]||[]).push(p);});
