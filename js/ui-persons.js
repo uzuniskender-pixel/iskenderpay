@@ -137,9 +137,12 @@ function _buildPersonSummary(personId, personName) {
     if (overdue) breakdownMap[key].gecikmis += remaining;
   };
   // (1) Normal pays — yükümlülük = groupId (yoksa pay id'si)
+  // v8.190: etiket plan matrisi gibi ayristirilir (desc || category) — coklu grupta "QNB" x3 cakismasini onler.
   (window.pays || []).filter(matches).forEach(p => {
     if ((p.status || 'pending') === 'paid') return;
-    addPending(kalan(p.amount, p.paid, p.currency || 'TRY'), isOverdue(p), p.groupId || ('pay:' + p.id), p.name || personName);
+    const tag = p.desc || p.category;
+    const label = (p.name || personName) + (tag ? ' (' + tag + ')' : '');
+    addPending(kalan(p.amount, p.paid, p.currency || 'TRY'), isOverdue(p), p.groupId || ('pay:' + p.id), label);
   });
   // (2) Kredi taksitleri (cred.pays.amount zaten TRY — toplamOzeti ile tutarlı). Yükümlülük = kredi.
   (window.creds || []).forEach(c => {
@@ -151,6 +154,13 @@ function _buildPersonSummary(personId, personName) {
   });
   const personPaidItems = (window.paidItems || []).filter(matches);
   const odenmisToplam = personPaidItems.reduce((s, pi) => s + (pi.paid || 0), 0);
+  // v8.190: tag eklendikten sonra hala ayni etikete sahip gruplar kalirsa (ayni isim+kategori, desc yok)
+  // sayisal disambiguator ekle — hicbir iki satir birebir ayni gorunmesin ("kayip/mukerrer" hissi).
+  const _seenLabel = {};
+  Object.values(breakdownMap).forEach(b => {
+    const n = (_seenLabel[b.label] = (_seenLabel[b.label] || 0) + 1);
+    if (n > 1) b.label = b.label + ' #' + n;
+  });
   const breakdown = Object.values(breakdownMap)
     .filter(b => b.bekleyen > 0.005)
     .sort((a, b) => b.bekleyen - a.bekleyen);
