@@ -1,3 +1,30 @@
+## 2026-05-29 — Tutarlilik + Log kontrol-merkezi sprint (v8.170 -> v8.183)
+Baseline: v8.183 (8902a43). Hepsi push'li + saha-test yesili.
+
+TUTARLILIK & VERI BUTUNLUGU:
+- v8.170 hesap.js Hesap.kalan: bekleyen tutar tek kaynak (kredi paneli=toplam=kisi karti)
+- v8.172 ui-plan-actions _findPaidIdx: ayni tarihli kredi taksitleri paidItems eslesme fix
+- v8.175 store.js removeWhere(x,i): Log sec-sil hicbir kaydi silmiyordu, index predicate fix
+- v8.176 integrity backfill: id/groupId'siz zombi pay onarimi
+- v8.179 integrity: window.pays'e sizan idx'li kredi taksiti temizligi (semptom, son emniyet agi)
+- v8.182 ui-persons restoreFromHist: idx/_cid/_ii soyma -> sizintinin KAYNAGI kapandi
+- v8.183 log.js: ledger sayaclari (Odemeler/Silinenler) gercek defter kaynagindan (paidItems/hist)
+
+LOG = KONTROL MERKEZI:
+- v8.173 tur filtresi, v8.174 ledger-view, v8.177 tam parite (Odemeler defteri + Silinenler geri-yukle; openPaidEdit/delPaidItem/editHistItem/restoreFromHist/delHist window'a geri export edildi -- v8.166'da kaldirilmislardi, inline onclick'ler oluydu)
+- v8.180 ui-plan-render: tamami odenmis ay sutunu gizlenir (showPaid toggle ile geri)
+- v8.181 Odemeler(s1/m1)+Gecmis(s4/m4) nav butonlari display:none (islevler Log'da)
+
+ACIK BACKLOG (sonraki oturum, oncelik sirasi):
+1. 3C: gizlenen sekmelerin panel(T1/T4)+render(renderPaid/renderHist)+go() handler kodunu tamamen kaldir (kod temizligi, Buket istedi)
+2. idx-temizligini loadSecure'da da calistir (su an save'e bagli, manuel tetik gerekti)
+3. Ledger v1 rafine: kisi/tarih filtresi ledger modunda kombine olsun; edit-sonrasi yenileme
+4. Store.session guvenlik (#5): console'dan cryptoKey/dataKeyRaw/plainPin erisilebilir -- ayri worktree + tam spec
+
+Cevre: makinede ag flaky (QUIC/DNS); offline-commit + ag donunce push paterni kullanildi.
+
+---
+
 # DEVAM NOTU — sonraki oturum için brief
 
 _Son oturum: 2026-05-29 · son code commit: **v8.166 / 20260529-06** · **v8.166-stable** baseline_
