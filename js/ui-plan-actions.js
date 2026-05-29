@@ -22,6 +22,17 @@ function addToMonth(keyEnc,month) {
   window.closeDV();
 }
 
+// v8.172: paidItems linkage — kredi taksitlerinin benzersiz id'si yok (sadece _cid+_ii).
+// Eski (id+date) eslesme kredilerde ayni tarihli taksitleri karistiriyordu -> kaynak/defter
+// sapmasi. Kredi ise _cid+_ii (benzersiz), normal pay ise id+date ile esle. -1 = bulunamadi.
+function _findPaidIdx(p) {
+  return (window.paidItems || []).findIndex(x =>
+    p._cid != null
+      ? (x._cid === p._cid && x._ii === p._ii)
+      : (String(x.id) === String(p.id) && x.date === p.date)
+  );
+}
+
 function markOk(keyEnc,month) {
   const key=decodeURIComponent(keyEnc);
   const all=window.getAllItems(),mx=window.buildMx(all);
@@ -42,7 +53,7 @@ function undoCell(keyEnc,month) {
   items.forEach(p=>{
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
     else{const orig=window.findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
-    const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    const pidx=_findPaidIdx(p);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
     try{window.addLog('plan_undo','Ödeme geri alındı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
   });
@@ -58,7 +69,7 @@ function doPartial() {
   items.forEach(p=>{
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
     else{const orig=window.findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=window.toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
-    const existing=window.paidItems.find(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    const _pi=_findPaidIdx(p); const existing=_pi>=0?window.paidItems[_pi]:null;
     if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=window.toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
     else{window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'partial', paid:amt, paidAt:new Date().toISOString()});}
   });
@@ -85,7 +96,7 @@ function resetPartial(keyEnc,month) {
   items.forEach(p=>{
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='pending';i.paid=0;}}}
     else{const orig=window.findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
-    const pidx=window.paidItems.findIndex(x=>String(x.id)===String(p.id)&&x.date===p.date);
+    const pidx=_findPaidIdx(p);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
   });
   window.Store.touch(); window.closeDV();
