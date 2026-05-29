@@ -127,10 +127,10 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <div class="slogo">💳 Ödeme <span>Takvimi</span></div>
     <nav class="snav">
       <button class="stab on" id="s0" onclick="go(0)">📊 Plan</button>
-      <button class="stab" id="s1" onclick="go(1)">✅ Ödemeler</button>
+      <button class="stab" id="s1" onclick="go(1)" style="display:none">✅ Ödemeler</button>
       <button class="stab" id="s2" onclick="go(2)">👥 Kişiler</button>
       <button class="stab" id="s3" onclick="go(3)">📝 Notlar</button>
-      <button class="stab" id="s4" onclick="go(4)">🗃 Geçmiş</button>
+      <button class="stab" id="s4" onclick="go(4)" style="display:none">🗃 Geçmiş</button>
       <button class="stab" id="s5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="stab" id="s6" onclick="go(6)">📒 Rehber</button>
       <button class="stab" id="s7" onclick="go(7)">📋 Log</button>
@@ -141,10 +141,10 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div class="content">
     <div class="mnav">
       <button class="mtab on" id="m0" onclick="go(0)">📊 Plan</button>
-      <button class="mtab" id="m1" onclick="go(1)">✅ Ödemeler</button>
+      <button class="mtab" id="m1" onclick="go(1)" style="display:none">✅ Ödemeler</button>
       <button class="mtab" id="m2" onclick="go(2)">👥 Kişiler</button>
       <button class="mtab" id="m3" onclick="go(3)">📝 Notlar</button>
-      <button class="mtab" id="m4" onclick="go(4)">🗃 Geçmiş</button>
+      <button class="mtab" id="m4" onclick="go(4)" style="display:none">🗃 Geçmiş</button>
       <button class="mtab" id="m5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="mtab" id="m6" onclick="go(6)">📒 Rehber</button>
       <button class="mtab" id="m7" onclick="go(7)">📋 Log</button>
@@ -484,8 +484,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.180';
-var APP_BUILD   = '20260529-20';
+var APP_VERSION = 'v8.181';
+var APP_BUILD   = '20260529-21';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
