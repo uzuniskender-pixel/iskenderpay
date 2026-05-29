@@ -219,7 +219,7 @@ function renderHaftaWidget(all, now, soon7) {
     const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
     const keyEnc = encodeURIComponent(rawKey);
     const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surf2);border-radius:8px;margin-bottom:5px;cursor:pointer" onclick="openCell('${keyEnc}','${mKey}')">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surf2);border-radius:8px;cursor:pointer" onclick="openCell('${keyEnc}','${mKey}')">
       <div style="min-width:36px;text-align:center;background:rgba(252,211,77,.15);border-radius:6px;padding:3px 0">
         <div style="font-size:13px;font-weight:700;color:#fcd34d">${gun}</div>
         <div style="font-size:9px;color:var(--muted)">${ay}</div>
@@ -237,14 +237,14 @@ function renderHaftaWidget(all, now, soon7) {
   const gecList = renderGecWidget(all);
   let gecHTML = '';
   if (gecList && gecList.length) {
-    const gecRows = gecList.slice(0,5).map(p => {
+    const gecRows = gecList.slice(0,12).map(p => {
       const d = window.parseLocalDate(p.date);
       const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
       const gecGun = Math.round((window.todayMidnight() - d) / 86400000);
       const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
       const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
       const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(248,113,113,.08);border-radius:8px;margin-bottom:5px;cursor:pointer" onclick="openCell('${encodeURIComponent(rawKey)}','${mKey}')">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(248,113,113,.08);border-radius:8px;cursor:pointer" onclick="openCell('${encodeURIComponent(rawKey)}','${mKey}')">
         <div style="min-width:36px;text-align:center;background:rgba(248,113,113,.2);border-radius:6px;padding:3px 0">
           <div style="font-size:13px;font-weight:700;color:#fca5a5">${gun}</div>
           <div style="font-size:9px;color:var(--muted)">${ay}</div>
@@ -258,16 +258,16 @@ function renderHaftaWidget(all, now, soon7) {
         </div>
       </div>`;
     }).join('');
-    const artı = gecList.length > 5 ? `<div style="font-size:10px;color:var(--muted);text-align:center;padding-top:4px">+${gecList.length-5} daha</div>` : '';
+    const artı = gecList.length > 12 ? `<div style="font-size:10px;color:var(--muted);text-align:center;padding-top:6px">+${gecList.length-12} daha</div>` : '';
     gecHTML = `<div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:10px;padding:10px 12px;margin:0 0 8px">
       <div style="font-size:10px;font-weight:700;color:#fca5a5;letter-spacing:.8px;margin-bottom:8px">⚠ GECİKMİŞ — ${gecList.length} ödeme</div>
-      ${gecRows}${artı}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px">${gecRows}</div>${artı}
     </div>`;
   }
 
   el.innerHTML = gecHTML + (yaklaşan.length ? `<div style="background:rgba(252,211,77,.08);border:1px solid rgba(252,211,77,.2);border-radius:10px;padding:10px 12px;margin:0 0 10px">
     <div style="font-size:10px;font-weight:700;color:#fcd34d;letter-spacing:.8px;margin-bottom:8px">⚡ BU HAFTA — ${yaklaşan.length} ödeme</div>
-    ${rows}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px">${rows}</div>
   </div>` : '');
 }
 
