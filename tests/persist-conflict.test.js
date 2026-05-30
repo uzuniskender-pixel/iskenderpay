@@ -46,6 +46,7 @@ beforeEach(() => {
   window.setSyncDot    = vi.fn();
 
   localStorage.clear();
+  if (window.auditReset) window.auditReset(); // Katman 3 audit log'u testler arasi temizle
 });
 
 afterEach(() => {
@@ -100,6 +101,39 @@ describe('KATMAN1 — Firebase hatasi: localStorage-once guvenligi (veri kaybi Y
     expect(localStorage.getItem('v5-data-' + Store.planId)).toBeTruthy();
     expect(window.applyRemote).not.toHaveBeenCalled();
     expect(window.showWarnToast).not.toHaveBeenCalled();
+  });
+});
+
+describe('KATMAN1+3 — kayit audit log\'a metadata yazar (yakalayici)', () => {
+  it('saveSecureNow -> audit girisi: counts + result, ama DEGER yok', async () => {
+    window._fbSave = vi.fn(async () => ({ ok: true, updatedAt: 7000 }));
+
+    await window.saveSecureNow();
+
+    const log = window.getAudit();
+    expect(log.length).toBe(1);
+    const e = log[log.length - 1];
+    expect(e.source).toBe('persist:_doSave');
+    expect(e.result).toBe('ok');
+    expect(e.target).toBe('localStorage+firebase');
+    expect(e.counts.pays).toBe(1);          // sentetik 1 kayit yansidi
+    expect(e.size).toBeGreaterThan(0);       // sifreli blob BOYUTU (icerik degil)
+    // GIZLILIK: gercek deger / blob icerigi audit'te yok
+    expect(Object.keys(e).sort()).toEqual(['counts','iso','result','size','source','target','ts']);
+  });
+
+  it('cakismada audit result=conflict yazar', async () => {
+    window._fbSave = vi.fn(async () => ({ conflict: true, remote: 'ENC:R', remoteTs: 9999 }));
+    await window.saveSecureNow();
+    const e = window.getAudit().pop();
+    expect(e.result).toBe('conflict');
+  });
+
+  it('Firebase hatasinda audit result=error yazar (yine de localStorage yazildi)', async () => {
+    window._fbSave = vi.fn(async () => { throw new Error('net'); });
+    await window.saveSecureNow();
+    const e = window.getAudit().pop();
+    expect(e.result).toBe('error');
   });
 });
 

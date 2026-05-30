@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.201: conflict.js eklendi — shouldBlock saf karar)
+// sw.js — iskenderpay PWA cache (v8.203: audit.js eklendi — Katman 3 write-audit log)
 
-const CACHE = 'ip-static-v11';
+const CACHE = 'ip-static-v12';
 const STATIC = [
   './',
   './index.html',
@@ -20,6 +20,7 @@ const STATIC = [
   './js/data.js',
   './js/firestore.js',
   './js/conflict.js',
+  './js/audit.js',
   './js/validate.js',
   './js/integrity.js',
   './js/persist.js',

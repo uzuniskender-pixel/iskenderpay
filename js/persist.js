@@ -4,6 +4,7 @@
 // v8.127'de db.js'ten ayristirildi. v8.187: Store.session -> Session closure.
 
 import { Session } from './session.js';
+import { recordWrite } from './audit.js';
 
 // ── saveSecure / loadSecure ───────────────────────────────────────────────────
 
@@ -30,12 +31,14 @@ async function _doSave() {
   // localStorage ÖNCE yaz — Firebase başarısız olsa bile veri güvende
   localStorage.setItem('v5-data-' + window.Store.planId, enc);
   localStorage.setItem('v5-rates-' + window.Store.planId, JSON.stringify(window.rates));
+  let _fbResult = 'no-fb';
   if (window._fbSave) {
     try {
       const res = await window._fbSave(enc);
       if (res && res.conflict) {
         // v8.199: baska cihaz bizden sonra yazmis. Uzeri YAZMA — uzak veriyi yukle + uyar.
         // Bu cihazda kaydedilmemis son degisiklik(ler) uzak veriyle degisir (sessiz kayip yok: uyari verilir).
+        _fbResult = 'conflict';
         window.Store.lastUpdated = res.remoteTs;   // baseline = uzak gercek
         window.Store.fbSyncNeeded = false;          // bayat blob'u poll'da push etme
         if (res.remote && window.applyRemote) {
@@ -44,14 +47,33 @@ async function _doSave() {
         window.setSyncDot && window.setSyncDot('synced');
         window.showWarnToast && window.showWarnToast('Baska cihazda degisiklik yapilmis — en guncel veri yuklendi. Son degisikligini tekrar yapman gerekebilir.');
       } else if (res && res.ok) {
+        _fbResult = 'ok';
         window.Store.lastUpdated = res.updatedAt;   // saat kaymasi-dayanikli baseline (Date.now degil)
         window.Store.fbSyncNeeded = false;
+      } else if (res && res.skipped) {
+        _fbResult = 'skipped';
       }
     } catch(e) {
+      _fbResult = 'error';
       console.warn('Firebase kayıt hatası:', e);
       window.Store.fbSyncNeeded = true;  // Bir sonraki başarılı poll'da yeniden dene
     } finally { window.Store.dirty = false; }
   }
+  // KATMAN 3 yakalayici write-audit (yalniz METADATA — deger/blob icerigi YAZILMAZ).
+  // Defensive: audit ASLA kaydi bozmamali.
+  try {
+    recordWrite({
+      source: 'persist:_doSave',
+      target: window._fbSave ? 'localStorage+firebase' : 'localStorage',
+      result: _fbResult,
+      size: (enc && enc.length) || 0,
+      counts: {
+        pays: (data.pays||[]).length, creds: (data.creds||[]).length, hist: (data.hist||[]).length,
+        persons: (data.persons||[]).length, notes: (data.notes||[]).length,
+        paidItems: (data.paidItems||[]).length, rehber: (data.rehber||[]).length, actLog: (data.actLog||[]).length
+      }
+    });
+  } catch(e) {}
 }
 
 async function saveSecureNow() {

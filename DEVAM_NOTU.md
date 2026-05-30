@@ -1,4 +1,41 @@
-## 2026-05-30 — SAHA-TESTI OTOMASYONU Katman 1: cakisma kablolamasi entegrasyon testi (v8.201 -> v8.202) — 92/92 YESIL, runtime DEGISMEDI
+## 2026-05-30 — SAHA-TESTI OTOMASYONU Katman 3: yakalayici write-audit log + ENTEGRASYON PLANI kaydi (v8.202 -> v8.203) — 100/100 YESIL, RUNTIME DEGISTI -> SAHA-TEST BEKLIYOR
+Katman 1 (push'ta) sonrasi Katman 3 (kullanici fikri: "veri bozulsa dahi nereden bozuldugunu gorebilmek icin log sistemi yakalayici olsun"). Ayrica kullanicinin verdigi entegrasyon plani (ITP-WO-2026-002) repoya kaydedildi.
+
+ENTEGRASYON PLANI KAYDI: kullanici UYS v3 + iskenderpay'i TEK ALTYAPI (tek Supabase + tek Auth + tek test + tek CI + tek monorepo, veriler kesin ayri) altinda toplama is emri verdi. KARAR (Claude, kullanici onayli): ERTELENDI. Repo'ya ENTEGRASYON_PLANI.md olarak kaydedildi (fazlar EW-01..09, Faz A/B/C). KRITIK BULGU (koddan teyitli, plana notlandi): Faz B (Firebase->Supabase Auth gocu) "dusuk risk" denmis ama crypto.js#getSaltAsync salt'i PBKDF2(uid+key)'den turetir, uid=Store.fbUid. Auth Firebase->Supabase olunca uid degisir -> salt degisir -> eski wrappedKey ACILAMAZ + pinHash tutmaz -> VERI KILITLENMESI. Gocten ONCE re-wrap migrasyonu VEYA kripto-namespace uid sabitleme tasarlanmali. Acik soru kullaniciya: "tek Supabase" kesin sart mi (Faz B gerekli mi), yoksa Faz A yeterli mi? Bugun saha-test otomasyonuna odaklanildi, entegrasyon ayri girisim.
+
+KATMAN 3 (bu surum) — YENI: js/audit.js (saf, import yok):
+  - Halka-tampon (ring buffer, son 50). recordWrite/getAudit/auditReset/auditLog (window).
+  - Her kayit YALNIZ METADATA: {ts, iso, source, target, result, size, counts}. counts = koleksiyon SAYILARI (pays:N,...).
+  - GIZLILIK (kullanici sarti "disaridan kimse iskenderpay verisini gormeyecek"): DEGER / SIFRELI BLOB ICERIGI ASLA yazilmaz -> log'un kendisi veri-sizma kanali OLAMAZ. counts ile "pays 80->0 hangi yazimda dustu" izlenir ama deger gorunmez.
+  - localStorage'da LOCAL-ONLY ('ip-audit'): backend'e SENKRONLANMAZ, sifreli blob'a GIRMEZ, reload sonrasi forensic icin sayilar/zamanlar kalir.
+
+DEGISEN: js/persist.js
+  - import { recordWrite } from './audit.js';
+  - _doSave: localStorage + _fbSave yaziminin SONRASINDA tek audit kaydi. _fbResult izlenir (ok/conflict/skipped/error/no-fb). DEFENSIVE try/catch -> audit ASLA kaydi bozmaz.
+
+DEGISEN: sw.js
+  - STATIC'e './js/audit.js' (conflict.js'in altina). CACHE 'ip-static-v11' -> 'ip-static-v12' (offline precache + SW_UPDATED tek-sefer reload).
+
+YENI: tests/audit.test.js (5): metadata semasi; GIZLILIK (kayitta yalniz izinli 7 alan: counts/iso/result/size/source/target/ts -> deger/blob sizmaz); ring-buffer cap (60 yaz -> son 50, en eski dusulur, en yeni kalir); getAudit() kopya dondurur (disari mutasyon ic log'u bozmaz); auditReset in-memory+localStorage temizler.
+DEGISEN: tests/persist-conflict.test.js +3 (=7): KATMAN1+3 entegrasyon — saveSecureNow audit girisi yazar (source persist:_doSave, result ok, counts.pays=1, size>0, GIZLILIK 7-alan); cakismada result=conflict; hatada result=error. beforeEach'e auditReset eklendi. -> Katman 1 testleri Katman 3'u KAPSAR (L3 runtime riskini dusurur).
+
+MUTASYON DOGRULAMASI: persist.js audit hook devre disi (if(false) recordWrite) -> TAM ve YALNIZ 3 audit entegrasyon testi kirildi (cakisma/regresyon/guard yesil kaldi). Orijinal geri yuklendi (node --check PASS), 100/100 tekrar yesil.
+
+DOGRULAMA (sandbox): npm test -> Test Files 8 passed, Tests 100 passed (92 + 5 audit + 3 entegrasyon). node --check audit.js + persist.js + sw.js PASS. Mojibake yok.
+
+VERSION: v8.203 / 20260530-06 (3 kaynak senkron). SW cache bump YAPILDI (v11->v12) — yeni js dosyasi STATIC'e girdi.
+
+SAHA-TEST GEREKLI (RUNTIME DEGISTI; gizli sekme + cache temizle):
+1. (regresyon) Normal odeme/kredi ekle-duzenle-kaydet -> sorunsuz calismali (audit hook kaydi BOZMAMALI — defensive try/catch dogrulamasi).
+2. (audit) Konsolda auditLog() cagir -> son yazimlar tablosu gormeli: zaman/kaynak (persist:_doSave)/hedef/sonuc (ok)/boyut + koleksiyon SAYILARI. GERCEK DEGER GORUNMEMELI (yalniz sayilar).
+3. (forensic surekliligi) Sayfayi yenile -> auditLog() onceki girisleri hala gostermeli (localStorage 'ip-audit' restore).
+Veri riski YOK (audit yalniz metadata yazar, save yolunu defensive sarmalar).
+
+OTURUM HIJYENI: Saha-test otomasyonu Katman 1 (v8.202, push'ta) + Katman 3 (v8.203, bu surum) TAMAM. Katman 2 (tarayici-ici self-test) bilerek KAPSAM DISI (iz-birakmama disipline bagli, en zayif). Bu, bugunku "saha-test otomasyonu" isini KAPATIR. Saha-test PASS -> baseline v8.203-stable. SONRAKI olasi konular: (a) Entegrasyon Faz A (monorepo+tek test+tek CI, ayri oturum), (b) v8.201/v8.203 gercek-runtime artiklari (SW/auth) bir kez manuel dogrulama, (c) persist/sync SDK-mock derinlestirme. Konu degisirse YENI sohbet (DEVAM_NOTU + ENTEGRASYON_PLANI'ndan devam).
+
+---
+
+
 Kullanici istegi: "sen guncelleme yapinca saha-testlerini benim yerime KOSACAK otomatik sistem kur; test sonrasi IZ KALMASIN, verim BOZULMASIN; bozulursa kaynagi gormek icin yakalayici log." Ek not: UYS altyapisi kullanilabilir AMA disaridan kimse iskenderpay verisini gormeyecek. 4 CC terminali var (oneri).
 
 CEKIRDEK GERILIM (kullaniciya da soylendi): gercek "saha" testi gercek sistemi (gercek Firebase + gercek tarayici + gercek veri) tutar -> "iz kalmasin/veri bozulmasin" ile dogrudan celisir. COZUM: testi gercek verinin yanindan gecirme; GERCEK SISTEMIN SINIRINA SAHTE koy -> test gercek kodu calistirir ama gercek veriye DOKUNAMAZ cunku dokunacak gercek sey YOK. Garanti "sonra temizleriz" degil, "bastan erisim yok".
