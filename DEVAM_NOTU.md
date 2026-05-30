@@ -1,3 +1,22 @@
+## 2026-05-30 — #3 FIRESTORE GUVENLIK KURALI DOGRULAMASI — PASS (kod/surum DEGISMEDI)
+DEVAM_NOTU #3 (tek seferlik guvenlik kontrolu). Hedef: her kullanici yalniz kendi verisine erisebilmeli (rol DEGIL).
+
+BULGU (Firebase Console, proje iskenderpay-a23d1, Firestore > Rules, aktif kural 18 May 2026):
+  match /{document=**} { allow read, write: if request.auth != null && request.auth.token.email == "uzuniskender@gmail.com"; }
+VERDIKT: GUVENLI (PASS). Kural ACIK DEGIL (if true yok). Tum dokumanlara erisim "giris VE email == uzuniskender@gmail.com" sartina bagli; email Google dogrulamali kimlik jetonundan -> taklit edilemez. Baska Google hesabi reddedilir; girissiz reddedilir. Kimlik-bazli (rol-bazli DEGIL). wrappedKey/pinHash baskasinca okunamaz -> cevrimdisi PIN brute-force kapali; vandalizm/DoS kapali.
+
+KARAR: KURAL DEGISTIRILMEDI. Onceki oturumda onerdigim uid-onek kurali (users/{docId} docId baslangici uid+'_') aslinda DAHA GEVSEK olurdu cunku HERHANGI bir Google kullanicisinin giris yapip kendi verisini olusturmasina izin verirdi. Email-kilidi uygulamayi TEK hesaba kapatir (kimse giris bile yapamaz) -> kisisel/tek-kullanici app icin daha siki ve daha dogru. Tek-kullanici teyidi: Authentication > Users'ta yalniz 1 kayit (uzuniskender@gmail.com, Google, uid hTvBT4ab3GZQRtikksQygWxlssw1).
+
+DIKKAT (kaygi degil): email sabit yazili -> Google e-postasi degisirse veya ikinci hesap/kullanici eklenirse kural elle guncellenmeli. Eklenecekse defense-in-depth: email sartina ek olarak docId onek-sahipligi (uid+'_') eklenebilir.
+
+KAYIT: Aktif kural repoya `firestore.rules` olarak yazildi (KAYIT AMACLI; GitHub Pages deploy ETMEZ; aktif kural Console'da). Veri modeli notu dosyada.
+
+VERSION: DEGISMEDI (v8.199 / 20260530-02). Yalniz dokuman + record dosyasi. SW/cache etkisi yok.
+
+OTURUM HIJYENI: #3 dogrulandi (PASS), aktif acik is YOK. Stack raporu maddeleri #2/#3/#7 kapandi. -> YENI SOHBET.
+
+---
+
 ## 2026-05-30 — #2 SYNC CAKISMA (hafif): cakisma bekcisi + odak/online pull (v8.198 -> v8.199) — SAHA-TEST PASS, baseline v8.199-stable
 SAHA-TEST SONUCU (30 May, gizli sekme): 1 regresyon (tek cihaz normal kayit, false-toast yok) PASS; 2 odak-pull (B'ye gecince aninda cekti) PASS; 3 cakisma uyarisi (konsol `Store.lastUpdated=1` -> bayat baseline -> kaydet -> SARI UYARI SERIDI cikti + eklenen satir buluttaki haline dondu) PASS; 4 offline ayni `_fbSave`->conflict kod yolu (ayrica staj gerekmez). #2 KAPANDI.
 
