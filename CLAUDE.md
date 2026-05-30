@@ -1,6 +1,6 @@
 # iskenderpay — Devam Notu
 
-_Son güncelleme: 2026-05-29_
+_Son güncelleme: 2026-05-30_
 
 ---
 
@@ -18,10 +18,17 @@ _Son güncelleme: 2026-05-29_
 - `Cross-Origin-Opener-Policy` hataları Google popup'tan geliyor, işlevselliği etkilemiyor
 - **index.html'e Set-Content ile dokunma** — Python ile güncelle (encoding bozulur)
 - **Dosya değişikliği Python ile yapılır** — PowerShell string replace Türkçe karakterleri bozuyor
+- **Otomatik test (v8.198+):** `npm test` (vitest) — testler **yalnız claude.ai sandbox'ında VEYA GitHub Actions CI'da** koşar, Buket'in makinesinde değil. CI: `.github/workflows/test.yml` her push + PR'da `npm install` + `npm test` çalıştırır. `node_modules` `.gitignore`'da (CI yükler). Pre-push husky **eklenmedi** (makinede koşmayı gerektirir → kurala ters). Hesap mantığı (`hesap.js`/`util.js`) değişince **önce sandbox'ta `npm test` yeşil**, sonra version bump.
 
 ---
 
-## Mevcut Durum (29 Mayıs 2026) — v8.197 / 20260529-37 — STABIL BASELINE (v8.197-stable, tüm saha-test PASS)
+## Mevcut Durum (30 Mayıs 2026) — v8.198 / 20260530-01 — TEST ALTYAPISI KURULDU (#7), 36/36 yeşil
+
+### Tamamlanan (bu oturum — 30 Mayıs)
+
+| Versiyon | Build | Değişiklik |
+|---|---|---|
+| v8.198 | 20260530-01 | **#7 Otomatik test altyapısı kuruldu** (vitest + happy-dom, vanilla JS/ES module). **Yeni dosyalar:** `package.json` (vitest+happy-dom devDeps, `npm test`/`test:watch`), `vitest.config.js` (happy-dom env, `tests/**/*.test.js`), `tests/_helpers.js` (compat.js paritesinde gerçek `util.js` fonksiyonlarını window'a bağlar — testler stub değil GERÇEK davranışı sınar; `TEST_RATES` EUR=50/GOLD=6000), `tests/util.test.js` (15 test: `toTRY` TRY/EUR/GOLD/rate-eksik fallback, `parseLocalDate` UTC-kayması yok, `todayMidnight`, `isOD` paid/geçmiş/gelecek/bugün/partial), `tests/hesap.test.js` (21 test: **`Hesap.kalan`** 0-kırpma+partial+FX, **`toplamOzeti`** pays+cred bekleyen, **`krediler`** paid/pct/bekleyen/overdue/nextDays/done, **`trend`** FX→TRY + paid-override + pencere elemesi, **`buAyOzeti`** refDate-enjekte). **CI:** `.github/workflows/test.yml` (push+PR → node22 → install → `npm test`; auto-tag.yml dokunulmadı). `.gitignore` eklendi (node_modules). **Regresyon hedefi:** v8.170 kalan tek-kaynak + v8.192/193 FX gösterim alanları artık test korumalı (mutasyon doğrulandı: 0-kırpma kaldırılınca tam ilgili test kırıldı). **Pre-push yok** (sandbox-only kuralı → CI bağlama). Runtime davranışı değişmedi; yalnız test + version sabitleri. SW cache bump gerekmez. |
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 

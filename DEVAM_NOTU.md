@@ -1,3 +1,42 @@
+## 2026-05-30 — #7 OTOMATIK TEST ALTYAPISI KURULDU (v8.197 -> v8.198) — 36/36 YESIL (sandbox)
+DEVAM_NOTU #7 (stack raporunun tek yuksek-getirili maddesi) tamam. iskenderpay'e vitest kuruldu, hesap.js + util.js birim testleri yazildi.
+
+NE YAPILDI:
+- Stack: vitest 2.1 + happy-dom 15 (jsdom'dan hafif, CI'da hizli). environment=happy-dom cunku hesap.js modul yuklenirken `window.Hesap=Hesap` set ediyor ve util.js esc() document kullaniyor.
+- YENI DOSYALAR: package.json (type:module, devDeps vitest+happy-dom, scriptler test/test:watch/test:ui), vitest.config.js (include tests/**/*.test.js, globals:false), .gitignore (node_modules/coverage), tests/_helpers.js, tests/util.test.js, tests/hesap.test.js, .github/workflows/test.yml.
+- _helpers.wireGlobals(): compat.js PARITESINDE gercek util.js fonksiyonlarini (toTRY/parseLocalDate/isOD/todayMidnight) window'a baglar -> testler stub degil GERCEK uretim davranisini sinar (asil regresyon kalkani amaci). TEST_RATES EUR=50/GOLD=6000 (yuvarlak, zihinden dogrulanir).
+- tests/util.test.js (15): toTRY (TRY/EUR/GOLD/rate-eksik fallback/USD ham), parseLocalDate (UTC kaymasi yok), todayMidnight (00:00:00.000), isOD (paid/gecmis/gelecek/bugun/status-yok/partial).
+- tests/hesap.test.js (21):
+  * Hesap.kalan: currency yok (amount-paid), paid yok=0, asiri odeme 0-kirpma, TRY, EUR (x50 sonra TRY paid dusulur), GOLD (x6000), amount null.  -> v8.170 "kalan tek-kaynak" kalkani.
+  * toplamOzeti: pays odenmis-haric + partial + FX; cred nested partial; toplam. Bos=0. Hepsi-odenmis=0.
+  * krediler: paid/total/remaining/pct/bekleyen/overdueCount/nextPay/nextDays/lastDate/done. buildMx yok -> dispName _baseOf(name) fallback ("QNB 1"->"QNB"). Tamamen-odenmis kredi. Bos liste.
+  * trend: son 3 ay eskiden yeniye, pencere disi elenir, monthKey YYYY-MM. EUR kalemi ham DEGIL toTRY (x50); paid set ise paid kullanilir (toTRY DEGIL). -> v8.192/193 FX gosterim kalkani.
+  * buAyOzeti: refDate ENJEKTE edilebilir (deterministik) -> ay filtre + ok/bek/gec + FX.
+- CI: .github/workflows/test.yml her push + PR'da node22 -> npm install -> npm test. auto-tag.yml DOKUNULMADI (deploy/tag akisi aynen).
+
+KARARLAR:
+- PRE-PUSH HUSKY EKLENMEDI. Kural: "build/test claude.ai sandbox'ta kosar, makinemde degil". Husky pre-push Buket'in makinesinde vitest kosturur -> kurala ters. Dogru baglama = CI (sandbox-only ile uyumlu). DEVAM_NOTU #7 zaten "pre-push VEYA CI" diyordu; CI secildi.
+- Testler GERCEK util fonksiyonlariyla (stub degil) -> uretim davranisi degisirse test yakalar.
+
+DOGRULAMA (sandbox):
+- npm test -> Test Files 2 passed, Tests 36 passed (36). 
+- MUTASYON TESTI: hesap.js kalan() 0-kirpmasi kaldirildi -> TAM ilgili 2 test kirildi (asiri-odeme + amount-null), gerisi gecti, dosya gecerli kaldi -> kalkan gercekten yakaliyor. Orijinal geri yuklendi (node --check PASS).
+- node --check hesap.js/util.js PASS, mojibake yok.
+
+VERSION: v8.198 / 20260530-01 (version.json + index.html APP_VERSION/APP_BUILD + package.json 8.198.0). SW cache bump GEREKMEZ (runtime davranisi degismedi; yalniz test + version sabitleri).
+
+BUKET ICIN SONRAKI ADIM (PowerShell + Indirilenler akisi):
+1. Patch zip'i indir, repo koklasorune Expand-Archive -> dosyalari tek tek Copy-Item (yeni: package.json, vitest.config.js, .gitignore, tests/, .github/workflows/test.yml; degisen: index.html, version.json, CLAUDE.md, DEVAM_NOTU.md).
+2. node_modules .gitignore'da -> commit'e GIRMEZ (CI yukler). Lokalde test kosturmana GEREK YOK (kural geregi sandbox/CI kosar).
+3. git add -A; git status (yeni 7 dosya + degisen 4 gormeli); commit; push.
+4. Push sonrasi GitHub Actions iki workflow kosar: "Auto Tag" (v8.198-20260530-01 tag) + "Tests" (36/36 yesil olmali — actions sekmesinden dogrula).
+5. Indirilenler temizle.
+NOT: Bu surum saha-test gerektirmez (UI/runtime degismedi); CI yesili yeterli. Baseline v8.198 = yesil + test korumali.
+
+OTURUM HIJYENI: #7 kapandi, baseline yesil -> YENI SOHBET. Sonraki dusuk-oncelik: #2 sync conflict (hafif) + #3 "kendi-uid Firestore kurali" dogrulamasi (rol degil).
+
+---
+
 ## 2026-05-29 — STABILIZASYON: v8.197-stable baseline (saha-test 7/7 + v8.195/196/197 PASS)
 Bu oturumdaki TUM isler saha-test PASS. Stabil baseline ilan edildi.
 
