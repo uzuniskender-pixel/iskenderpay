@@ -277,13 +277,68 @@ export const Store = {
 };
 
 // ── window.<key> getter/setter koprusu ─────────────────────────────────────
-// Eski kodlar: window.pays / window.pays.push(...) / window.pays = [...] calismaya devam eder.
+// WO-02: window.<key> getter artik bir PROXY dondurur (diziler icin). Diziyi DOGRUDAN
+// mutate eden eski kod (push/unshift/splice/pop/shift/sort/reverse/fill/copyWithin,
+// index/length atamasi, delete) Proxy tarafindan yakalanip Store akisina yonlendirilir
+// -> her zaman invalidate + dirty + autoSave + (coalesced, key-filtreli) store:change.
+// Boylece bypass YAPISAL OLARAK imkansiz; eski "window.pays.push(...)" cagrilari da
+// KIRILMADAN, DOGRU calisir. Okumalar (forEach/map/filter/[i]/length/Array.isArray/
+// spread) gercek diziye gecer. Eleman-alani mutasyonu (window.pays[0].x=) array kapsami
+// disidir -> UI bunu Store.mutateItem ile yapar.
+// NOT: reassignment (window.pays = X) AYRI yoldan gider: window SETTER -> _setSilent.
+const _MUTATORS = new Set(['push','unshift','splice','pop','shift','sort','reverse','fill','copyWithin']);
+const _proxyCache = new Map();   // key -> { target, proxy }
+
+function _afterDirectMutation(key) {
+  _invalidate();
+  _persistState.dirty = true;
+  _autoSave();
+  _dispatchChange([key]);
+}
+
+function _arrayProxy(key) {
+  const target = _state[key];
+  const cached = _proxyCache.get(key);
+  if (cached && cached.target === target) return cached.proxy;   // ayni dizi -> ayni proxy (kimlik korunur)
+  const proxy = new Proxy(target, {
+    get(t, prop, recv) {
+      if (typeof prop === 'string' && _MUTATORS.has(prop)) {
+        return function(...args) {
+          const r = Array.prototype[prop].apply(t, args);   // gercek diziye uygula (proxy'ye degil -> recursion yok)
+          _afterDirectMutation(key);
+          return r;
+        };
+      }
+      return Reflect.get(t, prop, recv);
+    },
+    set(t, prop, value, recv) {                               // window.pays[i] = x / .length = n
+      const r = Reflect.set(t, prop, value, recv);
+      _afterDirectMutation(key);
+      return r;
+    },
+    deleteProperty(t, prop) {
+      const r = Reflect.deleteProperty(t, prop);
+      _afterDirectMutation(key);
+      return r;
+    }
+  });
+  _proxyCache.set(key, { target, proxy });
+  return proxy;
+}
+
+// Diziler icin proxy, diger tipler (rates obj) icin ham deger.
+function _readView(key) {
+  const v = _state[key];
+  return Array.isArray(v) ? _arrayProxy(key) : v;
+}
+
+// WO-02: getter mutasyona kapali bir gorunum dondurur (yukaridaki Proxy).
 ALL_KEYS.forEach(key => {
   try {
     Object.defineProperty(window, key, {
       configurable: true,
       enumerable: true,
-      get() { return _state[key]; },
+      get() { return _readView(key); },
       set(v) { Store._setSilent(key, v); }
     });
   } catch(e) {

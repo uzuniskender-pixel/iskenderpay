@@ -193,9 +193,10 @@ function addLog(type, title, detail, navTab, ctx) {
       if (ctx.groupId)  entry.groupId  = ctx.groupId;
       if (ctx.credId)   entry.credId   = ctx.credId;
     }
-    (window.actLog || []).unshift(entry);
-    clearTimeout(window.Store.logSaveTimer);
-    window.Store.logSaveTimer = setTimeout(() => { try { window.saveSecure(); } catch(e) {} }, 800);
+    // WO-02: dogrudan in-place unshift yerine Store API -> invalidate + dirty + autoSave
+    // + (coalesced, key-filtreli) store:change. Ayri logSaveTimer GEREKSIZ: Store.unshift
+    // zaten _autoSave debounce'unu tetikler (cift save'i onler).
+    window.Store.unshift('actLog', entry);
   } catch(e) { console.warn('addLog hata:', e); }
 }
 
