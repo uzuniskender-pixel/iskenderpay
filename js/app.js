@@ -323,10 +323,7 @@ function readRF(inp) {
 window.showPinErr        = showPinErr;
 window.readRF            = readRF;
 
-// ── VİSİBİLİTY SYNC POLL ─────────────────────────────────────────────────────
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    if (window.setSyncDot) window.setSyncDot('connecting');
-    setTimeout(() => { if (window._fbPoll) window._fbPoll(); }, 500);
-  }
-});
+// ── VISIBILITY SYNC POLL ─────────────────────────────────────────────────────
+// WO-05: Buradaki visibilitychange dinleyicisi KALDIRILDI (cift tetik -> cift pull).
+// Tek dinleyici sync.js _attachFocusHooks'ta (guard'li: visibilitychange + focus +
+// online, hepsi pull()). setSyncDot('connecting') o pull()'a tasindi -> ayni UX.

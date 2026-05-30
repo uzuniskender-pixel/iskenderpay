@@ -42,7 +42,10 @@ function _attachFocusHooks() {
   // v8.199: pencereye donunce / online olunca ANINDA pull -> "bayat cihaz"
   // penceresini daraltir (30sn poll'u beklemeden en guncel veriyi ceker).
   // _fbPoll zaten dirty/saveTimer/_pollRunning guard'larini uygular -> guvenli.
-  const pull = () => { if (window._fbPoll) window._fbPoll(); };
+  const pull = () => {
+    if (window.setSyncDot) window.setSyncDot('connecting');  // WO-05: app.js'ten tasindi
+    if (window._fbPoll) window._fbPoll();
+  };
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') pull();
   });

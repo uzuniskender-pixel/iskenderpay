@@ -7,9 +7,11 @@
 import { getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { shouldBlock } from './conflict.js';
 
-// _planDoc / _metaDoc firebase.js'de tanımlı, _db'yi closure'la, Store.fbUid'i runtime'da okur
-const _planDoc = window._planDoc;
-const _metaDoc = window._metaDoc;
+// _planDoc / _metaDoc firebase.js'de tanımlı. WO-10: modül-üstü deger yakalama
+// (import sirasina bagimli, undefined yakalanip sessiz cokme riski) yerine LAZY:
+// cagri aninda window'dan okunur -> firebase.js once/sonra yuklensin, calisir.
+const _planDoc = (...a) => window._planDoc(...a);
+const _metaDoc = (...a) => window._metaDoc(...a);
 
 
 // v8.199: cakisma bekcisi (optimistic concurrency / compare-and-swap).

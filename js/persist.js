@@ -59,8 +59,13 @@ async function _doSave() {
       _fbResult = 'error';
       console.warn('Firebase kayıt hatası:', e);
       window.Store.fbSyncNeeded = true;  // Bir sonraki başarılı poll'da yeniden dene
-    } finally { window.Store.dirty = false; }
+    }
   }
+  // WO-07: 'finally { dirty=false }' KALDIRILDI. dirty'yi firebase varligindan
+  // BAGIMSIZ, save yolu bittikten sonra temizle -> firebase YOKKEN dirty asili
+  // kalmaz (eski hata). Conflict/throw dahil tum firebase yollari buraya duser;
+  // localStorage zaten yukarida yazildi -> bekleyen yerel degisiklik yok.
+  window.Store.dirty = false;
   // KATMAN 3 yakalayici write-audit (yalniz METADATA — deger/blob icerigi YAZILMAZ).
   // Defensive: audit ASLA kaydi bozmamali.
   try {
