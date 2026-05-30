@@ -11,6 +11,7 @@ import { Session } from './session.js';
 
 // ── APP GİRİŞİ ───────────────────────────────────────────────────────────────
 let _migrationRunning = false;  // v8.117: window._migrationRunning yerine modül-local
+let _backfilledFor = null;      // v8.196: son backfill yapilan uid+planId — ardisik enterApp'ta tekrar onler
 
 function _backfillPersonIds() {
   if (!window.Store) return;
@@ -94,7 +95,14 @@ function enterApp() {
   if (!_migrationRunning) {
     _migrationRunning = true;
     window.migrateToV7()
-      .then(() => _backfillPersonIds())
+      .then(() => {
+        // v8.196: backfill (uid+planId) basina BIR kez. migrateToV7 erken donse bile
+        // .then her enterApp'ta calisiyordu -> ardisik enterApp cagrilarinda redundant
+        // backfill ("[backfill] 5 atandi" x3). Plan degisiminde planId degisir -> yeni
+        // planda yine kosar; ayni plana donuste kayitli veri zaten backfilled -> no-op.
+        const bfKey = (window.Store.fbUid||'local') + '-' + window.Store.planId;
+        if (_backfilledFor !== bfKey) { _backfillPersonIds(); _backfilledFor = bfKey; }
+      })
       .catch(e => console.warn('Migrasyon hatası:', e))
       .finally(() => { _migrationRunning = false; });
   }

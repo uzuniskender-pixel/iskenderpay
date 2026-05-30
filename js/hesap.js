@@ -35,7 +35,7 @@ function _baseOf(name) {
 // personId varsa: ayni personId'nin birden fazla rowKey'i → "name (desc|category)"
 // personId yoksa (legacy): mevcut isim-suffix mantigi ("AHMET" / "AHMET 1")
 // cred rowKey'leri (cred_*): mevcut suffix'in sonuna "(Kredi)" eklenir (v8.125)
-// personId'siz pay satirlari (g_*, pay_*): sonuna " ⚠️" eklenir (v8.137, data quality signal)
+// personId'siz pay satirlari (g_*, pay_*): legacy isim-suffix mantigi (⚠️ gostergesi v8.196'da kaldirildi)
 // keys verilirse sadece bu rowKey'leri dikkate alir (plan matrisi filtreliyse).
 function _displayNames(mx, keys) {
   const allKeys = (keys && keys.length)
@@ -99,13 +99,10 @@ function _displayNames(mx, keys) {
     }
   });
 
-  // personId'si olmayan pay satirlarina (g_ ve pay_ prefix) uyari isareti (v8.137)
-  // data quality signal — backfill (v8.111/v8.112) personId atayinca kendiliginden kaybolur
-  allKeys.forEach(k => {
-    if ((k.startsWith('g_') || k.startsWith('pay_')) && !meta[k].pid) {
-      dnMap[k] = (dnMap[k] || _baseOf(mx[k]._name)) + ' ⚠️';
-    }
-  });
+  // NOT (v8.196): personId'siz pay satirlarina " ⚠️" ekleyen v8.137 blogu kaldirildi.
+  // Gerekce: Pass 2 backfill her acilista isimle personId atar; geriye ⚠️ alan satirlar
+  // cogunlukla Kisiler'de kaydi olmayan odeme alicilari (kasitli/normal durum, hata degil).
+  // Normal veriyi her matris satirinda uyari isaretiyle "sorunlu" gostermek gurultuydu.
 
   return dnMap;
 }

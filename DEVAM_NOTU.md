@@ -1,3 +1,20 @@
+## 2026-05-29 — (A) backfill ardisik-tetik fix + (B) ⚠️ gostergesi kaldirildi (v8.195 -> v8.196) — KOD TAMAM, saha-test BEKLIYOR
+v8.195 saha-test PASS (BERKAY BIRINCI DV panelinde AKTIVITE GECMISI gorundu — ACIK HATA #3 kapandi). Bu oturumda iki housekeeping daha:
+
+(A) app.js#enterApp — backfill ardisik-tetik fix:
+SORUN: _backfillPersonIds her enterApp'ta kosuyordu (.then(_backfillPersonIds)). migrateToV7 kendi localStorage guard'iyla (v7-migrated-{uid}-{plan}) bir kez kossa da backfill .then'i her seferinde calisiyordu -> konsol "[backfill] 5 atandi" x3.
+FIX: _backfilledFor = uid+planId modul-local guard (migrateToV7 migKey deseni). Ayni yuk icin bir kez. Plan degisiminde planId degisir -> yeni planda yine kosar (selectPlan clearAll yapar); ayni plana donuste kayitli veri zaten backfilled -> no-op. Idempotency artik tetik-sayisindan bagimsiz.
+
+(B) hesap.js#_displayNames — ⚠️ gostergesi kaldirildi (ACIK HATA #5 karari):
+KARAR: v8.137'de eklenen personId'siz pay satirlarina ⚠️ ekleme KALDIRILDI. Pass 2 backfill her acilista isimle personId atar; geriye ⚠️ alan satirlar cogunlukla Kisiler'de kaydi olmayan odeme alicilari (kasitli/normal durum, hata degil). Normal veriyi her matris satirinda "sorunlu" gibi isaretlemek gurultuydu. Tek kullanim yeriydi, baska tuketici yok. Gercek veri-kalite denetimi istenirse ayri gorunum konusu.
+
+node --check PASS (app.js + hesap.js), mojibake yok. SW cache bump GEREKMEZ (js network-first).
+TEST (gizli sekme + cache temizle):
+1. (A) Konsol: acilista "[backfill] ... atandi" en fazla 1 kez gormeli (onceden 3x). Plan1<->Plan2 gecisinde yeni planda 1 kez daha olabilir (beklenen).
+2. (B) Plan matrisinde satir isimlerinde ⚠️ gorunmemeli (personId'siz/kayitsiz alici satirlari dahil temiz isim).
+
+---
+
 ## 2026-05-29 — Pass 4 actLog groupId backfill (v8.194 -> v8.195) — KOD TAMAM, saha-test BEKLIYOR
 ACIK HATA #3 kapaniyor. app.js#_backfillPersonIds'a Pass 4 eklendi.
 SORUN: eski actLog entry'leri groupId tasimiyordu -> DV detay paneli + openCell grup-history (actLog.filter(e=>e.groupId===gid)) bazi hucrelerde bos.
