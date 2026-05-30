@@ -1,6 +1,6 @@
 # iskenderpay — Devam Notu
 
-_Son güncelleme: 2026-05-30 (v8.199)_
+_Son güncelleme: 2026-05-30 (v8.200)_
 
 ---
 
@@ -22,7 +22,7 @@ _Son güncelleme: 2026-05-30 (v8.199)_
 
 ---
 
-## Mevcut Durum (30 Mayıs 2026) — v8.199 / 20260530-02 — baseline v8.199-stable · #2 PASS · #3 güvenlik kuralı doğrulandı (PASS, değişiklik yok)
+## Mevcut Durum (30 Mayıs 2026) — v8.200 / 20260530-03 — riskli modül test paketi (Faz A), 80/80 yeşil · #2 PASS · #3 doğrulandı (PASS)
 
 ### Güvenlik kaydı — Firestore kuralı (#3, 30 May doğrulandı)
 Aktif kural (Console, iskenderpay-a23d1) tüm dokümanları `request.auth != null && request.auth.token.email == "uzuniskender@gmail.com"` ile kilitler → **güvenli**, açık değil, kimlik-bazlı (rol değil), tek-kullanıcı modeline uygun. Repoda `firestore.rules` kayıt amaçlı (deploy edilmez). Email sabit yazılı → e-posta değişir/ikinci hesap eklenirse elle güncellenmeli. Detay: DEVAM_NOTU 30 May #3.
@@ -31,6 +31,7 @@ Aktif kural (Console, iskenderpay-a23d1) tüm dokümanları `request.auth != nul
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.200 | 20260530-03 | **Riskli modül test paketi (Faz A) — #1 test kapsamı genişletme.** Mimari değerlendirmede saptanan boşluk: 36 test yalnız saf hesap fonksiyonlarını (hesap.js/util.js) tutuyordu; en çok geçmiş hatası olan modüller (Store, integrity, validate) **sıfır test**. Bu pakette **3 yeni test dosyası (44 test)**, **runtime değişikliği YOK** (yalnız test + version sabitleri, v8.198 paterni). **(1) `tests/integrity.test.js` (13):** `normalizeBeforeSave` 5 pass — idx-sızan kredi taksiti temizliği (v8.179), groupId isim normalize (canonical=en sık), paidItems dedupe (paidId, ilk tutulur), actLog orphan ref temizliği (alan silinir entry kalır), zombi pay id/groupId backfill (v8.176, çoklu zombi benzersiz id), + idempotency (2. çağrı no-op). **(2) `tests/validate.test.js` (13):** `validateBeforeSave` errN sayacı — pays 5-alan (bos pay=5 hata), creds (monthly NaN), persons, id=0 geçerli, koleksiyonlar-arası toplam. **(3) `tests/store.test.js` (18):** mutation API (push/unshift/spliceAt/mutateItem/replace), **REGRESYON v8.175** removeWhere index-predicate (eski bug: tek-arg → i=undefined → hiçbir şey silinmiyordu; test (x,i) iki-arg garanti eder), lookup findPayById/findPaysByGroup (groupId yoksa floor(id) fallback)/findCredById + mutation sonrası invalidation, hydrate/clearAll silent (saveSecure çağırMAZ), push autoSave çağırır, tx batch (3 push→1 save), window setter köprüsü (dirty=true ama autoSave yok). **MUTASYON DOĞRULAMASI:** v8.175 fix'i (removeWhere `(x,i)`) geri alındı → **tam ve yalnız** 2 index-predicate testi kırıldı, element-predicate testi geçti (kalkan hassas); orijinal geri yüklendi. **Test edilemeyen (Faz B'ye):** firestore.js `_fbSave` çakışma kararı (`remoteTs > base && base > 0`) — modül üstte gstatic'ten Firestore SDK import ettiğinden sandbox'ta yüklenmez; saf `shouldBlock(remoteTs, base)` çıkarmak gerekir (runtime değişikliği → saha-test). `npm test` 80/80 yeşil. CI (`test.yml`) otomatik koşar. SW cache bump gerekmez; saha-test gerekmez (UI/runtime değişmedi). |
 | v8.199 | 20260530-02 | **#2 Sync conflict (hafif) — çakışma bekçisi + odak/online pull.** Sorun: tam-doküman LWW; iki cihazda araklı düzenleme → ikinci kaydeden ilkinin değişikliğini **sessizce eziyordu** (blob tümden değişir). **Çözüm (3 dosya):** **(A) firestore.js `_fbSave`** artık compare-and-swap: yazmadan önce uzak `updatedAt` okunur; `Store.lastUpdated` baseline'ından (>0) ileri ise **üzeri yazılmaz**, `{conflict, remote, remoteTs}` döner (mikro-yarış tek-kullanıcı için ihmal — runTransaction kapsam dışı). Normal: `{ok, updatedAt}`. **(B) persist.js `_doSave`** yapılandırılmış dönüşü işler: ok→`lastUpdated=res.updatedAt` (saat kayması-dayanıklı baseline, Date.now değil); conflict→üzeri yazma, `applyRemote(res.remote)` ile uzak veriyi yükle + `showWarnToast` "başka cihazda değişiklik, son değişikliğini tekrar yap" (sessiz kayıp yok). **(C) sync.js** `applyRemote(encData)` tek render-set kaynağı olarak çıkarıldı (decrypt+hydrate+render, dirty-guard YOK); realtime callback + conflict resolver + offline-retry hepsi onu kullanır. `_attachFocusHooks`: `visibilitychange`(visible)/`focus`/`online` → anında `_fbPoll()` (bayat-cihaz penceresini daraltır; `_fbPoll` dirty/saveTimer/_pollRunning guard'lı → güvenli). **(D) firestore.js `_fbPoll`** offline-retry kolu da conflict dönüşünü işler (çevrimdışı edit gönderilemezse uzak veriyi al + uyar). **Konflikt politikası:** uzak (görülmeyen) veri korunur, local son edit uyarıyla değişir — #3 (Yenile/Üzerine Yaz modalı) ileride istenirse. Conflict mantığı unit-test'siz (Firestore mock gerekir); 36/36 mevcut test etkilenmedi. node --check 3 dosya PASS, mojibake yok. **SAHA-TEST PASS (30 May):** 1 regresyon (tek cihaz normal kayıt, false-toast yok) ✓; 2 odak-pull (B'ye geçince anında çekti) ✓; 3 çakışma uyarısı (konsol `Store.lastUpdated=1` ile bayat baseline → kaydet → sarı uyarı şeridi çıktı + eklenen satır buluttaki haline döndü) ✓; 4 offline aynı `_fbSave`→conflict kod yolu (ayrıca staj gerekmez). |
 | v8.198 | 20260530-01 | **#7 Otomatik test altyapısı kuruldu** (vitest + happy-dom, vanilla JS/ES module). **Yeni dosyalar:** `package.json` (vitest+happy-dom devDeps, `npm test`/`test:watch`), `vitest.config.js` (happy-dom env, `tests/**/*.test.js`), `tests/_helpers.js` (compat.js paritesinde gerçek `util.js` fonksiyonlarını window'a bağlar — testler stub değil GERÇEK davranışı sınar; `TEST_RATES` EUR=50/GOLD=6000), `tests/util.test.js` (15 test: `toTRY` TRY/EUR/GOLD/rate-eksik fallback, `parseLocalDate` UTC-kayması yok, `todayMidnight`, `isOD` paid/geçmiş/gelecek/bugün/partial), `tests/hesap.test.js` (21 test: **`Hesap.kalan`** 0-kırpma+partial+FX, **`toplamOzeti`** pays+cred bekleyen, **`krediler`** paid/pct/bekleyen/overdue/nextDays/done, **`trend`** FX→TRY + paid-override + pencere elemesi, **`buAyOzeti`** refDate-enjekte). **CI:** `.github/workflows/test.yml` (push+PR → node22 → install → `npm test`; auto-tag.yml dokunulmadı). `.gitignore` eklendi (node_modules). **Regresyon hedefi:** v8.170 kalan tek-kaynak + v8.192/193 FX gösterim alanları artık test korumalı (mutasyon doğrulandı: 0-kırpma kaldırılınca tam ilgili test kırıldı). **Pre-push yok** (sandbox-only kuralı → CI bağlama). Runtime davranışı değişmedi; yalnız test + version sabitleri. SW cache bump gerekmez. |
 
@@ -132,7 +133,14 @@ Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js
 
 ### Sıradaki adımlar (öncelik sırası)
 
-_Liste boş._ Büyük refactor aileleri tamamlandı:
+**Test kapsamı (mimari sağlamlık #1):**
+- ✅ **Faz A (v8.200):** integrity / validate / store riskli modülleri test edildi (44 test, runtime değişmedi).
+- ⏭️ **Faz B (öneri):** firestore.js `_fbSave` çakışma kararını saf `shouldBlock(remoteTs, base)` helper'a çıkar + test et. **Runtime değişikliği** (firestore.js) → push sonrası **saha-test gerekir** (gizli sekme: regresyon + çakışma yolu hâlâ çalışıyor mu). Düşük risk (yalnız karşılaştırma çıkarımı, davranış birebir aynı), yüksek getiri (sync'in en kritik dalı test-korumalı olur).
+- İleride: persist.js / sync.js akışları (Firestore SDK mock gerektirir, daha ağır).
+
+**Diğer (mimari değerlendirmeden, opsiyonel):** `// @ts-check` + JSDoc (editörde tip koruması, runtime'a dokunmaz); `window.*` → açık ES import (bağımlılık grafiğini görünür kılar, kademeli).
+
+_Büyük refactor aileleri tamamlandı:_
 - **Store internal'a taşıma**: persistence flags (v8.108), `_fbUid` (v8.113), session namespace (v8.115), `_planId` (v8.116), `_knownBuild` → version.js module-private (v8.118).
 - **Monolitik dosya ayrımları**: auth-pin (v8.110), CSS → app.css (v8.126), db → firestore + persist (v8.127), validate (v8.135), integrity (v8.155), ui-plan → render/detail/actions (v8.150–v8.152).
 - **personId + groupId ctx**: addLog imza (v8.136), caller bind (v8.140/v8.146/v8.156), backfill 3-pass (v8.111/v8.112/v8.148).

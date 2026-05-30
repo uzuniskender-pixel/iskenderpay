@@ -1,4 +1,28 @@
-## 2026-05-30 — #3 FIRESTORE GUVENLIK KURALI DOGRULAMASI — PASS (kod/surum DEGISMEDI)
+## 2026-05-30 — #1 RISKLI MODUL TEST PAKETI (Faz A): integrity + validate + store (v8.199 -> v8.200) — 80/80 YESIL (sandbox), runtime DEGISMEDI
+Mimari degerlendirme sonucu secilen #1 (test kapsami genisletme) basladi. 36 test yalniz saf hesap fonksiyonlarini (hesap.js/util.js) tutuyordu; EN COK gecmis hatasi olan moduller (Store v8.175, integrity v8.176/179/182, validate) SIFIR test idi. "Bir duzenleme baska yeri bozmasin" guvencesi katman sayisindan degil, bu tur otomatik kontrolden gelir — bu paket o bosluğun ilk parcasi.
+
+KARAR: Faz A = SADECE SAF/IN-MEMORY moduller, RUNTIME DEGISMEZ (v8.198 paterni: yalniz test + version sabitleri, saha-test gerekmez, SW cache bump gerekmez, CI yesili yeterli). Cakisma mantigi (firestore.js _fbSave) Faz B'ye birakildi cunku modul ustte gstatic'ten Firestore SDK import eder -> sandbox/CI'da yuklenmez; test icin saf shouldBlock(remoteTs, base) cikarmak gerekir = RUNTIME degisikligi = saha-test. Faz B kullanici onayina birakildi.
+
+YENI DOSYALAR (3, toplam 44 test):
+- tests/integrity.test.js (13): normalizeBeforeSave 5 pass — (1) idx-sizan kredi taksiti temizligi (v8.179: idx'li pay silinir, normal kalir, idx yoksa dokunma), (2) groupId isim normalize (ayni groupId farkli isim -> en SIK isim canonical; tek-eleman/zaten-ayni dokunulmaz; gruplar izole), (3) paidItems dedupe (paidId bazli ilk tutulur; paidId'siz dokunulmaz), (4) actLog orphan ref (silinmis person/cred -> ALAN silinir entry KALIR), (5) zombi pay id/groupId backfill (v8.176: id sayi + groupId 'fix_' onekli; tam pay dokunulmaz; coklu zombi BENZERSIZ id -> pay_NaN cokmesi onlenir). + idempotency (2. cagri JSON-snapshot ayni = no-op).
+- tests/validate.test.js (13): validateBeforeSave errN sayaci — bos pay=5 hata (id/name/amount/date/groupId), id=null 1, amount string 1, amount NaN 1, groupId '' 1, id=0 GECERLI (0 hata); bos cred=3 (monthly NaN dahil); bos person=2; koleksiyonlar-arasi toplam=10. Mutate ETMEZ, yalniz sayar.
+- tests/store.test.js (18): mutation API (push/unshift/spliceAt-donus/mutateItem/replace); REGRESYON v8.175 removeWhere index-predicate (eski bug: filter(x=>!pred(x)) tek-arg -> i=undefined -> hicbir sey silinmezdi; fix filter((x,i)=>!pred(x,i)); test Set([1]) ile ortadaki index siler + coklu Set([0,2])); lookup findPayById (String normalize + null), findPaysByGroup (groupId; YOKSA String(Math.floor(Number(id))) fallback), findCredById; mutation sonrasi invalidation (yeni kayit gorulur, silinen null); hydrate+clearAll SILENT (window.saveSecure vi.fn() cagrilMAZ) ama push autoSave cagirir (1x); tx batch (3 push -> 1 save, finally); window setter koprusu (window.pays=X -> dirty=true ama autoSave YOK).
+
+MUTASYON DOGRULAMASI (kalkan gercekten yakaliyor mu): store.js v8.175 fix'i geri alindi (removeWhere (x,i) -> x) -> TAM ve YALNIZ 2 index-predicate testi kirildi (element-predicate + diger 16 gecti) -> kalkan hassas, yanlis-pozitif yok. Orijinal geri yuklendi (node --check PASS), 80/80 tekrar yesil.
+
+TEKNIK NOT (test izolasyonu): integrity/validate testleri Store IMPORT ETMEZ -> window.pays vb. duz veri property'si, fonksiyonun KENDI mantigi sinanir. store.test.js Store'u import eder, beforeEach Store.clearAll + window.saveSecure=vi.fn(); vitest dosya-bazli izolasyon (her .test.js ayri context) -> window.* cakismasi yok. config clearMocks/restoreMocks zaten acik.
+
+DOGRULAMA (sandbox): npm test -> Test Files 5 passed, Tests 80 passed (36 mevcut etkilenmedi + 44 yeni). node --check store.js PASS. Mojibake yok.
+
+VERSION: v8.200 / 20260530-03 (version.json + index.html APP_VERSION/APP_BUILD + package.json 8.200.0). SW cache bump GEREKMEZ (tests/ PWA'da cache'lenmez, sw.js STATIC degismedi). Yeni dosyalar tests/ altinda -> sw.js'e EKLENMEZ (v8.198'de de eklenmemisti).
+
+BUKET ICIN (PowerShell + Indirilenler akisi): Patch zip 3 YENI dosya (tests/integrity.test.js, tests/validate.test.js, tests/store.test.js) + 3 DEGISEN (index.html, version.json, package.json) + 2 DOK (CLAUDE.md, DEVAM_NOTU.md). node_modules .gitignore'da -> commit'e girmez (CI yukler). Lokalde test kosturmaya GEREK YOK (kural: sandbox/CI). Push -> Actions: Auto Tag (v8.200-20260530-03) + Tests (80/80 yesil olmali, actions sekmesinden dogrula). Bu surum SAHA-TEST GEREKTIRMEZ (UI/runtime degismedi); CI yesili yeterli.
+
+OTURUM HIJYENI: Faz A bitti, 80/80 yesil (CI sonrasi v8.200 = test-korumali baseline). Faz B (cakisma shouldBlock) AYRI is, RUNTIME degisir + saha-test ister -> kullanici karari. Devam edilecekse ayni sohbette surdurulebilir; konu degisirse yeni sohbet.
+
+---
+
+
 DEVAM_NOTU #3 (tek seferlik guvenlik kontrolu). Hedef: her kullanici yalniz kendi verisine erisebilmeli (rol DEGIL).
 
 BULGU (Firebase Console, proje iskenderpay-a23d1, Firestore > Rules, aktif kural 18 May 2026):
