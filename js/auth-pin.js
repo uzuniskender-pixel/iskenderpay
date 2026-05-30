@@ -6,6 +6,9 @@
 //   - cryptoKey her iki yolda da NON-EXTRACTABLE olarak resident tutulur.
 //   - dataKeyRaw ARTIK resident DEGIL; chPass re-wrap'i ham anahtari mevcut PIN ile
 //     wrapped-blob'tan anlik unwrap edip kullanir (ephemeral key wrap).
+// WO-15 (2026-05-30): "yeni kullanici" dali GUVENLIK KILIDI. Offline/FB-okuma-hatasi
+//   veya mevcut verisi/anahtari olan bir planda ASLA rastgele yeni data key uretilmez
+//   (aksi halde mevcut veri kalici kilitlenir — bkz. 2026-05-30 veri kurtarma vakasi).
 
 import { Session } from './session.js';
 
@@ -22,11 +25,32 @@ async function doLogin() {
   const pinSalt = await window.getSaltAsync('v5-pin-salt');
 
   let storedHash = null;
+  let fbReadOk   = false;   // WO-15: Firebase pinHash okumasi GERCEKTEN basarili oldu mu?
   if (window._fbLoadPinHash) {
-    try { storedHash = await window._fbLoadPinHash(); } catch(e) {}
+    try { storedHash = await window._fbLoadPinHash(); fbReadOk = true; } catch(e) { fbReadOk = false; }
   }
 
   if (!storedHash) {
+    // ── WO-15 GUVENLIK KILIDI ─────────────────────────────────────────────────
+    // Asagidaki "yeni kullanici" dali RASTGELE yeni bir data key uretir ve hem
+    // localStorage hem Firebase'deki sarili anahtari EZER. Mevcut verisi olan bir
+    // plana yanlislikla calisirsa (ornegin offline'da pinHash okunamayinca) veriyi
+    // KALICI olarak kilitler. Bu yuzden bu dal SADECE gercekten yeni, bos bir plan
+    // icin calismalidir: online + FB okumasi basarili + bu planda veri/anahtar YOK.
+    if (!navigator.onLine || !fbReadOk) {
+      window.showPinErr && window.showPinErr('Bağlantı yok — giriş/kurulum için internet gerekli. Lütfen çevrimiçi olup tekrar deneyin.');
+      return;
+    }
+    const _planId   = window.Store.planId;
+    const _hasLocal = !!(localStorage.getItem('v5-data-' + _planId) || localStorage.getItem('v5-data'));
+    let   _fbWrapped = null;
+    try { _fbWrapped = await window._loadWrappedKeyFirebase(); } catch(e) {}
+    if (_hasLocal || _fbWrapped) {
+      // Bu plana ait veri/anahtar var ama pinHash okunamadi -> ASLA yeni anahtar uretme.
+      window.showPinErr && window.showPinErr('Bu plan için şifre kaydı okunamadı, ancak mevcut veri var. Güvenlik için yeni anahtar üretilmedi. Lütfen internet bağlantısıyla tekrar deneyin.');
+      return;
+    }
+    // ── Buradan sonrasi: GERCEK yeni kullanici kurulumu (online, bos plan) ──────
     if (val.length < 6 || new Set(val).size < 2) { window.showPinErr && window.showPinErr('En az 6 karakter ve en az 2 farkli karakter girmelisiniz!'); return; }  // WO-04
     const hash = await window.hashPin(val, pinSalt);
     if (window._fbSavePinHash) { try { await window._fbSavePinHash(hash); } catch(e) {} }
