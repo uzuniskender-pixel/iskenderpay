@@ -48,12 +48,14 @@ function savePay() {
   if(!name||!amount||!date){alert('Ad, tutar ve tarih zorunlu');return;}
   const personId=_resolvePersonId(name);
   const eid=document.getElementById('EID').value;
-  // Uyarı: persons'ta eşleşme yok ve (yeni kayıt veya isim değişti) → engelleme, sadece bildir
+  // v8.197: Kişiler'de eşleşme yoksa kayıt REDDEDİLİR (sert engel). Yeni kayıt veya isim
+  // değişiminde uygulanır; mevcut kayıtsız kaydın (isim aynı) tutar/tarih düzenlemesi
+  // tuzağa düşmesin diye geçer (grandfather). Önce kişiyi Kişiler'e ekle.
   if (!personId && name) {
     const nameChanged = !eid || (window.findPayById(eid)?.name !== name);
     if (nameChanged) {
-      console.warn('[savePay] "'+name+'" kişi listesinde yok — kayıt yapıldı ama kişiye bağlanmadı');
-      setTimeout(() => window.showWarnToast && window.showWarnToast('"'+name+'" kişi listesinde yok'), 200);
+      alert('"'+name+'" Kişiler listesinde yok.\n\nKayıt yapılmadı. Önce bu kişiyi Kişiler sekmesinden ekleyin, sonra ödemeyi oluşturun.');
+      return;
     }
   }
   let savedGroupId=null;
@@ -112,7 +114,16 @@ function saveCred() {
   const start=document.getElementById('CS').value;
   if(!name||!inst||!start){alert('Ad, taksit sayısı ve tarih zorunlu');return;}
   const personId=_resolvePersonId(name);
-  if(!monthly&&total) monthly=Math.round(total/inst);
+  // v8.197: Kişiler'de eşleşme yoksa kredi REDDEDİLİR (sert engel). Yeni kayıt veya isim
+  // değişiminde; mevcut kayıtsız kredinin (isim aynı) düzenlemesi grandfather edilir.
+  {
+    const _eid=document.getElementById('CEID').value;
+    const _nameChanged = !_eid || (window.findCredById(_eid)?.name !== name);
+    if (!personId && name && _nameChanged) {
+      alert('"'+name+'" Kişiler listesinde yok.\n\nKayıt yapılmadı. Önce bu kişiyi Kişiler sekmesinden ekleyin, sonra krediyi oluşturun.');
+      return;
+    }
+  }
   if(!monthly){alert('Aylık taksit tutarını girin');return;}
   const[startYr,startMo0,startDay]=start.split('-').map(Number);
   const startMo=startMo0-1;

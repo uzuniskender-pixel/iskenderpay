@@ -1,3 +1,18 @@
+## 2026-05-29 — Kisiler'de olmayan isimle kayit SERT ENGEL (v8.196 -> v8.197) — KOD TAMAM, saha-test BEKLIYOR
+KULLANICI ISTEGI: "isim listesinde olmayan birinin kaydinin yapilmasini istemiyorum." Pasif uyari (v8.137 ⚠️, v8.196'da kaldirilmisti) + savePay soft toast kacirilabiliyordu -> sert engele cevrildi.
+FIX (ui-pay.js, savePay + saveCred): _resolvePersonId null donerse (isim Kisiler'de yok) kayit REDDEDILIR — alert "once Kisiler'e ekleyin" + return.
+KAPSAM (grandfather): engel yalniz YENI kayit VEYA isim degisiminde. Mevcut kayitsiz bir kaydin (isim ayni) tutar/tarih duzenlemesi gecer — eski veriyi tuzaga dusurmemek icin. Yeni orphan kayit (Kisiler'e bagli olmayan odeme/kredi) artik olusturulamaz.
+NOT: showWarnToast (modal.js) artik cagrilmiyor; reusable primitif + #warn-toast DOM/CSS mevcut oldugundan bilerek korundu (ileride toast gerekirse). Tek dosya degisti (ui-pay.js).
+node --check PASS, mojibake yok. SW cache bump GEREKMEZ.
+TEST (gizli sekme + cache temizle):
+1. Yeni odeme ekle, isim alanina Kisiler'de OLMAYAN bir ad yaz (orn TESTXYZ) -> kaydet -> ALERT cikip kayit YAPILMAMALI. Plan'da TESTXYZ gorunmemeli.
+2. Ayni adi once Kisiler'e ekle, sonra ayni odemeyi tekrar dene -> kayit GECMELI.
+3. Kredi icin de ayni (1) ve (2).
+4. Mevcut (Kisiler'de olan) bir kaydi normal ekle/duzenle -> sorunsuz.
+5. (grandfather) Eger elde Kisiler'de olmayan ESKI bir kayit varsa, ismini degistirmeden tutarini duzenle -> gecmeli (engel yalniz isim degisince).
+
+---
+
 ## 2026-05-29 — (A) backfill ardisik-tetik fix + (B) ⚠️ gostergesi kaldirildi (v8.195 -> v8.196) — KOD TAMAM, saha-test BEKLIYOR
 v8.195 saha-test PASS (BERKAY BIRINCI DV panelinde AKTIVITE GECMISI gorundu — ACIK HATA #3 kapandi). Bu oturumda iki housekeeping daha:
 
