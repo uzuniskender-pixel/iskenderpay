@@ -1,9 +1,7 @@
 name: Auto Tag on Push
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:   # push tetigi kaldirildi; tag artik monorepo auto-tag.yml'de (ipay-v*) uretilir.
 
 jobs:
   tag:
