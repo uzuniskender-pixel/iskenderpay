@@ -1,12 +1,7 @@
 name: Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:   # push/PR tetigi kaldirildi; dev monorepo'ya tasindi. Elle Run kaldi.
 
 jobs:
   test:
