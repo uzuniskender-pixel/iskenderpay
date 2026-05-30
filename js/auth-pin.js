@@ -11,6 +11,7 @@
 //   (aksi halde mevcut veri kalici kilitlenir — bkz. 2026-05-30 veri kurtarma vakasi).
 
 import { Session } from './session.js';
+import { shouldMintNewKey } from './keyguard.js';   // WO-15 invaryant (saf, test edilir)
 
 // ── doLogin ───────────────────────────────────────────────────────────────────
 
@@ -31,23 +32,26 @@ async function doLogin() {
   }
 
   if (!storedHash) {
-    // ── WO-15 GUVENLIK KILIDI ─────────────────────────────────────────────────
+    // ── WO-15 GUVENLIK KILIDI (karar TEK KAYNAK: keyguard.js#shouldMintNewKey) ──
     // Asagidaki "yeni kullanici" dali RASTGELE yeni bir data key uretir ve hem
     // localStorage hem Firebase'deki sarili anahtari EZER. Mevcut verisi olan bir
     // plana yanlislikla calisirsa (ornegin offline'da pinHash okunamayinca) veriyi
-    // KALICI olarak kilitler. Bu yuzden bu dal SADECE gercekten yeni, bos bir plan
-    // icin calismalidir: online + FB okumasi basarili + bu planda veri/anahtar YOK.
-    if (!navigator.onLine || !fbReadOk) {
-      window.showPinErr && window.showPinErr('Bağlantı yok — giriş/kurulum için internet gerekli. Lütfen çevrimiçi olup tekrar deneyin.');
-      return;
-    }
-    const _planId   = window.Store.planId;
-    const _hasLocal = !!(localStorage.getItem('v5-data-' + _planId) || localStorage.getItem('v5-data'));
+    // KALICI olarak kilitler (2026-05-30 vakasi). Bu yuzden mint kararini saf+testli
+    // shouldMintNewKey verir; yalniz online + FB-OK + veri YOK + anahtar YOK iken true.
+    const _planId    = window.Store.planId;
+    const _hasLocal  = !!(localStorage.getItem('v5-data-' + _planId) || localStorage.getItem('v5-data'));
     let   _fbWrapped = null;
-    try { _fbWrapped = await window._loadWrappedKeyFirebase(); } catch(e) {}
-    if (_hasLocal || _fbWrapped) {
-      // Bu plana ait veri/anahtar var ama pinHash okunamadi -> ASLA yeni anahtar uretme.
-      window.showPinErr && window.showPinErr('Bu plan için şifre kaydı okunamadı, ancak mevcut veri var. Güvenlik için yeni anahtar üretilmedi. Lütfen internet bağlantısıyla tekrar deneyin.');
+    // _fbWrapped'i YALNIZ online + fbReadOk iken sorgula (offline'da network cagrisi yapma).
+    if (navigator.onLine && fbReadOk) {
+      try { _fbWrapped = await window._loadWrappedKeyFirebase(); } catch(e) {}
+    }
+    if (!shouldMintNewKey({ online: navigator.onLine, fbReadOk, hasLocalData: _hasLocal, hasWrappedKey: !!_fbWrapped })) {
+      // Mint GUVENLI degil -> nedene gore kullaniciyi bilgilendir, ASLA yeni anahtar uretme.
+      if (!navigator.onLine || !fbReadOk) {
+        window.showPinErr && window.showPinErr('Bağlantı yok — giriş/kurulum için internet gerekli. Lütfen çevrimiçi olup tekrar deneyin.');
+      } else {
+        window.showPinErr && window.showPinErr('Bu plan için şifre kaydı okunamadı, ancak mevcut veri var. Güvenlik için yeni anahtar üretilmedi. Lütfen internet bağlantısıyla tekrar deneyin.');
+      }
       return;
     }
     // ── Buradan sonrasi: GERCEK yeni kullanici kurulumu (online, bos plan) ──────
