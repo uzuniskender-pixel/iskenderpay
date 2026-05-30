@@ -444,6 +444,14 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <h2>Yedek <span>Geri Yükle</span></h2>
     <div class="fg"><label class="fl">Yedek Dosyası (.json)</label><input class="fi" id="RF" type="file" accept=".json" onchange="readRF(this)" style="padding:10px;cursor:pointer"></div>
     <div id="RS" style="font-size:12px;min-height:16px;margin-bottom:10px"></div>
+    <!-- WO-16: yedek aktif oturum PIN'iyle acilmazsa burasi acilir (eski-PIN'li yedek kurtarma) -->
+    <div class="fg" id="RPINWRAP" style="display:none">
+      <label class="fl">Yedek Şifresi <span style="color:var(--muted);font-weight:400">(bu yedeği aldığın andaki şifre)</span></label>
+      <div style="display:flex;gap:8px">
+        <input class="fi" id="RPIN" type="password" autocomplete="off" placeholder="Yedek alındığında kullanılan şifre" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();tryRestorePin();}">
+        <button class="btn bc" type="button" onclick="tryRestorePin()">Çöz</button>
+      </div>
+    </div>
     <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15);border-radius:9px;padding:9px;margin-bottom:12px;font-size:11px;color:var(--muted)">⚠️ Mevcut tüm veriler silinir ve yedekten yüklenir.</div>
     <div class="brow"><button class="btn bc" data-modal-close="RM">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="doRestore()">Geri Yükle</button></div>
   </div>

@@ -300,29 +300,68 @@ function showPinErr(msg) {
   }, 2000);
 }
 
+// ── WO-16 YARDIMCILARI ──────────────────────────────────────────────────────
+// Yedek-PIN alani (RPINWRAP/RPIN): yedek aktif oturum PIN'iyle acilmazsa acilir.
+function _revealBackupPin(show) {
+  const wrap = document.getElementById('RPINWRAP');
+  if (wrap) wrap.style.display = show ? '' : 'none';
+  const inp = document.getElementById('RPIN');
+  if (inp && !show) inp.value = '';
+}
+// Cozulen yedegi kabul et: durum metni + dataset.d (doRestore bunu okur).
+function _acceptRestore(st, data) {
+  _revealBackupPin(false);
+  st.style.color = 'var(--ok)';
+  st.textContent = (data.pays||[]).length+' ödeme, '+(data.creds||[]).length+" kredi bulundu. Geri Yükle'ye bas.";
+  st.dataset.d = JSON.stringify(data);
+}
+
 function readRF(inp) {
   const f = inp.files[0]; if (!f) return;
   const st = document.getElementById('RS');
+  // Yeni dosya -> onceki denemenin durumunu sifirla (bayat enc/d/pin alani kalmasin).
+  delete st.dataset.d; delete st.dataset.enc;
+  _revealBackupPin(false);
   const fr = new FileReader();
   fr.onload = e => {
     try {
       const raw = JSON.parse(e.target.result);
-      let data;
-      if (raw.enc && raw.data) {
-        const dec = Session.decryptBackup(raw.data);
-        if (!dec) { st.style.color='var(--danger)'; st.textContent='Şifre eşleşmiyor.'; return; }
-        data = JSON.parse(dec);
-      } else { st.style.color='var(--danger)'; st.textContent='Geçersiz dosya'; return; }
-      st.style.color = 'var(--ok)';
-      st.textContent = (data.pays||[]).length+' ödeme, '+(data.creds||[]).length+" kredi bulundu. Geri Yükle'ye bas.";
-      st.dataset.d = JSON.stringify(data);
+      if (!(raw.enc && raw.data)) { st.style.color='var(--danger)'; st.textContent='Geçersiz dosya'; return; }
+      // 1) MUTLU YOL: aktif oturum PIN'i ile coz + yapisal dogrula.
+      const dec = Session.decryptBackup(raw.data);
+      if (dec) {
+        let o = null; try { o = JSON.parse(dec); } catch(e2) {}
+        if (o && window._looksLikeBackup(o)) { _acceptRestore(st, o); return; }
+      }
+      // 2) WO-16: oturum PIN'i acmadi -> yedek farkli bir sifreyle alinmis olabilir.
+      //    Cop/JSON-hatasiyla SESSIZCE durmak yerine yedek-PIN alanini ac.
+      st.dataset.enc = raw.data;
+      st.style.color = 'var(--danger)';
+      st.textContent = 'Bu yedek şu anki şifrenle açılmadı. Yedeği ALDIĞINDA kullandığın şifreyi gir.';
+      _revealBackupPin(true);
+      const rp = document.getElementById('RPIN'); if (rp) rp.focus();
     } catch(err) { st.style.color='var(--danger)'; st.textContent='Hata: '+err.message; }
   };
   fr.readAsText(f);
 }
 
+// WO-16: kullanicinin girdigi "yedek sifresi" ile coz (oturum PIN'inden bagimsiz).
+function tryRestorePin() {
+  const st  = document.getElementById('RS');
+  const inp = document.getElementById('RPIN');
+  if (!st || !inp) return;
+  const pin = inp.value;
+  if (!pin) { st.style.color='var(--danger)'; st.textContent='Yedek şifresini gir.'; return; }
+  if (!st.dataset.enc) { st.style.color='var(--danger)'; st.textContent='Önce yedek dosyası seç.'; return; }
+  const data = window.decodeBackupPayload(st.dataset.enc, pin);  // yanlis PIN -> null
+  if (!data) { st.style.color='var(--danger)'; st.textContent='Bu şifre yedeği açmadı. Tekrar dene.'; inp.value=''; inp.focus(); return; }
+  inp.value = '';                 // girilen yedek-PIN'i UI'da tutma
+  _acceptRestore(st, data);
+}
+
 window.showPinErr        = showPinErr;
 window.readRF            = readRF;
+window.tryRestorePin     = tryRestorePin;
 
 // ── VISIBILITY SYNC POLL ─────────────────────────────────────────────────────
 // WO-05: Buradaki visibilitychange dinleyicisi KALDIRILDI (cift tetik -> cift pull).
