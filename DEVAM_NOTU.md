@@ -1,4 +1,37 @@
-## 2026-05-30 — #1 RISKLI MODUL TEST PAKETI (Faz A): integrity + validate + store (v8.199 -> v8.200) — 80/80 YESIL (sandbox), runtime DEGISMEDI
+## 2026-05-30 — #1 Faz B: cakisma karari shouldBlock ayristirildi + test (v8.200 -> v8.201) — 88/88 YESIL (sandbox), RUNTIME DEGISTI -> SAHA-TEST BEKLIYOR
+Faz A (test paketi, push yesil) sonrasi Faz B. Sync'in EN KRITIK dali (compare-and-swap cakisma karari) v8.199'da "Firestore getDoc/setDoc mock gerekir, atlandi" denmisti. Cozum: kararin SAF kismini ayri modle cikar -> SDK olmadan test edilir.
+
+YENI DOSYA: js/conflict.js (saf, DIS BAGIMLILIK YOK):
+  export function shouldBlock(remoteTs, base) { return base > 0 && remoteTs > base; }
+  base<=0 (ilk yazim/baseline yok) -> bloklamA; remote ESIT (senkron/kendi yazimimiz) -> bloklamA; remote GERIDE -> bloklamA; remote ILERIDE (baska cihaz sonra yazmis) -> BLOKLA. firestore.js SDK import ettiginden test edilemiyordu; conflict.js import etmedigi icin sandbox/CI'da dogrudan import + test edilir.
+
+DEGISEN: js/firestore.js
+  - import { shouldBlock } from './conflict.js'; (SDK import'unun altina)
+  - _fbSave icindeki inline `if (remoteTs > base)` -> `if (shouldBlock(remoteTs, base))`.
+  - DIS `if (base > 0)` guard'i KORUNDU: base==0'da network getDoc'u atlama davranisi (perf) korunsun diye. Ic blokta base>0 zaten gecerli oldugundan shouldBlock(remoteTs,base) == (remoteTs>base) -> DAVRANIS BIREBIR AYNI, sadece karar merkezi + test edilebilir.
+
+DEGISEN: sw.js
+  - STATIC'e './js/conflict.js' eklendi (firestore.js'in altina) -> offline precache.
+  - CACHE 'ip-static-v10' -> 'ip-static-v11': install addAll yeni dosyayi ceker; activate eski cache'i siler + SW_UPDATED mesaji tek-sefer reload tetikler (mevcut v8.79 akisi).
+
+YENI: tests/conflict.test.js (8): base 0/negatif -> false (3+1); remote ileride -> true (200>100, 101>100); esit -> false; geride -> false; remote updatedAt 0 -> false; gercekci ms-epoch (base+5000 -> true, base==base -> false).
+
+MUTASYON DOGRULAMASI: conflict.js'te `base > 0 &&` guard'i dusuruldu (return remoteTs > base) -> TAM ve YALNIZ 2 baseline testi kirildi (base 0 / negatif), diger 6 gecti -> ilk yazimda SAHTE CAKISMA ureten bug sinifi yakalanir. Orijinal geri yuklendi (node --check PASS), 88/88 tekrar yesil.
+
+DOGRULAMA (sandbox): node --check conflict.js + firestore.js + sw.js PASS. npm test -> Test Files 6 passed, Tests 88 passed (80 + 8 yeni). Mojibake yok.
+
+VERSION: v8.201 / 20260530-04 (version.json + index.html APP_VERSION/APP_BUILD + package.json 8.201.0). SW cache bump YAPILDI (v10->v11) cunku yeni js dosyasi STATIC'e girdi.
+
+SAHA-TEST GEREKLI (RUNTIME DEGISTI; gizli sekme + cache temizle — caches.keys().then(...delete...).then(reload) veya incognito):
+1. (regresyon) Tek cihaz: odeme/kredi ekle-duzenle -> normal kaydeder, sync dot calisir, SAHTE CAKISMA TOAST'I CIKMAZ. (base>0 guard + shouldBlock dogru calisiyor mu)
+2. (cakisma yolu — v8.199 ile ayni) A ve B sekmesi acik+senkron. Konsolda `Store.lastUpdated=1` ile bayat baseline yarat -> bir kayit ekle, kaydet -> SARI UYARI SERIDI cikmali + eklenen satir buluttaki haline donmeli (uzak veri korunur, local edit uyariyla degisir). VEYA iki gercek sekme ile: A'da ekle+kaydet, B'de (B poll etmeden) farkli ekle+kaydet -> B cakisma uyarisi.
+Davranis v8.199 ile birebir AYNI olmali (bu sadece refactor + test). Fark gorunurse shouldBlock/guard yanlis baglanmis demektir.
+
+OTURUM HIJYENI: Faz B kod TAMAM + sandbox 88/88. Ama RUNTIME degistigi icin saha-test PASS olmadan baseline ILAN EDILMEZ. Buket push -> CI (Tests 88/88 + Auto Tag v8.201-20260530-04) -> sonra saha-test (2 adim). PASS -> baseline v8.201-stable. Bu oturumda #1 (test kapsami) Faz A+B bitti; sonraki dusuk-oncelik persist/sync SDK-mock testleri (daha agir) VEYA mimari oneri #2 (@ts-check/JSDoc) — konu degisecekse YENI sohbet.
+
+---
+
+
 Mimari degerlendirme sonucu secilen #1 (test kapsami genisletme) basladi. 36 test yalniz saf hesap fonksiyonlarini (hesap.js/util.js) tutuyordu; EN COK gecmis hatasi olan moduller (Store v8.175, integrity v8.176/179/182, validate) SIFIR test idi. "Bir duzenleme baska yeri bozmasin" guvencesi katman sayisindan degil, bu tur otomatik kontrolden gelir — bu paket o bosluğun ilk parcasi.
 
 KARAR: Faz A = SADECE SAF/IN-MEMORY moduller, RUNTIME DEGISMEZ (v8.198 paterni: yalniz test + version sabitleri, saha-test gerekmez, SW cache bump gerekmez, CI yesili yeterli). Cakisma mantigi (firestore.js _fbSave) Faz B'ye birakildi cunku modul ustte gstatic'ten Firestore SDK import eder -> sandbox/CI'da yuklenmez; test icin saf shouldBlock(remoteTs, base) cikarmak gerekir = RUNTIME degisikligi = saha-test. Faz B kullanici onayina birakildi.

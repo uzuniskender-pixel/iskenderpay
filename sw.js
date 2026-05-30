@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.187: Store.session -> session.js closure)
+// sw.js — iskenderpay PWA cache (v8.201: conflict.js eklendi — shouldBlock saf karar)
 
-const CACHE = 'ip-static-v10';
+const CACHE = 'ip-static-v11';
 const STATIC = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const STATIC = [
   './js/modal.js',
   './js/data.js',
   './js/firestore.js',
+  './js/conflict.js',
   './js/validate.js',
   './js/integrity.js',
   './js/persist.js',

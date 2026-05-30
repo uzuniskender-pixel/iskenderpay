@@ -5,6 +5,7 @@
 // v8.127'de db.js'ten ayristirildi.
 
 import { getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { shouldBlock } from './conflict.js';
 
 // _planDoc / _metaDoc firebase.js'de tanımlı, _db'yi closure'la, Store.fbUid'i runtime'da okur
 const _planDoc = window._planDoc;
@@ -28,7 +29,7 @@ window._fbSave = async function(encData) {
       const snap = await getDoc(_planDoc());
       if (snap.exists()) {
         const remoteTs = snap.data().updatedAt || 0;
-        if (remoteTs > base) {
+        if (shouldBlock(remoteTs, base)) {
           return { conflict: true, remote: snap.data().data || null, remoteTs };
         }
       }
