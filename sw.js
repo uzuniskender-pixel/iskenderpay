@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.203: audit.js eklendi — Katman 3 write-audit log)
 
-const CACHE = 'ip-static-4b1477a';
+const CACHE = 'ip-static-2c36c79';
 const STATIC = [
   './',
   './index.html',
@@ -64,6 +64,23 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
+
+  // WO-12: Firebase SDK (gstatic) -> CACHE-FIRST. Ilk ONLINE yuklemede SDK + transitif
+  // chunk'lar cache'lenir; sonraki OFFLINE acilislarda cache'ten servis edilir (offline
+  // ilk acilis kirilmaz). Bu branch bypass'tan ONCE -> gstatic asla network-only kalmaz.
+  // CANLI veri/auth (firestore.googleapis.com / *.firebaseapp.com vb.) ASAGIDA bypass'ta.
+  if (url.includes('gstatic.com/firebasejs/')) {
+    e.respondWith(
+      caches.match(e.request).then(cached =>
+        cached || fetch(e.request).then(resp => {
+          if (resp && resp.ok) { const cl = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, cl)); }
+          return resp;
+        }).catch(() => caches.match(e.request))
+      )
+    );
+    return;
+  }
+
   if (
     url.includes('firestore.googleapis.com') ||
     url.includes('firebase') ||
