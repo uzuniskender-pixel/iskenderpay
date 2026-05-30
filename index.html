@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0e17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ödeme">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="shortcut icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ödeme Takvimi</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0f0e17;--surf:#1a1928;--surf2:#242338;
+  --acc:#e8c07d;--acc2:#c084fc;--danger:#f87171;
+  --ok:#4ade80;--blue:#60a5fa;--ora:#fb923c;
+  --gold:#fbbf24;--eur:#34d399;
+  --txt:#ede8f5;--muted:#8b85a8;--bdr:rgba(255,255,255,.07);
+  --r:14px;--rs:9px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{overflow-x:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;max-width:100vw}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 10%,rgba(192,132,252,.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(232,192,125,.05) 0%,transparent 60%);pointer-events:none;z-index:0}
+</style>
+<link rel="stylesheet" href="./app.css">
+  <script type="module">
+    import './js/store.js';
+    import './js/firebase.js';
+    import './js/state.js';
+    import './js/util.js';
+    import './js/compat.js';
+    import './js/crypto.js';
+    import './js/session.js';
+    import './js/firestore.js';
+    import './js/validate.js';
+    import './js/integrity.js';
+    import './js/persist.js';
+    import './js/auth-pin.js';
+    import './js/modal.js';
+    import './js/data.js';
+    import './js/app.js';
+    import './js/plan.js';
+    import './js/sync.js';
+    import './js/kur.js';
+    import './js/backup.js';
+    import './js/version.js';
+    import './js/ui-plan-render.js';
+    import './js/ui-plan-detail.js';
+    import './js/ui-plan-actions.js';
+    import './js/hesap.js';
+    import './js/ui-pay.js';
+    import './js/ui-persons.js';
+    import './js/ui-notes.js';
+    import './js/rehber.js';
+    import './js/log.js';
+    import './js/search.js';
+  </script>
+</head>
+<body>
+
+<!-- YÜKLENİYOR -->
+<div id="LOAD" style="position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+  <div style="font-size:42px">💳</div>
+  <div style="font-size:13px;color:var(--muted)">Yükleniyor...</div>
+</div>
+
+<!-- GOOGLE GİRİŞ -->
+<div class="gls" id="GLS" style="display:none">
+  <div class="gls-logo">💳</div>
+  <div class="gls-title">Ödeme <span>Takvimi</span></div>
+  <div class="gls-sub">Verilerinize her cihazdan erişmek için<br>Google hesabınızla giriş yapın.</div>
+  <button class="gls-btn" onclick="doGoogleLogin()">
+    <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+    Google ile Giriş Yap
+  </button>
+</div>
+
+<!-- PLAN SEÇİM -->
+<div class="pls" id="PLS">
+  <div class="gls-logo">💳</div>
+  <div class="pls-title">Ödeme <span>Takvimi</span></div>
+  <div class="pls-sub">Hangi planı açmak istiyorsunuz?</div>
+  <div class="pls-user" id="PLS_USER"></div>
+  <div class="pls-cards" id="PLS_CARDS">
+    <div class="pls-card" onclick="selectPlan('plan1')">
+      <div class="pls-card-ico">📋</div>
+      <div style="flex:1">
+        <div class="pls-card-name" id="PLS_NAME1">Plan 1</div>
+        <div class="pls-card-desc" id="PLS_DESC1">Birinci ödeme planınız</div>
+      </div>
+      <button onclick="event.stopPropagation();editPlanName('plan1')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:4px">✏️</button>
+    </div>
+    <div class="pls-card" onclick="selectPlan('plan2')">
+      <div class="pls-card-ico">📊</div>
+      <div style="flex:1">
+        <div class="pls-card-name" id="PLS_NAME2">Plan 2</div>
+        <div class="pls-card-desc" id="PLS_DESC2">İkinci ödeme planınız</div>
+      </div>
+      <button onclick="event.stopPropagation();editPlanName('plan2')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:4px">✏️</button>
+    </div>
+  </div>
+  <button class="pls-signout" onclick="doGoogleSignOut()">Çıkış Yap</button>
+</div>
+
+<!-- PIN -->
+<div class="pin-screen" id="PS" style="display:none">
+  <div class="pin-logo">🔐</div>
+  <div class="pin-title">Ödeme <span>Takvimi</span></div>
+  <div class="pin-sub">Şifrenizi girin</div>
+  <div class="pin-wrap">
+    <input class="pin-inp" id="PI" type="password" placeholder="••••••" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()" onkeypress="if(event.key==='Enter')doLogin()">
+    <button class="pin-eye" onclick="toggleEye('PI',this)">👁</button>
+  </div>
+  <button class="pin-btn" onclick="doLogin()">Giriş →</button>
+  <div class="pin-err" id="PE"></div>
+</div>
+
+<!-- APP -->
+<div class="shell" id="APP" style="display:none">
+  <div class="sidebar">
+    <div class="slogo">💳 Ödeme <span>Takvimi</span></div>
+    <nav class="snav">
+      <button class="stab on" id="s0" onclick="go(0)">📊 Plan</button>
+      <button class="stab" id="s2" onclick="go(2)">👥 Kişiler</button>
+      <button class="stab" id="s3" onclick="go(3)">📝 Notlar</button>
+      <button class="stab" id="s5" onclick="go(5)">⚙️ Ayarlar</button>
+      <button class="stab" id="s6" onclick="go(6)">📒 Rehber</button>
+      <button class="stab" id="s7" onclick="go(7)">📋 Log</button>
+      <button class="stab" onclick="switchPlan()" style="margin-top:auto;color:var(--acc2)" id="PLANBTN">🔄 Plan Değiştir</button>
+      <button class="stab" onclick="doGoogleSignOut()" style="color:var(--danger)">🚪 Çıkış</button>
+    </nav>
+  </div>
+  <div class="content">
+    <div class="mnav">
+      <button class="mtab on" id="m0" onclick="go(0)">📊 Plan</button>
+      <button class="mtab" id="m2" onclick="go(2)">👥 Kişiler</button>
+      <button class="mtab" id="m3" onclick="go(3)">📝 Notlar</button>
+      <button class="mtab" id="m5" onclick="go(5)">⚙️ Ayarlar</button>
+      <button class="mtab" id="m6" onclick="go(6)">📒 Rehber</button>
+      <button class="mtab" id="m7" onclick="go(7)">📋 Log</button>
+    </div>
+    <div class="kurbar" id="KB"><span style="font-size:11px;color:var(--muted)">Kurlar yükleniyor...</span></div>
+    <div id="RESTORE_UNDO" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:10px 14px;margin:10px 16px;display:none;align-items:center;gap:12px;font-size:12px"></div>
+    <div id="SIRADAKI" style="display:none;background:var(--surf2);border-bottom:1px solid var(--bdr);padding:4px 16px;font-size:11px;color:var(--txt);display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none;white-space:nowrap"></div>
+
+    <!-- ÖZET -->
+    <div id="T0">
+      <div class="ph">
+        <div><h1>Ödeme <span>Özeti</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="OHS"></div></div>
+        <div class="dbadge" id="OD"></div>
+      </div>
+      <div class="ozet-cards" id="OC"></div>
+
+      <div id="CRED_SUM" style="display:none;margin:0 0 10px"></div>
+      <div id="HAFTA" style="margin:0 0 10px"></div>
+      <div class="sec" style="padding-bottom:70px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="sec-title" style="margin:0">Aylık Plan</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Satıra tıkla → tüm aylar · Hücreye tıkla → o ay detayı</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+            <input id="FLT" type="text" placeholder="🔍 Filtrele..." oninput="render()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--txt);font-family:'Inter',sans-serif;font-size:12px;outline:none;width:130px">
+            <select id="SORT" onchange="chSort(this.value)" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--txt);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;outline:none">
+              <option value="date">📅 Tarihe Göre</option>
+              <option value="name">🔤 İsme Göre</option>
+            </select>
+            <select id="AH" onchange="chAhead(this.value)" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--txt);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;outline:none">
+              <option value="3">3 ay</option>
+              <option value="6" selected>6 ay</option>
+              <option value="12">12 ay</option>
+              <option value="24">24 ay</option>
+              <option value="36">36 ay</option>
+            </select>
+            <button id="PAID_TOGGLE" class="add-btn" onclick="togglePaidMonths()" style="background:var(--surf2);border:1px solid var(--bdr);color:var(--muted)">✓ Ödendiler</button>
+            <button class="add-btn" onclick="openPay()">+ Ödeme Ekle</button>
+            <button class="add-btn" style="background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="exportExcel()">📥 Excel</button>
+          </div>
+        </div>
+        <div class="mwrap"><div id="MAT"></div></div>
+        <div class="legend">
+          <span class="cp">● Ödendi</span><span class="ck">● Kısmi</span>
+          <span class="cg">● Gecikmiş</span><span class="cy">● Bu hafta</span><span class="cb">● Bekliyor</span><span class="ce">— Yok</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- YAPILAN ÖDEMELER -->
+    <!-- KİŞİLER -->
+    <div id="T2" style="display:none">
+      <div class="ph">
+        <div><h1>👥 <span>Kişi Yönetimi</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">Ödeme isimlerini yönet</div></div>
+        <button onclick="openAddPerson()" class="add-btn">+ Kişi Ekle</button>
+      </div>
+      <div style="padding:0 16px 70px" id="PRL"></div>
+    </div>
+
+    <!-- NOTLAR -->
+    <div id="T3" style="display:none">
+      <div class="ph">
+        <div><h1>📝 <span>Notlar</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">Şifreli · Sadece siz görebilirsiniz</div></div>
+        <button onclick="openNoteModal()" class="add-btn" style="flex-shrink:0">+ Not Ekle</button>
+      </div>
+      <div style="padding:0 16px 70px" id="NL"></div>
+    </div>
+
+    <!-- GEÇMİŞ -->
+    <!-- AYARLAR -->
+    <div id="T5" style="display:none">
+      <div class="ph"><h1>⚙️ <span>Ayarlar</span></h1></div>
+      <div style="padding:0 16px 70px">
+
+        <div class="acard-grid">
+
+          <div class="acard">
+            <div class="acard-title">🔐 Şifre Değiştir</div>
+            <div class="acard-sub">Yeni şifre belirle</div>
+            <div class="pw-wrap"><input class="fi mono-inp" id="CP" type="password" placeholder="Mevcut şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP').focus()"><button class="pw-eye" onclick="toggleEye('CP')">👁</button></div>
+            <div class="pw-wrap"><input class="fi mono-inp" id="NP" type="password" placeholder="Yeni şifre" onkeydown="if(event.key==='Enter')document.getElementById('NP2').focus()"><button class="pw-eye" onclick="toggleEye('NP')">👁</button></div>
+            <div class="pw-wrap" style="margin-bottom:6px"><input class="fi mono-inp" id="NP2" type="password" placeholder="Yeni şifre tekrar" onkeydown="if(event.key===\'Enter\')chPass()"><button class="pw-eye" onclick="toggleEye('NP2')">👁</button></div>
+            <div id="PM" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
+            <button onclick="chPass()" class="btn bs" style="width:100%">Şifreyi Güncelle</button>
+          </div>
+
+          <div class="acard">
+            <div class="acard-title">💱 Kur Bilgisi</div>
+            <div class="acard-sub">Manuel kur girişi</div>
+            <div class="fg"><label class="fl">EUR / TRY</label><input class="fi mono-inp" id="ME" type="number" placeholder="ör: 51.15" step="0.01" inputmode="decimal"></div>
+            <div class="fg"><label class="fl">USD / TRY</label><input class="fi mono-inp" id="MU" type="number" placeholder="ör: 44.30" step="0.01" inputmode="decimal"></div>
+            <div class="fg"><label class="fl">Altın (gr / TRY)</label><input class="fi mono-inp" id="MG" type="number" placeholder="ör: 6398" inputmode="decimal"></div>
+            <button onclick="saveRates()" class="btn bs" style="width:100%">Kurları Kaydet</button>
+          </div>
+
+          <div class="acard">
+            <div class="acard-title">☁️ Veri Yedekleme</div>
+            <div class="acard-sub">Şifreli JSON yedek</div>
+            <div style="display:flex;gap:8px">
+              <button onclick="doBackup()" class="btn bs" style="flex:1">Yedek Al</button>
+              <button data-modal-open="RM" class="btn bc" style="flex:1">Geri Yükle</button>
+            </div>
+          </div>
+
+          <div class="acard">
+            <div class="acard-title">🔄 Güncelleme</div>
+            <div class="acard-sub" id="UPD_STATUS">Sürüm kontrol ediliyor...</div>
+            <button onclick="manualCheckUpdate()" class="btn bs" style="width:100%;margin-top:8px">Güncelleme Kontrol Et</button>
+            <button id="UPD_BTN" onclick="updApply()" class="btn bc" style="width:100%;margin-top:6px;display:none">⬇️ Güncellemeyi Yükle</button>
+          </div>
+
+          <div class="acard" style="border-color:rgba(248,113,113,.2)">
+            <div class="acard-title">🚪 Oturum</div>
+            <div class="acard-sub">Hesap çıkışı</div>
+            <button onclick="doGoogleSignOut()" class="btn" style="width:100%;margin-top:8px;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Çıkış Yap</button>
+          </div>
+
+          <div class="acard">
+            <div class="acard-title">ℹ️ Bilgi</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.9;font-family:'IBM Plex Mono',monospace" id="AI"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+    <!-- REHBER -->
+    <div id="T6" style="display:none">
+      <div class="ph">
+        <div><h1>📒 <span>Rehber</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px">İletişim bilgileri · Şifreli</div></div>
+        <div style="display:flex;gap:6px">
+          <button onclick="rhbImport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="İçe Aktar (JSON/CSV)">⬆️</button>
+          <button onclick="rhbExport()" class="add-btn" style="background:rgba(255,255,255,.07);color:var(--muted);font-size:12px" title="Dışa Aktar">⬇️</button>
+          <button onclick="openRhbAdd()" class="add-btn">+ Ekle</button>
+        </div>
+      </div>
+      <div style="padding:0 16px 6px;display:flex;gap:7px">
+        <input id="RHB_SRCH" type="text" placeholder="🔍 İsim veya numara ara..." oninput="renderRhb()"
+          style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:9px 12px;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none">
+        <select id="RHB_SORT" onchange="renderRhb()"
+          style="background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:9px 10px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;outline:none">
+          <option value="name">İsim ↑</option>
+          <option value="lastname">Soyisim ↑</option>
+          <option value="company">Şirket ↑</option>
+        </select>
+      </div>
+      <datalist id="RHB_CO_LIST"></datalist>
+      <div id="RHB_LIST" style="padding:0 16px 70px"></div>
+    </div>
+
+    <!-- LOG -->
+    <div id="T7" style="display:none">
+      <div class="ph">
+        <div><h1>📋 <span>Log</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="LOG_CNT"></div></div>
+        <button onclick="openLogDel()" class="add-btn" style="background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.2);font-size:12px">🗑️ Sil</button>
+      </div>
+      <div style="padding:0 16px 8px;display:flex;gap:6px;overflow-x:auto">
+        <button id="LOG_FILTER_ALL"   onclick="setLogFilter('all')"   class="btn" style="font-size:11px;font-weight:600;background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)">Hepsi</button>
+        <button id="LOG_FILTER_TODAY" onclick="setLogFilter('today')" class="btn bc" style="font-size:11px;font-weight:600">Bugün</button>
+        <button id="LOG_FILTER_WEEK"  onclick="setLogFilter('week')"  class="btn bc" style="font-size:11px;font-weight:600">Bu hafta</button>
+        <button id="LOG_FILTER_MONTH" onclick="setLogFilter('month')" class="btn bc" style="font-size:11px;font-weight:600">Bu ay</button>
+      </div>
+      <div id="LOG_FILT_BAR" style="padding:0 16px 8px">
+        <select id="LOG_FILT_PERSON" class="fi" onchange="setLogPersonFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px"></select>
+        <select id="LOG_FILT_GROUP" class="fi" onchange="setLogGroupFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
+        <select id="LOG_FILT_CRED" class="fi" onchange="setLogCredFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
+        <select id="LOG_FILT_TYPE" class="fi" onchange="setLogTypeFilter(this.value)" style="width:100%;font-size:13px;padding:8px 10px;margin-top:6px"></select>
+      </div>
+      <div id="LOG_DEL_BAR" style="padding:0 16px 8px;display:none">
+        <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:12px">
+          <!-- Mod seçimi -->
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button id="LOG_MODE_RANGE" onclick="setLogDelMode('range')" class="btn" style="flex:1;font-size:11px;font-weight:700;background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)">📅 Saat</button>
+            <button id="LOG_MODE_SEL" onclick="setLogDelMode('select')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">☑️ Seç</button>
+            <button id="LOG_MODE_PERSON" onclick="setLogDelMode('person')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">👤 Kişi</button>
+            <button id="LOG_MODE_GROUP" onclick="setLogDelMode('group')" class="btn bc" style="flex:1;font-size:11px;font-weight:700">📋 Grup</button>
+          </div>
+          <!-- Saat aralığı paneli -->
+          <div id="LOG_RANGE_PANEL">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Saat aralığı seçin</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="datetime-local" id="LOG_D1" class="fi" style="flex:1;min-width:150px;padding:7px 10px;font-size:12px">
+              <span style="color:var(--muted);font-size:12px">—</span>
+              <input type="datetime-local" id="LOG_D2" class="fi" style="flex:1;min-width:150px;padding:7px 10px;font-size:12px">
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <button onclick="doLogDel()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)">Aralığı Sil</button>
+              <button onclick="doLogDelAll()" class="btn bc" style="flex:1;font-size:12px">Tümünü Sil</button>
+              <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+            </div>
+          </div>
+          <!-- Seçerek silme paneli -->
+          <div id="LOG_SEL_PANEL" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+                <input type="checkbox" id="LOG_SEL_ALL" onchange="toggleSelectAllLogs(this.checked)" style="width:15px;height:15px;cursor:pointer"> Tümünü seç
+              </label>
+              <span id="LOG_SEL_CNT" style="font-size:11px;color:var(--muted)">0 seçili</span>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button onclick="doLogDelSelected()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Seçilileri Sil</button>
+              <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+            </div>
+          </div>
+          <!-- Kişi bazlı silme paneli -->
+          <div id="LOG_PERSON_PANEL" style="display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Bu kişinin tüm log'ları silinecek</div>
+            <select id="LOG_PERSON_SEL" class="fi" style="width:100%;padding:7px 10px;font-size:12px;margin-bottom:8px"></select>
+            <div style="display:flex;gap:6px">
+              <button onclick="doLogDelByPerson()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Kişinin Log'larını Sil</button>
+              <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+            </div>
+          </div>
+          <!-- Kayıt grubu bazlı silme paneli -->
+          <div id="LOG_GROUP_PANEL" style="display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">Bu kayıt grubunun tüm log'ları silinecek</div>
+            <select id="LOG_GROUP_SEL" class="fi" style="width:100%;padding:7px 10px;font-size:12px;margin-bottom:8px"></select>
+            <div style="display:flex;gap:6px">
+              <button onclick="doLogDelByGroup()" class="btn" style="flex:1;background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:12px">Grubun Log'larını Sil</button>
+              <button onclick="closeLogDel()" class="btn bc" style="flex:0.5">İptal</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
+    </div>
+
+<!-- DETAY PANELİ -->
+<div class="dov" id="DV">
+  <div class="dpanel"><div class="dhdl"></div><div id="DC"></div></div>
+</div>
+
+<!-- ÖDEME MODAL -->
+<div class="mov" id="PM2">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2 id="PMT">Yeni Ödeme <span>Ekle</span></h2>
+    <input type="hidden" id="EID">
+    <div class="fg"><label class="fl">Ödeme Adı</label>
+      <input class="fi" id="PN" type="text" placeholder="Seç veya yaz..." list="PNLIST" autocomplete="off">
+      <datalist id="PNLIST"></datalist>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Tutar</label><input class="fi mono-inp" id="PA" type="number" placeholder="0" inputmode="decimal"></div>
+      <div class="fg"><label class="fl">Para Birimi</label>
+        <select class="fi" id="PC"><option value="TRY">₺ TRY</option><option value="EUR">€ EUR</option><option value="GOLD">Altın gr</option></select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">İlk Tarih</label><input class="fi" id="PD" type="date"></div>
+      <div class="fg"><label class="fl">Kategori</label>
+        <select class="fi" id="PK"><option>Fatura</option><option>Kira</option><option>Abonelik</option><option>Sigorta</option><option>Kredi</option><option>Diğer</option></select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Kaç Aya Kopyalansın? (0 = sadece bu ay)</label><input class="fi mono-inp" id="COPYMO" type="number" value="0" min="0" max="60" inputmode="numeric" placeholder="0"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="PM2">İptal</button><button class="btn bs" onclick="savePay()">Kaydet</button></div>
+  </div>
+</div>
+
+<!-- KREDİ MODAL -->
+<div class="mov" id="CM">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Kredi <span>Ekle</span></h2>
+    <input type="hidden" id="CEID">
+    <div class="fg"><label class="fl">Kredi Adı</label><input class="fi" id="CN" type="text" placeholder="Araç, konut kredisi..."></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Toplam (₺)</label><input class="fi mono-inp" id="CT" type="number" placeholder="0" inputmode="decimal" oninput="updLP()"></div>
+      <div class="fg"><label class="fl">Taksit Sayısı</label><input class="fi mono-inp" id="CI" type="number" placeholder="12" inputmode="numeric" oninput="updLP()"></div>
+    </div>
+    <div class="fg"><label class="fl">Aylık Taksit (₺) <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">— boş = otomatik</span></label><input class="fi mono-inp" id="CM2" type="number" placeholder="Otomatik" inputmode="decimal" oninput="updLP()"></div>
+    <div class="fg"><label class="fl">İlk Taksit Tarihi</label><input class="fi" id="CS" type="date" oninput="updLP()"></div>
+    <div class="loan-prev" id="LP">
+      <div class="lp-title">Kredi Özeti</div>
+      <div class="lp-row"><span>Toplam</span><span id="LPT">-</span></div>
+      <div class="lp-row"><span>Aylık</span><span id="LPM">-</span></div>
+      <div class="lp-row"><span>Taksit</span><span id="LPC">-</span></div>
+      <div class="lp-row"><span>Bitiş</span><span id="LPE" style="font-size:11px;font-family:'Inter',sans-serif;font-weight:600">-</span></div>
+    </div>
+    <div class="brow"><button class="btn bc" data-modal-close="CM">İptal</button><button class="btn bsc" onclick="saveCred()">Taksitleri Oluştur</button></div>
+  </div>
+</div>
+
+<!-- KISMİ MODAL -->
+<div class="mov" id="KM">
+  <div class="modal" style="padding-bottom:28px">
+    <div class="mhdl"></div>
+    <h2>Kısmi <span>Ödeme</span></h2>
+    <div class="fg"><label class="fl">Ödenen Tutar (₺)</label><input class="fi mono-inp" id="KA" type="number" placeholder="0" inputmode="decimal" style="font-size:20px;text-align:center"></div>
+    <div id="KI" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="KM">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,var(--ora),#f97316);color:#fff" onclick="doPartial()">Kaydet</button></div>
+  </div>
+</div>
+
+<!-- RESTORE MODAL -->
+<div class="mov" id="RM">
+  <div class="modal" style="padding-bottom:28px">
+    <div class="mhdl"></div>
+    <h2>Yedek <span>Geri Yükle</span></h2>
+    <div class="fg"><label class="fl">Yedek Dosyası (.json)</label><input class="fi" id="RF" type="file" accept=".json" onchange="readRF(this)" style="padding:10px;cursor:pointer"></div>
+    <div id="RS" style="font-size:12px;min-height:16px;margin-bottom:10px"></div>
+    <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15);border-radius:9px;padding:9px;margin-bottom:12px;font-size:11px;color:var(--muted)">⚠️ Mevcut tüm veriler silinir ve yedekten yüklenir.</div>
+    <div class="brow"><button class="btn bc" data-modal-close="RM">İptal</button><button class="btn" style="flex:1;background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="doRestore()">Geri Yükle</button></div>
+  </div>
+</div>
+
+<script>
+// _cryptoKey · _plainPin → js/session.js closure (v8.187, Store.session kaldırıldı)
+
+// UI state — sadece partialCtx burada (state.js curTab/sortMode yönetiyor)
+var partialCtx=null;
+
+// _suppressSave · _saveTimer → Store (store.js); SAVE_DEBOUNCE_MS → persist.js; _migrationRunning → app.js (modül-local)
+
+// visibilitychange → app.js startRealtimeSync içinde
+
+var APP_VERSION = 'v8.203';
+var APP_BUILD   = '20260530-06';
+
+// ── SERVICE WORKER ───────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('SW kayıtlı'))
+    .catch(err => console.warn('SW hatası:', err));
+}
+
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkVersion();
+});
+
+// SW güncellenince otomatik reload
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type === 'SW_UPDATED') {
+      // Bekleyen kayıt varsa önce tamamlansın
+      const delay = (window.Store && window.Store.saveTimer) ? 600 : 0;
+      setTimeout(() => window.location.reload(), delay);
+    }
+  });
+}
+
+// PIN input enter key
+document.addEventListener('DOMContentLoaded',()=>{
+  const pi=document.getElementById('PI');
+  if(pi) pi.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+});
+
+</script>
+
+</div>
+
+<!-- REHBER KİŞİ DETAY -->
+<div class="dov" id="RDET" style="z-index:3050">
+  <div class="dpanel">
+    <div class="dhdl"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <button onclick="closeRDET()"
+        style="background:rgba(255,255,255,.07);border:1px solid var(--bdr);color:var(--txt);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">← Geri</button>
+    </div>
+    <div id="RDET_C"></div>
+  </div>
+</div>
+
+<!-- REHBER EKLE/DÜZENLE MODAL -->
+<div class="mov" id="RMOD" style="z-index:3100">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2 id="RMOD_T">Kişi <span>Ekle</span></h2>
+    <input type="hidden" id="RMOD_ID">
+    <div class="fg"><label class="fl">İsim Soyisim</label><input class="fi" id="RMOD_NAME" type="text" placeholder="Ad Soyad" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase"></div>
+    <div class="fg"><label class="fl">Şirket</label><input class="fi" id="RMOD_COMPANY" type="text" list="RHB_CO_LIST" placeholder="Şirket adı (opsiyonel)" oninput="this.value=this.value.toLocaleUpperCase('tr')" style="text-transform:uppercase" autocomplete="off"></div>
+    <div class="fg">
+      <label class="fl">Telefon Numaraları</label>
+      <div id="RMOD_PHONES"></div>
+      <button onclick="rhbAddPhone()" style="background:none;border:1px dashed var(--bdr);color:var(--muted);border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;width:100%;margin-top:4px">+ Telefon Ekle</button>
+    </div>
+    <div class="fg"><label class="fl">E-posta</label><input class="fi" id="RMOD_EMAIL" type="email" placeholder="ornek@mail.com"></div>
+    <div class="fg"><label class="fl">Not</label><textarea class="fi" id="RMOD_NOTE" rows="3" placeholder="Açıklama..." style="resize:vertical"></textarea></div>
+    <div class="brow">
+      <button class="btn bc" data-modal-close="RMOD">İptal</button>
+      <button class="btn bs" onclick="rhbSavePerson()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOT MODAL -->
+<div class="mov" id="NM">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2 id="NMT">Yeni <span>Not</span></h2>
+    <input type="hidden" id="NEID">
+    <div class="fg"><label class="fl">Başlık</label><input class="fi" id="NTIT" type="text" placeholder="IBAN, Şifre, Telefon..."></div>
+    <div class="fg"><label class="fl">İçerik</label><textarea class="fi" id="NCONT" rows="5" placeholder="TR00 0000 0000 0000 0000..." style="resize:vertical;line-height:1.6"></textarea></div>
+    <div class="fg"><label class="fl">Kategori</label>
+      <select class="fi" id="NCAT">
+        <option>Banka / IBAN</option>
+        <option>Şifre / Hesap</option>
+        <option>Telefon / İletişim</option>
+        <option>Genel Not</option>
+      </select>
+    </div>
+    <div class="brow"><button class="btn bc" data-modal-close="NM">İptal</button><button class="btn bs" onclick="saveNote()">Kaydet</button></div>
+  </div>
+</div>
+
+<!-- BACKUP ŞİFRE MODAL -->
+<div class="mov" id="BPM">
+  <div class="modal" style="padding-bottom:28px">
+    <div class="mhdl"></div>
+    <h2>Yedek <span>İndir</span></h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Güvenlik için şifrenizi girin. Yedek dosyası şifrenizle şifrelenir — şifrenizi bilmeyen açamaz.</div>
+    <div class="pw-wrap" style="margin-bottom:6px">
+      <input class="fi mono-inp" id="BPP" type="password" placeholder="Şifreniz" onkeydown="if(event.key==='Enter')confirmBackup()">
+      <button class="pw-eye" onclick="toggleEye('BPP')">👁</button>
+    </div>
+    <div id="BPERR" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:8px"></div>
+    <div class="brow">
+      <button class="btn bc" data-modal-close="BPM">İptal</button>
+      <button class="btn bs" onclick="confirmBackup()">İndir</button>
+    </div>
+  </div>
+</div>
+
+<!-- KİŞİ EKLE/DÜZENLE MODAL -->
+<div class="mov" id="PRM">
+  <div class="modal" style="padding-bottom:30px">
+    <div class="mhdl"></div>
+    <h2 id="PRMT">Kişi <span>Ekle</span></h2>
+    <input type="hidden" id="PREID">
+    <div class="fg"><label class="fl">İsim</label><input class="fi" id="PRNAME" type="text" placeholder="Ad Soyad veya Kurum Adı"></div>
+    <div class="fg"><label class="fl">Açıklama (opsiyonel)</label><input class="fi" id="PRDESC" type="text" placeholder="Kira, kredi, vs."></div>
+    <div class="brow">
+      <button class="btn bc" data-modal-close="PRM">İptal</button>
+      <button class="btn bs" onclick="savePerson()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- YAPILAN ÖDEMELER DÜZENLE MODAL -->
+<div class="mov" id="PIMOD">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Ödeme <span>Düzenle</span></h2>
+    <input type="hidden" id="PIEID">
+    <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="PINAM" type="text" placeholder="Kira, Elektrik..."></div>
+    <div class="fg"><label class="fl">Ödenen Tutar (₺)</label><input class="fi mono-inp" id="PIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg"><label class="fl">Tarih</label><input class="fi" id="PIDAT" type="date"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="PIMOD">İptal</button><button class="btn bs" onclick="savePaidItem()">Kaydet</button></div>
+  </div>
+</div>
+
+<!-- GLOBAL ARAMA MODALI (v8.8) -->
+<div class="mov" id="SRCHMOD">
+  <div class="modal" style="max-width: 500px;">
+    <div class="mhdl"></div>
+    <h2>Verilerde <span>Ara</span></h2>
+    <div class="fg">
+      <input class="fi" id="SRCHINP" type="text" placeholder="Kelime, kişi veya tutar yazın..." oninput="execGlobalSearch()">
+    </div>
+    
+    <div id="SRCHRES" style="max-height: 380px; overflow-y: auto; margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="text-align: center; color: var(--tc); opacity: 0.5; padding: 20px 0;">Yazmaya başlayın...</div>
+    </div>
+    
+    <div class="brow" style="margin-top: 15px;">
+      <button class="btn bc" data-modal-close="SRCHMOD" onclick="closeMov('SRCHMOD')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<div class="mov" id="HIMOD">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Geçmiş <span>Düzenle</span></h2>
+    <input type="hidden" id="HIIDX">
+    <div class="fg"><label class="fl">Ödeme Adı</label><input class="fi" id="HINAM" type="text" placeholder="Kira, Elektrik..."></div>
+    <div class="fg"><label class="fl">Tutar (₺)</label><input class="fi mono-inp" id="HIAMT" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg"><label class="fl">Tarih</label><input class="fi" id="HIDAT" type="date"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="HIMOD">İptal</button><button class="btn bs" onclick="saveHistItem()">Kaydet</button></div>
+  </div>
+</div>
+
+<!-- KİŞİ GEÇMİŞ MODAL (v8.143) -->
+<div class="mov" id="PHIST">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2 id="PHIST_T">Kişi <span>Geçmişi</span></h2>
+    <div id="PHIST_LIST" style="max-height:60vh;overflow-y:auto;padding-right:4px;margin-bottom:10px"></div>
+    <div class="brow"><button class="btn bc" data-modal-close="PHIST">Kapat</button></div>
+  </div>
+</div>
+
+<div id="sync-toast">🔄 Senkronize edildi</div>
+<div id="warn-toast"></div>
+<div id="upd-banner">
+  <div class="upd-txt">🔄 Yeni sürüm mevcut</div>
+  <button class="upd-btn" onclick="updApply()">Güncelle</button>
+</div>
+<button onclick="window.ModalManager.open('SRCHMOD'); setTimeout(()=>document.getElementById('SRCHINP').focus(),100);" style="position:fixed;bottom:20px;right:20px;z-index:9990;background:#ffd200;color:#0f0e17;border:none;padding:12px 18px;font-weight:700;font-size:14px;border-radius:50px;box-shadow:0 4px 20px rgba(0,0,0,.5);cursor:pointer;display:flex;align-items:center;gap:8px;">🔍 Ara</button>
+</body>
+</html>
