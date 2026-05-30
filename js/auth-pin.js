@@ -27,7 +27,7 @@ async function doLogin() {
   }
 
   if (!storedHash) {
-    if (val.length < 4) { window.showPinErr && window.showPinErr('En az 4 karakter girmelisiniz!'); return; }
+    if (val.length < 6 || new Set(val).size < 2) { window.showPinErr && window.showPinErr('En az 6 karakter ve en az 2 farkli karakter girmelisiniz!'); return; }  // WO-04
     const hash = await window.hashPin(val, pinSalt);
     if (window._fbSavePinHash) { try { await window._fbSavePinHash(hash); } catch(e) {} }
     const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
@@ -100,7 +100,7 @@ async function chPass() {
 
   const curHash = await window.hashPin(cur, pinSalt);
   if (curHash !== storedHash) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut şifre yanlış'; return; }
-  if (!nw || nw.length < 4)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 4 karakter'; return; }
+  if (!nw || nw.length < 6 || new Set(nw).size < 2)  { msg.style.color='var(--danger)'; msg.textContent='❌ En az 6 karakter, en az 2 farkli'; return; }  // WO-04
   if (nw !== nw2)             { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreler eşleşmiyor'; return; }
 
   // Ephemeral re-wrap: data key DEGISMEZ, yalniz sarmalama (wrap) yenilenir.

@@ -7,32 +7,55 @@ export async function importDataKey(rawBytes) {
   return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 }
 
-export async function wrapDataKey(dataKeyRaw, pin, pinSalt) {
+// WO-04: PBKDF2 iterasyon 100k -> 600k (offline PIN brute-force'a karsi sertlestirme).
+// KILITLENME YOK: yeni anahtarlar 600k ile sarilir; unwrap ONCE 600k dener, eski
+// (100k ile sarilmis) anahtarlar icin 100k'ya FALLBACK eder -> hicbir anahtar kilitlenmez.
+// Eski anahtar bir sonraki PIN degisiminde (chPass -> wrapDataKey) otomatik 600k'ya yukselir;
+// istege bagli login-aninda re-wrap auth-pin.js'e eklenebilir (unwrap'in needsRewrap sinyali).
+const PBKDF2_ITER = 600000;         // yeni standart
+const PBKDF2_ITER_LEGACY = 100000;  // eski anahtarlar icin geriye-donuk fallback
+
+async function _deriveKwKey(pin, pinSalt, iterations, usage) {
   const enc = new TextEncoder();
   const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
-  const kwKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
-    kwMat, { name: 'AES-KW', length: 256 }, false, ['wrapKey']
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: pinSalt, iterations, hash: 'SHA-256' },
+    kwMat, { name: 'AES-KW', length: 256 }, false, [usage]
   );
+}
+
+// Test/migration seam: belirtilen iterasyonla sarar. Uygulama wrapDataKey() -> 600k cagirir.
+export async function wrapDataKeyWithIter(dataKeyRaw, pin, pinSalt, iterations) {
+  const kwKey = await _deriveKwKey(pin, pinSalt, iterations, 'wrapKey');
   const keyToWrap = await crypto.subtle.importKey('raw', dataKeyRaw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
   const wrapped = await crypto.subtle.wrapKey('raw', keyToWrap, kwKey, 'AES-KW');
   return btoa(String.fromCharCode(...new Uint8Array(wrapped)));
 }
 
-export async function unwrapDataKey(wrappedB64, pin, pinSalt) {
-  const enc = new TextEncoder();
-  const wrapped = Uint8Array.from(atob(wrappedB64), c => c.charCodeAt(0));
-  const kwMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
-  const kwKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: pinSalt, iterations: 100000, hash: 'SHA-256' },
-    kwMat, { name: 'AES-KW', length: 256 }, false, ['unwrapKey']
-  );
+export async function wrapDataKey(dataKeyRaw, pin, pinSalt) {
+  return wrapDataKeyWithIter(dataKeyRaw, pin, pinSalt, PBKDF2_ITER);
+}
+
+async function _unwrapWithIter(wrappedBytes, pin, pinSalt, iterations) {
+  const kwKey = await _deriveKwKey(pin, pinSalt, iterations, 'unwrapKey');
   const unwrapped = await crypto.subtle.unwrapKey(
-    'raw', wrapped, kwKey, 'AES-KW',
+    'raw', wrappedBytes, kwKey, 'AES-KW',
     { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
   );
   const exportedRaw = await crypto.subtle.exportKey('raw', unwrapped);
   return { cryptoKey: unwrapped, rawBytes: new Uint8Array(exportedRaw) };
+}
+
+export async function unwrapDataKey(wrappedB64, pin, pinSalt) {
+  const wrapped = Uint8Array.from(atob(wrappedB64), c => c.charCodeAt(0));
+  try {
+    return await _unwrapWithIter(wrapped, pin, pinSalt, PBKDF2_ITER);          // yeni standart (600k)
+  } catch (e) {
+    // Eski anahtar (100k) olabilir -> fallback. Yanlis PIN'de bu da firlar (login reddi).
+    const res = await _unwrapWithIter(wrapped, pin, pinSalt, PBKDF2_ITER_LEGACY);
+    res.needsRewrap = true;  // cagiran isterse 600k'ya re-wrap edip kaydedebilir (opsiyonel)
+    return res;
+  }
 }
 
 export async function encryptData(data, key) {
