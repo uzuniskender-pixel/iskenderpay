@@ -1,3 +1,11 @@
+## 2026-05-30 — SAHA-TEST PASS (v8.203) — baseline v8.203-stable
+Katman 3 (yakalayici write-audit) saha-testi gizli sekmede PASS (3/3): (1) regresyon — normal kayit calisti, audit hook bozmadi, sonuc ok. (2) gizlilik — auditLog() yalniz METADATA gosterdi (zaman/kaynak persist:_doSave/hedef localStorage+firebase/sonuc ok/boyut 4757 + koleksiyon SAYILARI: pays28 creds1 hist12 persons13 notes19 paidItems2 rehber15 actLog16); gercek deger/blob ICERIGI YOK -> "disaridan veri gorunmesin" sarti saglandi. (3) forensic surekliligi — reload sonrasi giris ip-audit'ten geri yuklendi, hala gorundu.
+BUGUNKU IS KAPANDI: saha-test otomasyonu Katman 1 (v8.202, CI-otomatik) + Katman 3 (v8.203, write-audit). Katman 2 bilerek kapsam disi. Entegrasyon plani ENTEGRASYON_PLANI.md'ye kaydedildi (ERTELENDI; kullanici: "tek Supabase sart degil"; veri katmani onemsiz (anlik blob) -> Faz B opsiyonel, Faz A onerilir, ayri oturum).
+VERSION DEGISMEDI (v8.203 / 20260530-06) — yalniz saha-test sonuc kaydi + dok. Manuel tag: v8.203-stable.
+OTURUM HIJYENI: baseline yesil + saha-test PASS -> YENI SOHBET. Sonraki konular: Entegrasyon Faz A (monorepo+tek test+tek CI), v8.201/v8.203 gercek-runtime artiklari (SW/auth) bir kez manuel, persist/sync SDK-mock derinlestirme.
+
+---
+
 ## 2026-05-30 — SAHA-TESTI OTOMASYONU Katman 3: yakalayici write-audit log + ENTEGRASYON PLANI kaydi (v8.202 -> v8.203) — 100/100 YESIL, RUNTIME DEGISTI -> SAHA-TEST BEKLIYOR
 Katman 1 (push'ta) sonrasi Katman 3 (kullanici fikri: "veri bozulsa dahi nereden bozuldugunu gorebilmek icin log sistemi yakalayici olsun"). Ayrica kullanicinin verdigi entegrasyon plani (ITP-WO-2026-002) repoya kaydedildi.
 

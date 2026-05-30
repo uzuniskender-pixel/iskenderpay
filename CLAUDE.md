@@ -22,7 +22,7 @@ _Son güncelleme: 2026-05-30 (v8.203)_
 
 ---
 
-## Mevcut Durum (30 Mayıs 2026) — v8.203 / 20260530-06 — Katman 3: yakalayıcı write-audit log, 100/100 yeşil · SW v12 · **SAHA-TEST BEKLIYOR** (runtime değişti) · Entegrasyon planı (ITP-WO-2026-002) ENTEGRASYON_PLANI.md'ye kaydedildi (ERTELENDI)
+## Mevcut Durum (30 Mayıs 2026) — v8.203 / 20260530-06 — **baseline v8.203-stable** · Katman 3 yakalayıcı write-audit log, 100/100 · SW v12 · SAHA-TEST PASS (3/3, 30 May) · Entegrasyon planı (ITP-WO-2026-002) ENTEGRASYON_PLANI.md'ye kaydedildi (ERTELENDI)
 
 ### Güvenlik kaydı — Firestore kuralı (#3, 30 May doğrulandı)
 Aktif kural (Console, iskenderpay-a23d1) tüm dokümanları `request.auth != null && request.auth.token.email == "uzuniskender@gmail.com"` ile kilitler → **güvenli**, açık değil, kimlik-bazlı (rol değil), tek-kullanıcı modeline uygun. Repoda `firestore.rules` kayıt amaçlı (deploy edilmez). Email sabit yazılı → e-posta değişir/ikinci hesap eklenirse elle güncellenmeli. Detay: DEVAM_NOTU 30 May #3.
