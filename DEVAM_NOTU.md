@@ -1,4 +1,43 @@
-## 2026-05-30 — #1 Faz B: cakisma karari shouldBlock ayristirildi + test (v8.200 -> v8.201) — 88/88 YESIL (sandbox), RUNTIME DEGISTI -> SAHA-TEST BEKLIYOR
+## 2026-05-30 — SAHA-TESTI OTOMASYONU Katman 1: cakisma kablolamasi entegrasyon testi (v8.201 -> v8.202) — 92/92 YESIL, runtime DEGISMEDI
+Kullanici istegi: "sen guncelleme yapinca saha-testlerini benim yerime KOSACAK otomatik sistem kur; test sonrasi IZ KALMASIN, verim BOZULMASIN; bozulursa kaynagi gormek icin yakalayici log." Ek not: UYS altyapisi kullanilabilir AMA disaridan kimse iskenderpay verisini gormeyecek. 4 CC terminali var (oneri).
+
+CEKIRDEK GERILIM (kullaniciya da soylendi): gercek "saha" testi gercek sistemi (gercek Firebase + gercek tarayici + gercek veri) tutar -> "iz kalmasin/veri bozulmasin" ile dogrudan celisir. COZUM: testi gercek verinin yanindan gecirme; GERCEK SISTEMIN SINIRINA SAHTE koy -> test gercek kodu calistirir ama gercek veriye DOKUNAMAZ cunku dokunacak gercek sey YOK. Garanti "sonra temizleriz" degil, "bastan erisim yok".
+
+WORKFLOW KARARLARI (kullanici "sen belirle" dedi):
+- 4 terminal/paralel: bu is tek tutarli kume (hepsi persist cevresi) -> tek akis. Paralel worktree iki-proje/ayrik-dosya islerine saklandi.
+- UYS altyapisini tasima: GEREKSIZ + gizlilik yuzeyi (paylasilan backend/repo -> "disaridan gorunmesin" sartini riske atar). Bunun yerine UYS audit FELSEFESI tasinir (kod degil). Testler YALNIZ SENTETIK veri -> gizlilik yapisal saglanir.
+- Siralama: Katman 1 ONCE (yalniz test, runtime degismez, saha-test gerekmez, CI otomatik). Katman 3 SONRA (persist'e dokunur -> runtime -> saha-testli ayri patch).
+
+KATMAN 1 (bu surum) — YENI: tests/persist-conflict.test.js (4 test):
+persist.js#_doSave Firebase dalinin ENTEGRASYON testi. Surulus: window.saveSecureNow() -> _doSave. Sahte sinirlar:
+  - Session: vi.mock('../js/session.js') -> hasKey:true, encrypt: sentetik 'ENC:<len>' (gercek WebCrypto/key gerekmez).
+  - window._fbSave / applyRemote / showWarnToast / setSyncDot: vi.fn() stub.
+  - Store (gercek import) + sentetik window.pays (TEST kaydi).
+Senaryolar (manuel saha-test -> otomatik eslesme):
+  (1) ok-path  = Manuel Test 1 (regresyon): _fbSave {ok,updatedAt:5000} -> lastUpdated=5000, fbSyncNeeded=false, applyRemote/showWarnToast CAGRILMAZ (sahte uyari yok), localStorage yazildi.
+  (2) conflict-path = Manuel Test 2: _fbSave {conflict,remote,remoteTs:9999} -> lastUpdated=9999, applyRemote(remote) + showWarnToast + setSyncDot('synced'); uzeri YAZILMAZ.
+  (3) error-path (manuel testte YOK, bonus): _fbSave throw -> fbSyncNeeded=true, dirty=false, AMA localStorage yazilmis KALIR (localStorage-once guvenligi = sifir veri kaybi).
+  (4) guard: suppressSave=true -> saveSecure debounce no-op (_fbSave hic cagrilmaz, timer kurulmaz).
+
+GIZLILIK / IZ-BIRAKMAMA (kullanici sarti): test NODE surecinde kosar; ortada GERCEK Firebase de uygulamanin gercek localStorage'i da YOK; tum girdi SENTETIK. Gercek iskenderpay verisine erisim YAPISAL OLARAK IMKANSIZ -> iz kalmaz, veri bozulmaz, veri disari sizmaz. (Manuel saha-testinin riski tam da buydu; otomatik versiyon onu ortadan kaldirir.)
+
+MUTASYON DOGRULAMASI: persist.js _doSave cakisma dali devre disi (if(false && res && res.conflict)) -> TAM ve YALNIZ conflict-path testi kirildi (= cakismanin SESSIZCE ezilmesi regresyonu), regresyon + hata + guard testleri yesil kaldi (hassas). Orijinal geri yuklendi (node --check PASS), 92/92 tekrar yesil.
+
+KAPSAM DISI (durust): firestore.js _fbSave'in IC eslemesi (shouldBlock -> conflict donus + getDoc/setDoc) ve _fbPoll offline-retry dali Firestore SDK mock gerektirir (gstatic URL import) -> daha agir, ileride. Ayrica v8.201'in GERCEK-RUNTIME artigi (SW cache aktivasyonu, gercek Google auth) hicbir sahte ile tam test edilemez -> bir kez manuel dogrulanmali (otomasyon kapsami disi).
+
+DOGRULAMA (sandbox): npm test -> Test Files 7 passed, Tests 92 passed (88 + 4 yeni). node --check persist.js PASS. Mojibake yok.
+
+VERSION: v8.202 / 20260530-05 (3 kaynak senkron). SW cache bump GEREKMEZ (tests/ cache'lenmez, runtime degismedi). Yeni dosya tests/ altinda -> sw.js'e EKLENMEZ.
+
+BUKET ICIN (PowerShell + Indirilenler): patch zip 1 YENI (tests/persist-conflict.test.js) + 3 DEGISEN (index.html, version.json, package.json) + 2 DOK. Push -> Actions: Auto Tag (v8.202-20260530-05) + Tests (92/92). SAHA-TEST GEREKTIRMEZ (runtime degismedi). Bu test, v8.201 cakisma kablolamasinin MANTIK kismini artik her push'ta otomatik dogrular.
+
+SIRADAKI — KATMAN 3 (yakalayici write-audit log): her kalici yazimi (persist.js localStorage.setItem + _fbSave cagrisi) saran hafif audit; {zaman, degisen anahtarlar, kayit boyutu, cagiran fonksiyon} halka-tampona (ring buffer, in-memory + opsiyonel debug localStorage anahtari) yazar. Amac: veri bir gun yanlis gorunurse son N yazimi ve KAYNAGINI gormek (kullanici fikri, savunma derinligi). UYS audit felsefesi uyarlanir. persist'e dokunur -> RUNTIME DEGISIR -> saha-testli ayri patch. Katman 1 testleri Katman 3'un log'unu da dogrulayabilir (L3 riskini dusurur).
+
+OTURUM HIJYENI: Katman 1 bitti (92/92, CI-otomatik, sifir risk). Katman 3 ayri runtime patch. Bu sohbette surdurulebilir; saha-test otomasyonu buyuyup konu degisirse YENI sohbet (DEVAM_NOTU'dan devam).
+
+---
+
+
 Faz A (test paketi, push yesil) sonrasi Faz B. Sync'in EN KRITIK dali (compare-and-swap cakisma karari) v8.199'da "Firestore getDoc/setDoc mock gerekir, atlandi" denmisti. Cozum: kararin SAF kismini ayri modle cikar -> SDK olmadan test edilir.
 
 YENI DOSYA: js/conflict.js (saf, DIS BAGIMLILIK YOK):

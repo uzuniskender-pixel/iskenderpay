@@ -1,6 +1,6 @@
 {
   "name": "iskenderpay",
-  "version": "8.201.0",
+  "version": "8.202.0",
   "private": true,
   "type": "module",
   "description": "iskenderpay — offline-first odeme/kredi takip PWA (vanilla JS / ES module).",
