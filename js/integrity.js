@@ -1,11 +1,14 @@
-// js/integrity.js — iskenderpay (v1.0)
-// Veri normalize (mutation) helper'lari. Save oncesi data düzeltir.
-// Read-only sema validation: validate.js. v8.153'te persist.js#_doSave'den ayristirildi.
-// Genisletme adayi: deduplicate, orphan reference temizligi, vb.
+// js/integrity.js — iskenderpay (v2.0 — WO-03 load-only)
+// Veri onarim (mutation) helper'lari. WO-03: artik SAVE'de DEGIL, yalniz loadSecure'da
+// BIR KEZ calisir (WO-01 karantina + WO-02 bypass-kapali save'de bozuk kayit olusmasini
+// engelledi -> her-save onarimi gereksiz). Idempotent: 2. cagri no-op. normalizeBeforeSave
+// ONARILAN kayit SAYISINI doner -> loadSecure >0 ise persist eder.
+// Read-only sema validation: validate.js.
 
 // Pays groupId tutarliligi: ayni groupId farkli isim tasiyorsa en sik ismi canonical
 // sec, digerlerini ona normalize et. Side-effect: pay item'in name field'i mutate edilir.
 function normalizeBeforeSave() {
+  let _repaired = 0;
   // v8.179: window.pays'e sizan kredi taksitlerini temizle. idx alani SADECE
   // kredi taksitinde bulunur, normal pay'de asla. idx'li pay = duplike sizinti
   // (gercek taksit creds'te). v8.176 backfill'inden ONCE calismali ki backfill
@@ -15,6 +18,7 @@ function normalizeBeforeSave() {
     const _kept = _arr.filter(p => p.idx === undefined);
     if (_kept.length !== _arr.length) {
       window.pays = _kept;
+      _repaired += (_arr.length - _kept.length);
       console.log('[integrity] ' + (_arr.length - _kept.length) + ' sizan kredi taksiti (idx) pays temizlendi');
     }
   } catch(e) { console.warn('[integrity] idx-leak temizlik hatasi:', e); }
@@ -35,6 +39,7 @@ function normalizeBeforeSave() {
       const allSame = names.every(n => n === canonical);
       if (!allSame) {
         entries.forEach(e => { e.name = canonical; });
+        _repaired++;
         console.log('[integrity] GroupId', entries[0].groupId, '→ ad duzeltildi:', canonical);
       }
     });
@@ -55,6 +60,7 @@ function normalizeBeforeSave() {
       });
       if (removed > 0) {
         window.paidItems = deduped;
+        _repaired += removed;
         console.log('[integrity]', removed, 'mukerrer paidItem temizlendi');
       }
     }
@@ -74,7 +80,7 @@ function normalizeBeforeSave() {
         if (e.personId && !personIds.has(e.personId)) { delete e.personId; fixed++; }
         if (e.credId && !credIds.has(e.credId)) { delete e.credId; fixed++; }
       });
-      if (fixed > 0) console.log('[integrity]', fixed, 'kirik actLog referansi temizlendi');
+      if (fixed > 0) { _repaired += fixed; console.log('[integrity]', fixed, 'kirik actLog referansi temizlendi'); }
     }
   } catch(e) { console.warn('[integrity] orphan temizlik hatasi:', e); }
 
@@ -89,8 +95,9 @@ function normalizeBeforeSave() {
       if (!p.groupId)    { p.groupId = 'fix_' + Date.now() + '_' + (_seq++) + '_' + Math.random().toString(36).slice(2,6); t = true; }
       if (t) _bf++;
     });
-    if (_bf) console.log('[integrity] ' + _bf + ' eksik pay id/groupId backfill edildi');
+    if (_bf) { _repaired += _bf; console.log('[integrity] ' + _bf + ' eksik pay id/groupId backfill edildi'); }
   } catch(e) { console.warn('[integrity] pay backfill hatasi:', e); }
+  return _repaired;
 }
 
 window.normalizeBeforeSave = normalizeBeforeSave;

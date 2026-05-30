@@ -19,10 +19,10 @@ async function saveSecure() {
 async function _doSave() {
   window.Store.saveTimer = null;
   if (!Session.hasKey()) return;
-  // Normalize (onarim/backfill) → integrity.js; Validate (KARANTINA) → validate.js v2.0
-  // (WO-01): once onarilabilenleri onar, sonra kalan sema-bozuk kayitlari yazma
-  // kumesinden CIKAR. Karantina edilen kayit sayisi audit'e yazilir.
-  window.normalizeBeforeSave && window.normalizeBeforeSave();
+  // WO-03: normalizeBeforeSave (onarim) SAVE yolundan CIKARILDI -> yalniz loadSecure'da
+  // bir kez calisir (WO-01 karantina + WO-02 bypass-kapali sayesinde save'de bozuk kayit
+  // olusmaz; onarim artik load-time + idempotent). Validate (KARANTINA, WO-01) save'de
+  // guvenlik agi olarak KALIR.
   const _quarantined = window.validateBeforeSave ? window.validateBeforeSave() : 0;
   const data = {
     pays: window.pays, creds: window.creds, hist: window.hist,
@@ -93,7 +93,7 @@ async function saveSecureNow() {
 async function loadSecure() {
   let enc = null;
   let fbHadData = false;
-  let _idxCleaned = false;
+  let _repaired = 0;
   if (window._fbLoad) {
     try {
       enc = await window._fbLoad();
@@ -117,25 +117,19 @@ async function loadSecure() {
       window.rehber    = data.rehber    || [];
       window.actLog    = data.actLog    || [];
     }
-    // v8.184: yukleme aninda idx-sizan kredi taksitlerini temizle (kaynak v8.182'de
-    // kapatildi ama eski kayitlarda kalmis olabilir). Save'e bagli kalmadan acilista suzulur.
-    try {
-      const _p = window.pays || [];
-      const _clean = _p.filter(x => x.idx === undefined);
-      if (_clean.length !== _p.length) {
-        window.pays = _clean;
-        _idxCleaned = true;
-        console.log('[integrity] yukleme: ' + (_p.length - _clean.length) + ' sizan kredi taksiti (idx) temizlendi');
-      }
-    } catch(e) { console.warn('[integrity] yukleme idx-temizlik hatasi:', e); }
+    // WO-03: TUM onarim pass'i load'da BIR KEZ calisir (idx-leak dahil; eski ayri idx
+    // blogu kaldirildi -> tek kaynak, bakim borcu yok). normalizeBeforeSave onarilan
+    // kayit sayisini doner; >0 ise asagida persist edilir. Idempotent (2. cagri no-op).
+    try { _repaired = window.normalizeBeforeSave ? window.normalizeBeforeSave() : 0; }
+    catch(e) { console.warn('[integrity] yukleme onarim hatasi:', e); }
     // Sadece Firebase bos ise localStorage verisini yukle (migration)
     // Firebase hatali iken localStorage ile ezme - DATA LOSS onlendi
     if (!fbHadData && window._fbSave) { try { await window._fbSave(enc); } catch(e) {} }
   } catch(e) {
     throw new Error('decrypt_failed');
   }
-  window.Store.dirty = _idxCleaned;  // Temizlik olduysa kaydet (true), yoksa temiz (false)
-  if (_idxCleaned && window.saveSecure) window.saveSecure();
+  window.Store.dirty = _repaired > 0;  // WO-03: load-time onarim olduysa persist et
+  if (_repaired > 0 && window.saveSecure) window.saveSecure();
   const r = localStorage.getItem('v5-rates-' + window.Store.planId) || localStorage.getItem('v5-rates');
   if (r) try { Object.assign(window.rates, JSON.parse(r)); } catch(e) {}
 }
