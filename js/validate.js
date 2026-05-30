@@ -1,32 +1,68 @@
-// js/validate.js — iskenderpay (v1.0)
-// pays/creds/persons schema validation. Hata yakalanir ama save iptal EDILMEZ
-// (forensic icin sadece console.error/warn). v8.135'te persist.js'ten ayristirildi.
-// Genisletme adayi (v9.0): notes/paidItems/rehber/hist/actLog icin ayri validator'lar.
+// js/validate.js — iskenderpay (v2.0 — WO-01 karantina)
+// pays/creds/persons SEMA dogrulamasi + KARANTINA. Onceki surum (v1.0) sadece
+// console.error/warn uretip kaydi yine de yazardi -> sema-bozuk tek kayit sifrelenip
+// localStorage + Firestore'a yazilir ve TUM cihazlara sync'lenirdi (KRITIK veri kirliligi).
+// v2.0: gecersiz kayit yazma kumesinden CIKARILIR (kaydedilmez), gecerliler KORUNUR.
+// Atilan kayitlar loglanir; KARANTINAYA alinan kayit SAYISI dondurulur (0 = temiz).
+//
+// _doSave'de normalizeBeforeSave (onarim/backfill) SONRASI, encrypt ONCESI cagrilir;
+// boylece once onarilabilenleri onar, kalan onarilamaz/gecersizleri karantinaya al.
+//
+// NOT: karantina, window[key] = kept ile yapilir. Uygulamada bu store.js'in SESSIZ
+// setter'ina (_setSilent: ref + invalidate + dirty, save TETIKLEMEZ) duser -> _doSave
+// icinde save dongusu olusmaz. Store.replace() KULLANILMAZ (o _autoSave tetikler).
+// validate.js Store'a bagimli DEGILDIR (testte duz window.* ile de calisir).
+
+function _isValidPay(p) {
+  return !!p
+    && p.id !== undefined && p.id !== null
+    && typeof p.name === 'string'
+    && typeof p.amount === 'number' && !isNaN(p.amount)
+    && typeof p.date === 'string'
+    && !!p.groupId;
+}
+function _isValidCred(c) {
+  return !!c
+    && c.id !== undefined && c.id !== null
+    && typeof c.name === 'string'
+    && typeof c.monthly === 'number' && !isNaN(c.monthly);
+}
+function _isValidPerson(pr) {
+  return !!pr && !!pr.id && typeof pr.name === 'string';
+}
 
 function validateBeforeSave() {
-  let errN = 0;
+  let quarantined = 0;
   try {
-    (window.pays||[]).forEach((p,i) => {
-      if (p.id === undefined || p.id === null)          { console.error('[integrity] pays['+i+'] id yok', p); errN++; }
-      if (typeof p.name !== 'string')                    { console.error('[integrity] pays['+i+'] name string degil', p); errN++; }
-      if (typeof p.amount !== 'number' || isNaN(p.amount)){ console.error('[integrity] pays['+i+'] amount gecersiz', p); errN++; }
-      if (typeof p.date !== 'string')                    { console.error('[integrity] pays['+i+'] date string degil', p); errN++; }
-      if (!p.groupId)                                    { console.error('[integrity] pays['+i+'] groupId yok', p); errN++; }
-    });
-    (window.creds||[]).forEach((c,i) => {
-      if (c.id === undefined || c.id === null)             { console.error('[integrity] creds['+i+'] id yok', c); errN++; }
-      if (typeof c.name !== 'string')                       { console.error('[integrity] creds['+i+'] name string degil', c); errN++; }
-      if (typeof c.monthly !== 'number' || isNaN(c.monthly)){ console.error('[integrity] creds['+i+'] amount(monthly) gecersiz', c); errN++; }
-    });
-    (window.persons||[]).forEach((pr,i) => {
-      if (!pr.id)                       { console.error('[integrity] persons['+i+'] id yok', pr); errN++; }
-      if (typeof pr.name !== 'string')  { console.error('[integrity] persons['+i+'] name string degil', pr); errN++; }
-    });
-    if (errN > 0) console.warn('[integrity] toplam '+errN+' veri hatasi tespit edildi — kayit yine de yapiliyor');
-  } catch(e) {
-    console.warn('[integrity] check hatasi:', e);
+    const checks = [
+      ['pays',    _isValidPay],
+      ['creds',   _isValidCred],
+      ['persons', _isValidPerson],
+    ];
+    for (const [key, isValid] of checks) {
+      const arr = window[key];
+      if (!Array.isArray(arr)) continue;
+      const kept = [];
+      for (let i = 0; i < arr.length; i++) {
+        if (isValid(arr[i])) {
+          kept.push(arr[i]);
+        } else {
+          quarantined++;
+          console.error('[validate] KARANTINA ' + key + '[' + i + '] sema-bozuk -> kaydedilmedi', arr[i]);
+        }
+      }
+      // Sadece degisiklik varsa yaz (gereksiz invalidate/dirty olmasin).
+      if (kept.length !== arr.length) {
+        window[key] = kept;   // store.js sessiz setter (_setSilent); test ortaminda duz atama
+      }
+    }
+    if (quarantined > 0) {
+      console.warn('[validate] toplam ' + quarantined + ' kayit KARANTINAYA alindi (yazilmadi)');
+    }
+  } catch (e) {
+    console.warn('[validate] karantina hatasi:', e);
   }
-  return errN;
+  return quarantined;
 }
 
 window.validateBeforeSave = validateBeforeSave;

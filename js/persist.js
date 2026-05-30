@@ -19,9 +19,11 @@ async function saveSecure() {
 async function _doSave() {
   window.Store.saveTimer = null;
   if (!Session.hasKey()) return;
-  // Normalize (mutation) → integrity.js v8.153; Validate (read-only) → validate.js v8.135
+  // Normalize (onarim/backfill) → integrity.js; Validate (KARANTINA) → validate.js v2.0
+  // (WO-01): once onarilabilenleri onar, sonra kalan sema-bozuk kayitlari yazma
+  // kumesinden CIKAR. Karantina edilen kayit sayisi audit'e yazilir.
   window.normalizeBeforeSave && window.normalizeBeforeSave();
-  window.validateBeforeSave && window.validateBeforeSave();
+  const _quarantined = window.validateBeforeSave ? window.validateBeforeSave() : 0;
   const data = {
     pays: window.pays, creds: window.creds, hist: window.hist,
     persons: window.persons, notes: window.notes, paidItems: window.paidItems,
@@ -71,7 +73,8 @@ async function _doSave() {
         pays: (data.pays||[]).length, creds: (data.creds||[]).length, hist: (data.hist||[]).length,
         persons: (data.persons||[]).length, notes: (data.notes||[]).length,
         paidItems: (data.paidItems||[]).length, rehber: (data.rehber||[]).length, actLog: (data.actLog||[]).length
-      }
+      },
+      quarantined: _quarantined
     });
   } catch(e) {}
 }
