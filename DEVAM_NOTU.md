@@ -1,3 +1,23 @@
+## 2026-05-29 — STABILIZASYON: v8.197-stable baseline (saha-test 7/7 + v8.195/196/197 PASS)
+Bu oturumdaki TUM isler saha-test PASS. Stabil baseline ilan edildi.
+
+SAHA-TEST PASS OZETI:
+- v8.187-193 sprint: 7/7 adim PASS (session, sekme/olu-kod, Log odeme-duzenle, Log silinenler, kisi ozet etiket, arama FX, bos/odenmis ay).
+- v8.194: cift-v kozmetik (Ayarlar surum metni) — canli dogrulandi.
+- v8.195: Pass 4 actLog groupId backfill — BERKAY BIRINCI DV panelinde AKTIVITE GECMISI gorundu (ACIK HATA #3 kapandi).
+- v8.196: (A) backfill uid+planId guard — konsolda "[backfill] atandi" tekrari yok; (B) ⚠️ gostergesi kaldirildi — Plan matrisi temiz (ACIK HATA #5).
+- v8.197: Kisiler'de olmayan isimle odeme/kredi kaydi SERT ENGEL — test PASS (kayitsiz isim reddediliyor, eklenince geciyor).
+
+BASELINE: v8.197 / 20260529-37 — TAM YESIL. Aktif acik kod isi YOK.
+
+SONRAKI OTURUM — ILK IS: #7 Otomatik test altyapisi (stack analizi raporunun gercekten gecerli tek yuksek-getirili maddesi).
+Hedef: iskenderpay'e vitest kur + hesap.js birim testleri (kalan / odenen / toTRY / trend / Hesap.kalan). Bu oturumda hesap.js'te bulunan tutarsizliklar (v8.170 kalan tek-kaynak, v8.192/193 FX gosterim) tam da test yazilmasi gereken alanlar — regresyon kalkani.
+NOT (stack raporu degerlendirmesi): rapordaki #1 merkezi state / #6 audit log / #4 service layer / #10 CI-CD ZATEN VAR; #3 "rol bazli" ve #9 backend API uygulamaya yersiz/ters (tek-kullanici, E2E sifreli, offline-first). Gercek bosluk: #7 (test), ikincil #2 (sync conflict, hafif) ve #3'u "kendi-uid Firestore kurali" olarak (rol degil) bir kez dogrulamak.
+
+OTURUM HIJYENI: Baseline yesil -> YENI SOHBET. Yeni sohbette once DEVAM_NOTU.md + CLAUDE.md oku, #7 ile basla.
+
+---
+
 ## 2026-05-29 — Kisiler'de olmayan isimle kayit SERT ENGEL (v8.196 -> v8.197) — KOD TAMAM, saha-test BEKLIYOR
 KULLANICI ISTEGI: "isim listesinde olmayan birinin kaydinin yapilmasini istemiyorum." Pasif uyari (v8.137 ⚠️, v8.196'da kaldirilmisti) + savePay soft toast kacirilabiliyordu -> sert engele cevrildi.
 FIX (ui-pay.js, savePay + saveCred): _resolvePersonId null donerse (isim Kisiler'de yok) kayit REDDEDILIR — alert "once Kisiler'e ekleyin" + return.
@@ -375,7 +395,8 @@ Detaylı satır-satır CLAUDE.md'de.
 
 | Tag | Commit | Notlar |
 |---|---|---|
-| **`v8.166-stable`** _(öneri)_ | `c08ddd7` | En zengin baseline. UX dalgası (boş ay gizleme + kişi özet + cred→DV + delegation) v8.160 üzerinde. |
+| **`v8.197-stable`** _(öneri)_ | `(push sonrası tag)` | Bu oturum tam yeşil: sprint v8.187-193 + Pass4 groupId backfill + backfill guard + ⚠️ kaldırma + kayıt sert engel. Tüm saha-test PASS. |
+| **`v8.166-stable`** _(önceki)_ | `c08ddd7` | En zengin baseline. UX dalgası (boş ay gizleme + kişi özet + cred→DV + delegation) v8.160 üzerinde. |
 | `v8.160-stable` _(önceki)_ | `40d8fc8` | Üç filter (date+person+group) + DV kişi+history + kredi paneli olgun |
 | `v8.150-stable` | `19f0b90` | ui-plan.js modülerleştirme + actLog backfill Pass 3 |
 | `v8.147-stable` | `41a938f` | Log UI olgunlaşması + ui-plan personId genişlemesi |

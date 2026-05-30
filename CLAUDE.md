@@ -21,7 +21,7 @@ _Son güncelleme: 2026-05-29_
 
 ---
 
-## Mevcut Durum (29 Mayıs 2026) — v8.197 / 20260529-37
+## Mevcut Durum (29 Mayıs 2026) — v8.197 / 20260529-37 — STABIL BASELINE (v8.197-stable, tüm saha-test PASS)
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.
 
