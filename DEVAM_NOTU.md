@@ -1,4 +1,6 @@
-## 2026-05-30 — #2 SYNC CAKISMA (hafif): cakisma bekcisi + odak/online pull (v8.198 -> v8.199) — KOD TAMAM, saha-test BEKLIYOR
+## 2026-05-30 — #2 SYNC CAKISMA (hafif): cakisma bekcisi + odak/online pull (v8.198 -> v8.199) — SAHA-TEST PASS, baseline v8.199-stable
+SAHA-TEST SONUCU (30 May, gizli sekme): 1 regresyon (tek cihaz normal kayit, false-toast yok) PASS; 2 odak-pull (B'ye gecince aninda cekti) PASS; 3 cakisma uyarisi (konsol `Store.lastUpdated=1` -> bayat baseline -> kaydet -> SARI UYARI SERIDI cikti + eklenen satir buluttaki haline dondu) PASS; 4 offline ayni `_fbSave`->conflict kod yolu (ayrica staj gerekmez). #2 KAPANDI.
+
 DEVAM_NOTU #2 (ikincil bosluk). Tam-dokuman LWW'de iki cihazda araklı düzenleme ikinci kaydedenin ilkini SESSIZCE ezmesini onler.
 
 SORUN (gunluk dil): uygulama iki bilgisayarda acik. Kaydedince TUM sifreli blob buluta gidip oradakini degistirir. Bir cihaz bayat kopyayla kaydederse digerinin (gormedigi) degisikligini ezer — habersiz veri kaybi. Ek: tA/tB farkli makine saatlerinden -> siralama saat kaymasina hassas.
@@ -25,7 +27,7 @@ VERSION: v8.199 / 20260530-02 (version.json + index.html + package.json 8.199.0)
 
 BUKET ICIN: Patch zip + duzeltilmis PS akisi (git rev-parse ile repo otomatik, & { } sarmali return calisir). Push -> Actions: Auto Tag (v8.199-20260530-02) + Tests (36/36).
 
-OTURUM HIJYENI: saha-test PASS olunca baseline v8.199 ilan -> yeni sohbet. Saha-test FAIL olursa ayni sohbette duzelt.
+OTURUM HIJYENI: saha-test PASS -> baseline v8.199-stable ilan edildi. Aktif acik kod isi YOK -> YENI SOHBET. Sonraki dusuk-oncelik: #3 "kendi-uid Firestore kurali" dogrulamasi (rol degil) — tek seferlik kontrol.
 
 ---
 
