@@ -1,6 +1,6 @@
 # iskenderpay — Devam Notu
 
-_Son güncelleme: 2026-05-30_
+_Son güncelleme: 2026-05-30 (v8.199)_
 
 ---
 
@@ -22,12 +22,13 @@ _Son güncelleme: 2026-05-30_
 
 ---
 
-## Mevcut Durum (30 Mayıs 2026) — v8.198 / 20260530-01 — TEST ALTYAPISI KURULDU (#7), 36/36 yeşil
+## Mevcut Durum (30 Mayıs 2026) — v8.199 / 20260530-02 — #2 SYNC ÇAKIŞMA (hafif) — KOD TAMAM, saha-test BEKLİYOR
 
 ### Tamamlanan (bu oturum — 30 Mayıs)
 
 | Versiyon | Build | Değişiklik |
 |---|---|---|
+| v8.199 | 20260530-02 | **#2 Sync conflict (hafif) — çakışma bekçisi + odak/online pull.** Sorun: tam-doküman LWW; iki cihazda araklı düzenleme → ikinci kaydeden ilkinin değişikliğini **sessizce eziyordu** (blob tümden değişir). **Çözüm (3 dosya):** **(A) firestore.js `_fbSave`** artık compare-and-swap: yazmadan önce uzak `updatedAt` okunur; `Store.lastUpdated` baseline'ından (>0) ileri ise **üzeri yazılmaz**, `{conflict, remote, remoteTs}` döner (mikro-yarış tek-kullanıcı için ihmal — runTransaction kapsam dışı). Normal: `{ok, updatedAt}`. **(B) persist.js `_doSave`** yapılandırılmış dönüşü işler: ok→`lastUpdated=res.updatedAt` (saat kayması-dayanıklı baseline, Date.now değil); conflict→üzeri yazma, `applyRemote(res.remote)` ile uzak veriyi yükle + `showWarnToast` "başka cihazda değişiklik, son değişikliğini tekrar yap" (sessiz kayıp yok). **(C) sync.js** `applyRemote(encData)` tek render-set kaynağı olarak çıkarıldı (decrypt+hydrate+render, dirty-guard YOK); realtime callback + conflict resolver + offline-retry hepsi onu kullanır. `_attachFocusHooks`: `visibilitychange`(visible)/`focus`/`online` → anında `_fbPoll()` (bayat-cihaz penceresini daraltır; `_fbPoll` dirty/saveTimer/_pollRunning guard'lı → güvenli). **(D) firestore.js `_fbPoll`** offline-retry kolu da conflict dönüşünü işler (çevrimdışı edit gönderilemezse uzak veriyi al + uyar). **Konflikt politikası:** uzak (görülmeyen) veri korunur, local son edit uyarıyla değişir — #3 (Yenile/Üzerine Yaz modalı) ileride istenirse. Conflict mantığı unit-test'siz (Firestore mock gerekir); 36/36 mevcut test etkilenmedi. node --check 3 dosya PASS, mojibake yok. **Saha-test gerekir** (runtime sync davranışı değişti). |
 | v8.198 | 20260530-01 | **#7 Otomatik test altyapısı kuruldu** (vitest + happy-dom, vanilla JS/ES module). **Yeni dosyalar:** `package.json` (vitest+happy-dom devDeps, `npm test`/`test:watch`), `vitest.config.js` (happy-dom env, `tests/**/*.test.js`), `tests/_helpers.js` (compat.js paritesinde gerçek `util.js` fonksiyonlarını window'a bağlar — testler stub değil GERÇEK davranışı sınar; `TEST_RATES` EUR=50/GOLD=6000), `tests/util.test.js` (15 test: `toTRY` TRY/EUR/GOLD/rate-eksik fallback, `parseLocalDate` UTC-kayması yok, `todayMidnight`, `isOD` paid/geçmiş/gelecek/bugün/partial), `tests/hesap.test.js` (21 test: **`Hesap.kalan`** 0-kırpma+partial+FX, **`toplamOzeti`** pays+cred bekleyen, **`krediler`** paid/pct/bekleyen/overdue/nextDays/done, **`trend`** FX→TRY + paid-override + pencere elemesi, **`buAyOzeti`** refDate-enjekte). **CI:** `.github/workflows/test.yml` (push+PR → node22 → install → `npm test`; auto-tag.yml dokunulmadı). `.gitignore` eklendi (node_modules). **Regresyon hedefi:** v8.170 kalan tek-kaynak + v8.192/193 FX gösterim alanları artık test korumalı (mutasyon doğrulandı: 0-kırpma kaldırılınca tam ilgili test kırıldı). **Pre-push yok** (sandbox-only kuralı → CI bağlama). Runtime davranışı değişmedi; yalnız test + version sabitleri. SW cache bump gerekmez. |
 
 Temel modüller (`state.js`, `util.js`, `crypto.js`, `firestore.js`, `persist.js`, `app.js`, `plan.js`, `sync.js` vb.) tamamlandı ve deploy edildi. `index.html` artık tüm mantığı `js/` klasöründen import ediyor.

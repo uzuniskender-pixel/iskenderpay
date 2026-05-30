@@ -32,9 +32,21 @@ async function _doSave() {
   localStorage.setItem('v5-rates-' + window.Store.planId, JSON.stringify(window.rates));
   if (window._fbSave) {
     try {
-      await window._fbSave(enc);
-      window.Store.lastUpdated = Date.now();
-      window.Store.fbSyncNeeded = false;
+      const res = await window._fbSave(enc);
+      if (res && res.conflict) {
+        // v8.199: baska cihaz bizden sonra yazmis. Uzeri YAZMA — uzak veriyi yukle + uyar.
+        // Bu cihazda kaydedilmemis son degisiklik(ler) uzak veriyle degisir (sessiz kayip yok: uyari verilir).
+        window.Store.lastUpdated = res.remoteTs;   // baseline = uzak gercek
+        window.Store.fbSyncNeeded = false;          // bayat blob'u poll'da push etme
+        if (res.remote && window.applyRemote) {
+          try { await window.applyRemote(res.remote); } catch(e) { console.warn('Cakisma uzak uygulama hatasi:', e); }
+        }
+        window.setSyncDot && window.setSyncDot('synced');
+        window.showWarnToast && window.showWarnToast('Baska cihazda degisiklik yapilmis — en guncel veri yuklendi. Son degisikligini tekrar yapman gerekebilir.');
+      } else if (res && res.ok) {
+        window.Store.lastUpdated = res.updatedAt;   // saat kaymasi-dayanikli baseline (Date.now degil)
+        window.Store.fbSyncNeeded = false;
+      }
     } catch(e) {
       console.warn('Firebase kayıt hatası:', e);
       window.Store.fbSyncNeeded = true;  // Bir sonraki başarılı poll'da yeniden dene

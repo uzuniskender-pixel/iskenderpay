@@ -19,22 +19,47 @@ function showSyncToast() {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// v8.199: uzak veriyi uygula (decrypt + hydrate + render). Dirty guard YOK —
+// cagiran taraf (poll callback dirty'yi onceden eler; cakisma cozumu kendi
+// akisini yonetir). Tek render-set kaynagi: hem realtime sync hem cakisma
+// cozumu (persist.js/firestore.js) bunu kullanir -> render listesi tek yerde.
+async function applyRemote(encData) {
+  if (!Session.hasKey()) return false;
+  const d = await Session.decrypt(encData);
+  window.Store.hydrate(d);   // toplu sessiz atama, saveSecure tetiklenmez
+  if (window.render)        window.render();
+  if (window.renderPersons) window.renderPersons();
+  if (window.renderNotes)   window.renderNotes();
+  if (window.renderRhb)     window.renderRhb();
+  window.renderActLog && window.renderActLog();
+  return true;
+}
+
+let _focusHooksAttached = false;
+function _attachFocusHooks() {
+  if (_focusHooksAttached) return;
+  _focusHooksAttached = true;
+  // v8.199: pencereye donunce / online olunca ANINDA pull -> "bayat cihaz"
+  // penceresini daraltir (30sn poll'u beklemeden en guncel veriyi ceker).
+  // _fbPoll zaten dirty/saveTimer/_pollRunning guard'larini uygular -> guvenli.
+  const pull = () => { if (window._fbPoll) window._fbPoll(); };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pull();
+  });
+  window.addEventListener('focus', pull);
+  window.addEventListener('online', pull);
+}
+
 async function startRealtimeSync() {
   if (!window._fbStartListen) return;
+  _attachFocusHooks();
   setSyncDot('connecting');
   window.Store.lastUpdated = 0;
   window._fbStartListen(async encData => {
     if (!Session.hasKey()) return;
     if (window.Store.dirty) return;  // Bekleyen degisiklik var — sync ezmesin
     try {
-      const d = await Session.decrypt(encData);
-      // Toplu sessiz atama — remote'tan gelen veri, saveSecure tetiklenmez
-      window.Store.hydrate(d);
-      if (window.render)       window.render();
-      if (window.renderPersons)window.renderPersons();
-      if (window.renderNotes)  window.renderNotes();
-      if (window.renderRhb)    window.renderRhb();
-      window.renderActLog && window.renderActLog();
+      await applyRemote(encData);
       setSyncDot('synced');
       showSyncToast();
     } catch(e) { console.warn('Sync decrypt hatasi:', e); }
@@ -46,3 +71,4 @@ async function startRealtimeSync() {
 window.setSyncDot         = setSyncDot;
 window.showSyncToast      = showSyncToast;
 window.startRealtimeSync = startRealtimeSync;
+window.applyRemote        = applyRemote;

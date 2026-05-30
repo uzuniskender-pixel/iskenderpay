@@ -1,3 +1,34 @@
+## 2026-05-30 — #2 SYNC CAKISMA (hafif): cakisma bekcisi + odak/online pull (v8.198 -> v8.199) — KOD TAMAM, saha-test BEKLIYOR
+DEVAM_NOTU #2 (ikincil bosluk). Tam-dokuman LWW'de iki cihazda araklı düzenleme ikinci kaydedenin ilkini SESSIZCE ezmesini onler.
+
+SORUN (gunluk dil): uygulama iki bilgisayarda acik. Kaydedince TUM sifreli blob buluta gidip oradakini degistirir. Bir cihaz bayat kopyayla kaydederse digerinin (gormedigi) degisikligini ezer — habersiz veri kaybi. Ek: tA/tB farkli makine saatlerinden -> siralama saat kaymasina hassas.
+
+KARAR: Kullanici "sen sec / basit anlat" dedi -> Secenek #2 secildi (tazeleme + bekci). #1 (sadece pull) nadir es-zamanli kaybi yakalamaz; #3 (Yenile/Uzerine Yaz modali) tek-kullanici/iki-makine icin fazla. #2 = gundelik koruma + hicbir seyi habersiz atmama.
+
+DEGISIKLIK (3 dosya, tek render-set kaynagi):
+- firestore.js `_fbSave` = compare-and-swap. base=Store.lastUpdated (en son bildigimiz UZAK updatedAt). base>0 ve uzak updatedAt > base ise baska cihaz bizden sonra yazmis -> {conflict, remote, remoteTs} (YAZMAZ). Degilse setDoc + {ok, updatedAt}. fbUid yoksa {skipped}. Baseline ARTIK uzak doc'un updatedAt'i (Date.now degil) -> saat kaymasi-dayanikli (ayni alanin degeri karsilastirilir). Read-then-write mikro-yarisi tek-kullanici icin ihmal (tam atomiklik runTransaction; "hafif" kapsam disi). Okuma hata verirse eski davranisa don (yine yaz; veri kaybetme).
+- persist.js `_doSave` yapilandirilmis donusu isler: ok -> lastUpdated=res.updatedAt (skew-safe), fbSyncNeeded=false. conflict -> uzeri YAZMA, lastUpdated=res.remoteTs, fbSyncNeeded=false (bayat blob poll'da push edilmez), `applyRemote(res.remote)` ile uzak veriyi yukle + setSyncDot('synced') + showWarnToast("baska cihazda degisiklik, son degisikligini tekrar yap"). hydrate silent + dirty finally'de temizlenir -> discard edilen local edit tekrar push edilmez.
+- sync.js: `applyRemote(encData)` cikarildi = decrypt+hydrate+render(render/persons/notes/rhb/actLog), DIRTY GUARD YOK (cagiran yonetir). realtime callback artik onu kullanir (dirty/hasKey guard'lari callback'te kaldi). `_attachFocusHooks` (modul-flag, bir kez): visibilitychange(visible)/window focus/online -> aninda _fbPoll(). _fbPoll zaten dirty/saveTimer/_pollRunning guard'li -> odak-pull guvenli, ucustaki local edit'i ezmez. window.applyRemote export.
+- firestore.js `_fbPoll` offline-retry (fbSyncNeeded) kolu da conflict donusunu isler: cevrimdisi edit gonderilemezse uzak veriyi al (applyRemote) + uyar; bayat blob'u push etme.
+
+POLITIKA: Cakismada UZAK (gorulmeyen) veri korunur; bu cihazdaki kaydedilmemis son edit uyariyla degisir. "Local kazansin" istenirse #3 (modal) ileride. Tradeoff DEVAM'a not edildi.
+
+DOGRULAMA (sandbox): node --check sync/firestore/persist PASS, mojibake yok. npm test 36/36 (mevcut util/hesap testleri etkilenmedi). Conflict mantigi unit-test'siz — Firestore getDoc/setDoc mock gerektirir; istenirse pure `shouldBlock(remoteTs, base)` cikarilip test edilebilir (simdilik atlandi, hafif tutuldu).
+
+SAHA-TEST (gizli sekme + cache temizle; iki sekme/cihaz gerekir):
+1. (regresyon) Tek cihaz: odeme/kredi ekle-duzenle -> normal kaydeder, sync dot calisir, cakisma toast'i CIKMAZ.
+2. (odak-pull) A ve B sekmesi acik+senkron. A'da bir kayit ekle, kaydet (sync dot 'synced'). B sekmesine GEC (focus) -> B 30sn beklemeden ~birkac sn icinde A'nin degisikligini cekmeli (pull on focus).
+3. (cakisma) A ve B acik+senkron. A'da bir kayit ekle, kaydet. B'de (A'nin yazisini B poll etmeden once) farkli bir kayit ekle -> B'nin kaydi CAKISMA tespit etmeli: uzeri yazMAMALI, A'nin verisini yuklemeli + sari uyari toast ("baska cihazda degisiklik..."). A'nin eklemesi B'de gorunmeli; B'nin son edit'i kaybolur (toast ile bildirilir, sessiz degil).
+4. (offline) B'yi cevrimdisi yap, bir kayit ekle (fbSyncNeeded olur). A'da baska kayit ekle+kaydet. B'yi online yap -> B'nin offline edit'i gonderilemez (cakisma): A'nin verisi yuklenir + uyari. Veri kaybi yok (A korunur).
+
+VERSION: v8.199 / 20260530-02 (version.json + index.html + package.json 8.199.0). SW cache bump: js network-first -> GEREKMEZ.
+
+BUKET ICIN: Patch zip + duzeltilmis PS akisi (git rev-parse ile repo otomatik, & { } sarmali return calisir). Push -> Actions: Auto Tag (v8.199-20260530-02) + Tests (36/36).
+
+OTURUM HIJYENI: saha-test PASS olunca baseline v8.199 ilan -> yeni sohbet. Saha-test FAIL olursa ayni sohbette duzelt.
+
+---
+
 ## 2026-05-30 — #7 OTOMATIK TEST ALTYAPISI KURULDU (v8.197 -> v8.198) — 36/36 YESIL (sandbox)
 DEVAM_NOTU #7 (stack raporunun tek yuksek-getirili maddesi) tamam. iskenderpay'e vitest kuruldu, hesap.js + util.js birim testleri yazildi.
 
