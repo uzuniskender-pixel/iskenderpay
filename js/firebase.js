@@ -7,6 +7,7 @@ import { getAuth, GoogleAuthProvider,
          getRedirectResult, onAuthStateChanged,
          signOut }                                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js';
 import { Session } from './session.js';
 
 const firebaseConfig = {
@@ -20,6 +21,20 @@ const firebaseConfig = {
 };
 
 const _app    = initializeApp(firebaseConfig);
+
+// WO-13: App Check (reCAPTCHA v3) — yalniz gercek uygulama orneginden gelen istekler
+// Firebase'e ulasir (bot/abuse + kota-drenaji savunmasi). Site key PUBLIC; secret Google'da.
+// Enforcement Console'da (Firestore -> App Check): once Monitor, sonra Enforce.
+// try/catch: reCAPTCHA online yuklenir -> offline boot'ta hata uygulamayi BOZMASIN.
+try {
+  initializeAppCheck(_app, {
+    provider: new ReCaptchaV3Provider('6Lcx2QUtAAAAAAZVUMoAESSOttnWYmaBWl2XcXR7'),
+    isTokenAutoRefreshEnabled: true
+  });
+} catch (e) {
+  console.warn('App Check init basarisiz (offline olabilir):', e && (e.message || e));
+}
+
 const _auth   = getAuth(_app);
 const _db     = getFirestore(_app);
 
