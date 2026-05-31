@@ -94,7 +94,21 @@ async function doLogin() {
     cryptoKey: await window.importDataKey(unwrapped.rawBytes),
     plainPin:  val
   });
-  window._saveWrappedKeyLocal(wrappedB64);
+  // WO-04: eski 100k anahtar login'de sessizce 600k'ya yukseltilir (unwrap needsRewrap sinyali).
+  // chPass ile ayni re-wrap deseni; basarisiz olursa login DEVAM eder (opsiyonel sertlestirme).
+  if (unwrapped.needsRewrap) {
+    try {
+      const upgraded = await wrapDataKey(unwrapped.rawBytes, val, pinSalt);
+      window._saveWrappedKeyLocal(upgraded);
+      await window._saveWrappedKeyFirebase(upgraded);
+      console.log('[WO-04] wrappedKey 100k -> 600k yukseltildi (login)');
+    } catch (e) {
+      console.warn('[WO-04] login re-wrap hatasi (login devam):', e);
+      window._saveWrappedKeyLocal(wrappedB64);
+    }
+  } else {
+    window._saveWrappedKeyLocal(wrappedB64);
+  }
 
   try {
     await window.loadSecure();
