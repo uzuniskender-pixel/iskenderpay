@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.203: audit.js eklendi — Katman 3 write-audit log)
 
-const CACHE = 'ip-static-e74c117';
+const CACHE = 'ip-static-b1d9904';
 const STATIC = [
   './',
   './index.html',
