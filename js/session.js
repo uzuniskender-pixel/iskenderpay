@@ -20,6 +20,7 @@
 // da NON-EXTRACTABLE'dir (auth-pin.js importDataKey ile re-import eder).
 
 import { encryptData, decryptData } from './crypto.js';
+import { xDec } from './data.js';
 
 // ── CLOSURE-PRIVATE STATE ───────────────────────────────────────────────────
 // Bu degiskenlere modul disindan HICBIR referans yoktur.
@@ -59,7 +60,7 @@ export const Session = {
   // Closure-ici PIN kullanir; cleartext PIN disari hic cikmaz.
   decryptBackup(b64data) {
     if (!_plainPin) return null;
-    try { return window.xDec(b64data, _plainPin); } catch(e) { return null; }
+    try { return xDec(b64data, _plainPin); } catch(e) { return null; }
   },
 
   // ── TEMIZLE (logout / lock) ─────────────────────────────────────────────

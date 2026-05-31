@@ -1,6 +1,8 @@
 // js/backup.js — iskenderpay
 // Yedek al/geri yükle, CSV export
 
+import { xEnc } from './data.js';
+
 function doBackup() {
   document.getElementById('BPP').value = '';
   document.getElementById('BPERR').textContent = '';
@@ -20,7 +22,7 @@ async function confirmBackup() {
   }
   window.closeMov('BPM');
   const data = {pays:window.pays||[], creds:window.creds||[], hist:window.hist||[], persons:window.persons||[], notes:window.notes||[], paidItems:window.paidItems||[], rehber:window.rehber||[], actLog:window.actLog||[], at:new Date().toISOString(), v:'7.0'};
-  const enc = window.xEnc(JSON.stringify(data), entered);
+  const enc = xEnc(JSON.stringify(data), entered);
   const payload = JSON.stringify({enc:true, data:enc, v:'7.0', hint:'odeme-takvimi-backup'});
   const blob = new Blob([payload], {type:'application/json;charset=utf-8'});
   const url = URL.createObjectURL(blob);

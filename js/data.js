@@ -5,7 +5,7 @@
 // ── YEDEK UYUMLULUK ───────────────────────────────────────────────────────────
 // Yedek al/geri yükle (app.js confirmBackup + readRF tarafından kullanılır)
 
-function xDec(e, p) {
+export function xDec(e, p) {
   try {
     const t = decodeURIComponent(escape(atob(e)));
     let r = '';
@@ -14,7 +14,7 @@ function xDec(e, p) {
   } catch(e) { return null; }
 }
 
-function xEnc(t, p) {
+export function xEnc(t, p) {
   let r = '';
   for (let i = 0; i < t.length; i++) r += String.fromCharCode(t.charCodeAt(i) ^ p.charCodeAt(i % p.length));
   return btoa(unescape(encodeURIComponent(r)));
@@ -54,7 +54,5 @@ window.invalidateLookups = () => window.Store.invalidateLookups();
 window.findPayById       = (id)  => window.Store.findPayById(id);
 window.findPaysByGroup   = (gid) => window.Store.findPaysByGroup(gid);
 window.findCredById      = (id)  => window.Store.findCredById(id);
-window.xDec              = xDec;
-window.xEnc              = xEnc;
 window.decodeBackupPayload = decodeBackupPayload;   // WO-16
 window._looksLikeBackup    = _looksLikeBackup;       // WO-16
