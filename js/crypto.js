@@ -11,8 +11,8 @@ export async function importDataKey(rawBytes) {
 // KILITLENME YOK: yeni anahtarlar 600k ile sarilir; unwrap ONCE 600k dener, eski
 // (100k ile sarilmis) anahtarlar icin 100k'ya FALLBACK eder -> hicbir anahtar kilitlenmez.
 // Eski anahtar bir sonraki PIN degisiminde (chPass -> wrapDataKey) otomatik 600k'ya yukselir;
-// login-aninda re-wrap auth-pin.js#doLogin'e EKLENDI (WO-04, 2026-05-31): unwrap needsRewrap=true
-// (eski 100k anahtar) ise login sirasinda ayni PIN'le 600k'ya sessizce yukseltilir.
+// WO-04 (31 May): login-aninda re-wrap auth-pin.js#doLogin'e EKLENDI (5273b44) — unwrap needsRewrap=true ise
+// eski 100k anahtar ayni PIN'le 600k'ya yukseltilip kaydedilir (re-wrap fail login'i bloklamaz).
 const PBKDF2_ITER = 600000;         // yeni standart
 const PBKDF2_ITER_LEGACY = 100000;  // eski anahtarlar icin geriye-donuk fallback
 
