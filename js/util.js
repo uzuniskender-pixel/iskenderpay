@@ -69,7 +69,7 @@ export function todayMidnight() {
 
 // ── Ödeme durum yardımcıları ─────────────────────────────────────────────────
 export function isOD(p) {
-  return (p.status || 'pending') !== 'paid' && window.parseLocalDate(p.date) < window.todayMidnight();
+  return (p.status || 'pending') !== 'paid' && parseLocalDate(p.date) < todayMidnight();
 }
 
 export function sCls(s, over) {

@@ -13,6 +13,8 @@
 //   Hesap._baseOf(name)               -> sondaki sayiyi soyer ("QNB 1" -> "QNB")
 //   Hesap._displayNames(mx, keys?)    -> { rawKey: displayName } haritasi
 
+import { todayMidnight } from './util.js';
+
 function _all() {
   if (typeof window.getAllItems === 'function') return window.getAllItems();
   const credPays = [];
@@ -164,7 +166,7 @@ export const Hesap = {
   krediler() {
     const mx = _mx();
     const dnMap = _displayNames(mx);
-    const today = window.todayMidnight ? window.todayMidnight() : (() => { const t = new Date(); t.setHours(0,0,0,0); return t; })();
+    const today = todayMidnight();
     return (window.creds || []).map(cr => {
       const credKey = 'cred_' + cr.id;
       const dispName = dnMap[credKey] || _baseOf(cr.name);

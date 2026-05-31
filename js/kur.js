@@ -1,6 +1,8 @@
 // js/kur.js — iskenderpay
 // Kur çekme, kur bar render, sıradaki ödeme
 
+import { todayMidnight } from './util.js';
+
 async function fetchRates(force=false) {
   if (!window.rates) window.rates = {EUR:null, USD:null, GOLD:null};
   const s = localStorage.getItem('v5-rates-'+window.Store.planId) || localStorage.getItem('v5-rates');
@@ -74,7 +76,7 @@ function saveRates() {
 function renderSiradaki() {
   const el = document.getElementById('SIRADAKI');
   if (!el || !window.pays) return;
-  const today = todayMidnight ? window.todayMidnight() : new Date();
+  const today = todayMidnight();
   const bekleyenler = (window.pays||[])
     .filter(p => (p.status||'pending') !== 'paid' && window.parseLocalDate(p.date) >= today)
     .sort((a,b) => window.parseLocalDate(a.date) - window.parseLocalDate(b.date));

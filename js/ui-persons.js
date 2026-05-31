@@ -3,6 +3,8 @@
 // Event delegation (v8.166): PRL (kişi kartı + Düzenle/Sil)
 // renderHist + HL delegation (v8.188): T4 sekmesi kaldirildi, defter Log ledger'inda
 
+import { todayMidnight } from './util.js';
+
 let _prlHandlersAttached = false;
 
 function renderPersons() {
@@ -111,7 +113,7 @@ function delPerson(i) {
 // Öncelik: personId match > legacy name match (personId yoksa).
 // Bekleyen tanımı: tüm aktif (paid değil) borç; gecikmiş alt-küme ayrı raporlanır.
 function _buildPersonSummary(personId, personName) {
-  const today = window.todayMidnight ? window.todayMidnight() : (() => { const t=new Date(); t.setHours(0,0,0,0); return t; })();
+  const today = todayMidnight();
   // v8.167: çoklu grup + kredi fix.
   //  (1) İsim eşleşmesi taban-isim üzerinden (suffix soyulur) → "QNB 1"/"QNB (Kira)" gibi
   //      legacy/disambigue satırlar da yakalanır (eski: tam eşleşme, suffix'liler kaçıyordu).

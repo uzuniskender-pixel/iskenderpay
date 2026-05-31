@@ -2,6 +2,8 @@
 // Veri toplama (getAllItems, buildMx), ana matris render'ı, hafta widget'ı,
 // store:change event listener. ui-plan.js'ten v8.150'de ayrıştırıldı.
 
+import { todayMidnight } from './util.js';
+
 // ── DATA / HESAPLAMA ─────────────────────────
 function getAllItems() {
   const credPays = [];
@@ -80,7 +82,7 @@ function render() {
   }
 
   // 7 gün içi yaklaşan ödemeleri hesapla
-  const today0 = window.todayMidnight();
+  const today0 = todayMidnight();
   const soon7 = new Date(today0.getTime() + 7*24*60*60*1000);
   const yaklaşanN = all.filter(p => {
     if((p.status||'pending')==='paid') return false;
@@ -190,7 +192,7 @@ function render() {
 function renderGecWidget(all) {
   const el = document.getElementById('HAFTA');
   if (!el) return null; // HAFTA elementini paylaşıyoruz, gecikmiş önce render edilecek
-  const today = window.todayMidnight();
+  const today = todayMidnight();
   const gecikmiş = all.filter(p => {
     if ((p.status||'pending') === 'paid') return false;
     if (p._cid) return false;
@@ -202,7 +204,7 @@ function renderGecWidget(all) {
 function renderHaftaWidget(all, now, soon7) {
   const el = document.getElementById('HAFTA');
   if (!el) return;
-  const today = window.todayMidnight();
+  const today = todayMidnight();
   const soon7mid = new Date(today.getTime() + 7*24*60*60*1000);
   const yaklaşan = all.filter(p => {
     if ((p.status||'pending') === 'paid') return false;
@@ -245,7 +247,7 @@ function renderHaftaWidget(all, now, soon7) {
     const gecRows = gecList.slice(0,12).map(p => {
       const d = window.parseLocalDate(p.date);
       const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
-      const gecGun = Math.round((window.todayMidnight() - d) / 86400000);
+      const gecGun = Math.round((todayMidnight() - d) / 86400000);
       const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
       const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
       const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
