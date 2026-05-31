@@ -5,6 +5,8 @@
 // Cross-module çağrılar: window.getAllItems, window.buildMx (render.js);
 // window.editCred, window.editPay, window.updLP (ui-pay.js).
 
+import { sCls, sLbl } from './util.js';
+
 // ── DETAIL PANEL (DV) ───────────────────────
 function openRow(keyEnc) {
   const key=decodeURIComponent(keyEnc), all=window.getAllItems(), mx=window.buildMx(all);
@@ -26,8 +28,8 @@ function openRow(keyEnc) {
     h+=`<div class="drow">
       <span class="dk">${lbl}</span>
       <span style="display:flex;align-items:center;gap:8px">
-        <span class="${window.sCls(s,over)}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600">${window.fmt(c.try)}</span>
-        <span class="${window.sCls(s,over)}" style="font-size:11px">${window.sLbl(s,over)}</span>
+        <span class="${sCls(s,over)}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600">${window.fmt(c.try)}</span>
+        <span class="${sCls(s,over)}" style="font-size:11px">${sLbl(s,over)}</span>
         ${s!=='paid'?`<button class="dact da-ok" style="padding:3px 8px;font-size:11px;flex:none" onclick="markOk('${encodeURIComponent(key)}','${m}')">✓</button>`:''}
         ${s==='partial'?`<button class="dact da-part" style="padding:3px 8px;font-size:11px;flex:none" onclick="resetPartial('${encodeURIComponent(key)}','${m}')">↺</button>`:''}
         ${s!=='paid'?`<button class="dact da-part" style="padding:3px 8px;font-size:11px;flex:none" onclick="openKM('${encodeURIComponent(key)}','${m}')">½</button>`:''}
@@ -109,7 +111,7 @@ function openCell(keyEnc,month) {
   const orig=c.items.find(x=>x.currency&&x.currency!=='TRY');
   let h=`<div class="dtitle">${name}</div><div class="dsub">${lbl}</div>`;
   h+=`<div class="drow"><span class="dk">Tutar</span><span class="dv">${window.fmt(c.try)}${orig?` <span style="font-size:11px;opacity:.65">${window.fmtA(orig.amount,orig.currency)}</span>`:''}</span></div>`;
-  h+=`<div class="drow"><span class="dk">Durum</span><span class="${window.sCls(s,over)}" style="font-weight:600">${window.sLbl(s,over)}</span></div>`;
+  h+=`<div class="drow"><span class="dk">Durum</span><span class="${sCls(s,over)}" style="font-weight:600">${sLbl(s,over)}</span></div>`;
   if(s==='partial') h+=`<div class="drow"><span class="dk">Ödenen</span><span class="dv" style="color:var(--ora)">${window.fmt(c.items.reduce((a,p)=>a+(p.paid||0),0))}</span></div>`;
   c.items.forEach(p=>{if(p.date)h+=`<div class="drow"><span class="dk">Tarih</span><span class="dv" style="font-family:'Inter',sans-serif">${window.fmtD(p.date)}</span></div>`;});
   const isCreditCell = c.items.length > 0 && c.items.every(x => x._cid);

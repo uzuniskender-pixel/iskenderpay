@@ -10,8 +10,6 @@ import {
   fmtLogTime,
   todayMidnight,
   isOD,
-  sCls,
-  sLbl,
   toLocalISO,
   toTRY,
   parseLocalDate
@@ -25,8 +23,6 @@ window.fmtD        = fmtD;
 window.fmtLogTime  = fmtLogTime;
 window.todayMidnight = todayMidnight;
 window.isOD        = isOD;
-window.sCls        = sCls;
-window.sLbl        = sLbl;
 window.toLocalISO  = toLocalISO;
 window.toTRY       = (a, c) => toTRY(a, c, window.rates);
 window.parseLocalDate  = parseLocalDate;
