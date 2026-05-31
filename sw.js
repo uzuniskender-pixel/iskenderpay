@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.203: audit.js eklendi — Katman 3 write-audit log)
+// sw.js — iskenderpay PWA cache (v8.206: ./shared/date.js eklendi — Faz C @ozler/shared)
 
-const CACHE = 'ip-static-b1d9904';
+const CACHE = 'ip-static-3416a04';
 const STATIC = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const STATIC = [
   './icon-512.png',
   './manifest.json',
   './version.json',
+  './shared/date.js',
   './js/firebase.js',
   './js/store.js',
   './js/state.js',

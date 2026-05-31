@@ -30,6 +30,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-he
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 10%,rgba(192,132,252,.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(232,192,125,.05) 0%,transparent 60%);pointer-events:none;z-index:0}
 </style>
 <link rel="stylesheet" href="./app.css">
+  <!-- Faz C / Yol B: @ozler/shared (TR tarih cekirdegi) build'siz cozumu.
+       CI deploy packages/shared/date.js -> ./shared/date.js kopyalar; sw.js precache eder.
+       Import-map MODUL script'inden ONCE gelmeli. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@ozler/shared": "./shared/date.js"
+    }
+  }
+  </script>
   <script type="module">
     import './js/store.js';
     import './js/firebase.js';

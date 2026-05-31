@@ -1,6 +1,9 @@
-// js/util.js — iskenderpay (v1.0)
-// Saf yardımcı fonksiyonlar. Hiçbir dış bağımlılık yok, side-effect yok.
-// index.html'deki esc, fmt, fmtA, toTRY, parseLocalDate, sCls… buraya taşındı.
+// js/util.js — iskenderpay
+// Saf yardimci fonksiyonlar; side-effect yok. Tek dis bagimlilik: @ozler/shared
+// (TR tarih cekirdegi, Faz C / Yol B). parseLocalDate + fmtD shared'e koprulendi;
+// tarayicida @ozler/shared, index.html import-map ile ./shared/date.js'e cozulur.
+
+import { parseLocalDateTR, formatDateTR } from '@ozler/shared';
 
 // ── HTML kaçış ───────────────────────────────────────────────────────────────
 export function esc(s) {
@@ -33,8 +36,7 @@ export function toTRY(a, c, rates) {
 
 // ── Tarih yardımcıları ───────────────────────────────────────────────────────
 export function parseLocalDate(s) {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  return parseLocalDateTR(s); // @ozler/shared — yerel gece yarisi, TZ-guvenli
 }
 
 export function toLocalISO(yr, mo, day) {
@@ -42,7 +44,7 @@ export function toLocalISO(yr, mo, day) {
 }
 
 export function fmtD(s) {
-  return window.parseLocalDate(s).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  return formatDateTR(s, 'daymonth'); // @ozler/shared — "12 Mayis" / "1 Ocak"
 }
 
 export function fmtLogTime(iso) {
