@@ -2,6 +2,7 @@
 // Global arama, ayarlar sekmesi
 
 import { getKnownBuild } from './version.js';
+import { toTRY } from './util.js';
 
 function execGlobalSearch() {
   const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
@@ -13,7 +14,7 @@ function execGlobalSearch() {
     count++;
     // v8.193: Plan matrisi paritesi — TRY karsiligi ana deger + orijinal doviz kucuk rozet.
     // Eskiden ham p.amount'a duz ₺ yapistiriliyordu (38 gr altin -> "₺38", 5820 EUR -> "₺5.820").
-    const a = window.fmt(window.toTRY(p.amount, p.currency||'TRY'));
+    const a = window.fmt(toTRY(p.amount, p.currency||'TRY', window.rates));
     const orig = (p.currency && p.currency!=='TRY') ? ` <span style="opacity:.55;font-size:.78em">${window.fmtA(p.amount,p.currency)}</span>` : '';
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ffd200">
       <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(p.name)}</div>
@@ -27,7 +28,7 @@ function execGlobalSearch() {
     // v8.192: log.js/hesap.js paidOf paritesi — duzenleme p.paid'e yazilir (savePaidItem),
     // markOk her zaman paid=toTRY(amount) yazar. Eskiden ham pi.amount gosteriliyordu.
     // v8.193: orijinal doviz rozeti eklendi (Plan matrisi paritesi).
-    const tryAmt = pi.paid != null ? pi.paid : window.toTRY(pi.amount, pi.currency||'TRY');
+    const tryAmt = pi.paid != null ? pi.paid : toTRY(pi.amount, pi.currency||'TRY', window.rates);
     const a = window.fmt(tryAmt);
     const orig = (pi.currency && pi.currency!=='TRY') ? ` <span style="opacity:.55;font-size:.78em">${window.fmtA(pi.amount,pi.currency)}</span>` : '';
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #00ebc7">

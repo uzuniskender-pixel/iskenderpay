@@ -5,6 +5,8 @@
 // Cross-module çağrılar: window.getAllItems / window.buildMx (render.js),
 // window.closeDV / window.openCell (detail.js).
 
+import { toTRY } from './util.js';
+
 // ── HÜCRE CRUD ──────────────────────────────
 function addToMonth(keyEnc,month) {
   const amt=parseFloat(document.getElementById('ECA').value)||0;
@@ -39,9 +41,9 @@ function markOk(keyEnc,month) {
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.status='paid';i.paid=i.amount;}}}
-    else{const orig=window.findPayById(p.id);if(orig){orig.status='paid';orig.paid=window.toTRY(orig.amount,orig.currency||'TRY');}}
-    window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:window.toTRY(p.amount,p.currency||'TRY'), paidAt:new Date().toISOString()});
-    try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
+    else{const orig=window.findPayById(p.id);if(orig){orig.status='paid';orig.paid=toTRY(orig.amount,orig.currency||'TRY',window.rates);}}
+    window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'paid', paid:toTRY(p.amount,p.currency||'TRY',window.rates), paidAt:new Date().toISOString()});
+    try{window.addLog('paid','Ödeme yapıldı',(p.name||'')+' · ₺'+Number(toTRY(p.amount,p.currency||'TRY',window.rates)).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
   });
   window.Store.touch(); window.closeDV();
 }
@@ -55,7 +57,7 @@ function undoCell(keyEnc,month) {
     else{const orig=window.findPayById(p.id);if(orig){orig.status='pending';orig.paid=0;}}
     const pidx=_findPaidIdx(p);
     if(pidx>=0) window.Store.spliceAt('paidItems', pidx, 1);
-    try{window.addLog('plan_undo','Ödeme geri alındı',(p.name||'')+' · ₺'+Number(window.toTRY(p.amount,p.currency||'TRY')).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
+    try{window.addLog('plan_undo','Ödeme geri alındı',(p.name||'')+' · ₺'+Number(toTRY(p.amount,p.currency||'TRY',window.rates)).toLocaleString('tr-TR',{maximumFractionDigits:0}),1,{groupId:p.groupId, personId:p.personId});}catch(e){}
   });
   window.Store.touch(); window.closeDV();
 }
@@ -68,9 +70,9 @@ function doPartial() {
   const items=(mx[key]?.[month]?.items)||[];
   items.forEach(p=>{
     if(p._cid){const c=window.findCredById(p._cid);if(c){const i=c.pays.find(x=>x.idx===p._ii);if(i){i.paid=(i.paid||0)+amt;i.status=i.paid>=i.amount?'paid':'partial';}}}
-    else{const orig=window.findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=window.toTRY(orig.amount,orig.currency||'TRY')?'paid':'partial';}}
+    else{const orig=window.findPayById(p.id);if(orig){orig.paid=(orig.paid||0)+amt;orig.status=orig.paid>=toTRY(orig.amount,orig.currency||'TRY',window.rates)?'paid':'partial';}}
     const _pi=_findPaidIdx(p); const existing=_pi>=0?window.paidItems[_pi]:null;
-    if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=window.toTRY(p.amount,p.currency||'TRY')?'paid':'partial';}
+    if(existing){existing.paid=(existing.paid||0)+amt;existing.status=existing.paid>=toTRY(p.amount,p.currency||'TRY',window.rates)?'paid':'partial';}
     else{window.Store.push('paidItems', {...p, paidId:'pi_'+Date.now()+'_'+Math.random(), status:'partial', paid:amt, paidAt:new Date().toISOString()});}
   });
   window.Store.touch(); window.closeMov('KM');

@@ -2,7 +2,7 @@
 // Veri toplama (getAllItems, buildMx), ana matris render'ı, hafta widget'ı,
 // store:change event listener. ui-plan.js'ten v8.150'de ayrıştırıldı.
 
-import { todayMidnight } from './util.js';
+import { todayMidnight, toTRY } from './util.js';
 
 // ── DATA / HESAPLAMA ─────────────────────────
 function getAllItems() {
@@ -20,7 +20,7 @@ function buildMx(all) {
     if (!mx[rawKey]) mx[rawKey] = {_name:p.name};
     if (!mx[rawKey][mk]) mx[rawKey][mk] = {items:[], status:'pending', try:0};
     mx[rawKey][mk].items.push(p);
-    mx[rawKey][mk].try += window.toTRY(p.amount, p.currency||'TRY');
+    mx[rawKey][mk].try += toTRY(p.amount, p.currency||'TRY', window.rates);
   });
   // Durum hesabı düzeltme (item bazlı)
   Object.keys(mx).forEach(rk => {
@@ -222,7 +222,7 @@ function renderHaftaWidget(all, now, soon7) {
     const kalanStr = kalan === 0 ? '<span style="color:var(--danger);font-weight:700">Bugün!</span>'
       : kalan === 1 ? '<span style="color:var(--ora)">Yarın</span>'
       : `<span style="color:#fcd34d">${kalan} gün</span>`;
-    const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
+    const tryAmt = toTRY(p.amount, p.currency||'TRY', window.rates);
     const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
     const keyEnc = encodeURIComponent(rawKey);
     const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
@@ -248,7 +248,7 @@ function renderHaftaWidget(all, now, soon7) {
       const d = window.parseLocalDate(p.date);
       const gun = d.getDate(), ay = d.toLocaleDateString('tr-TR',{month:'short'});
       const gecGun = Math.round((todayMidnight() - d) / 86400000);
-      const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
+      const tryAmt = toTRY(p.amount, p.currency||'TRY', window.rates);
       const rawKey = p.groupId ? 'g_'+p.groupId : 'pay_'+String(Math.floor(Number(p.id)));
       const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
       return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(248,113,113,.08);border-radius:8px;cursor:pointer" onclick="openCell('${encodeURIComponent(rawKey)}','${mKey}')">

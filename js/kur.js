@@ -1,7 +1,7 @@
 // js/kur.js — iskenderpay
 // Kur çekme, kur bar render, sıradaki ödeme
 
-import { todayMidnight } from './util.js';
+import { todayMidnight, toTRY } from './util.js';
 
 async function fetchRates(force=false) {
   if (!window.rates) window.rates = {EUR:null, USD:null, GOLD:null};
@@ -85,7 +85,7 @@ function renderSiradaki() {
   const d = window.parseLocalDate(p.date);
   const kalan = Math.round((d - today) / 86400000);
   const kalanStr = kalan === 0 ? 'Bugün' : kalan === 1 ? 'Yarın' : kalan + ' gün';
-  const tryAmt = window.toTRY(p.amount, p.currency||'TRY');
+  const tryAmt = toTRY(p.amount, p.currency||'TRY', window.rates);
   el.style.display = '';
   el.innerHTML = `<span style="opacity:.5;font-size:10px">Sıradaki:</span> <span style="font-size:11px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle">${window.esc(p.name)}</span> <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ok)">${window.fmt(tryAmt)}</span> <span style="font-size:10px;color:var(--muted)">${kalanStr}</span>`;
 }

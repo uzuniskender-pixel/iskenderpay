@@ -13,7 +13,7 @@
 //   Hesap._baseOf(name)               -> sondaki sayiyi soyer ("QNB 1" -> "QNB")
 //   Hesap._displayNames(mx, keys?)    -> { rawKey: displayName } haritasi
 
-import { todayMidnight } from './util.js';
+import { todayMidnight, toTRY } from './util.js';
 
 function _all() {
   if (typeof window.getAllItems === 'function') return window.getAllItems();
@@ -115,7 +115,7 @@ function _displayNames(mx, keys) {
 // zaten TRY oldugundan currency'siz cagrilir. toplamOzeti / krediler /
 // _buildPersonSummary HEPSI bunu kullanir -> formul tek yerde, sapamaz.
 function kalan(amount, paid, currency) {
-  const t = currency ? window.toTRY(amount, currency) : (amount || 0);
+  const t = currency ? toTRY(amount, currency, window.rates) : (amount || 0);
   return Math.max(0, t - (paid || 0));
 }
 
@@ -134,7 +134,7 @@ export const Hesap = {
     });
     let tot = 0, ok = 0, bek = 0, gec = 0, okN = 0, bekN = 0, gecN = 0;
     buAy.forEach(p => {
-      const t = window.toTRY(p.amount, p.currency || 'TRY');
+      const t = toTRY(p.amount, p.currency || 'TRY', window.rates);
       tot += t;
       const s = p.status || 'pending';
       if (s === 'paid')        { ok += t; okN++; }
@@ -207,7 +207,7 @@ export const Hesap = {
         return d.getFullYear() === tY && d.getMonth() === tMo;
       });
       const tot = mPays.reduce((s, p) =>
-        s + (p.paid || window.toTRY(p.amount, p.currency || 'TRY')), 0);
+        s + (p.paid || toTRY(p.amount, p.currency || 'TRY', window.rates)), 0);
       out.push({
         lbl: tM.toLocaleDateString('tr-TR', { month: 'short' }),
         tot,

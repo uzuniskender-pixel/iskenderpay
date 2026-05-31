@@ -3,7 +3,7 @@
 // Event delegation (v8.166): PRL (kişi kartı + Düzenle/Sil)
 // renderHist + HL delegation (v8.188): T4 sekmesi kaldirildi, defter Log ledger'inda
 
-import { todayMidnight } from './util.js';
+import { todayMidnight, toTRY } from './util.js';
 
 let _prlHandlersAttached = false;
 
@@ -123,7 +123,7 @@ function _buildPersonSummary(personId, personName) {
   // v8.170: kalan tutar + gecikmiş tek kaynaktan (Hesap.kalan / isOD) — toplamOzeti/krediler ile birebir.
   const kalan = (window.Hesap && window.Hesap.kalan)
     ? window.Hesap.kalan
-    : ((a, pd, c) => Math.max(0, (c ? window.toTRY(a, c) : (a || 0)) - (pd || 0)));
+    : ((a, pd, c) => Math.max(0, (c ? toTRY(a, c, window.rates) : (a || 0)) - (pd || 0)));
   const isOverdue = (p) => window.isOD ? window.isOD(p) : (p.date && window.parseLocalDate(p.date) < today);
   const baseName = baseOf(personName);
   const matches = (p) => (personId && p.personId === personId) || (!p.personId && baseOf(p.name) === baseName);

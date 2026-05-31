@@ -1,6 +1,8 @@
 // js/log.js — iskenderpay
 // Aktivite logu render, filtre, sil
 
+import { toTRY } from './util.js';
+
 const LOG_ICONS = {
   plan_add:{icon:'📅',bg:'rgba(96,165,250,.15)'},
   plan_del:{icon:'🗑️',bg:'rgba(248,113,113,.15)'},
@@ -156,7 +158,7 @@ function _renderLogLedgerPaid(el) {
   // v8.189: p.paid ayarliysa onu kullan (markOk her zaman paid=toTRY(amount) yazar; savePaidItem
   // duzenlemede paid'i gunceller). Eskiden status==='paid' icin p.amount'tan yeniden hesaplaniyordu
   // -> duzenleme gorunmuyordu + FX kalemlerde guncel kura gore kayiyordu. Artik odeme anindaki deger sabit.
-  const paidOf = p => p.paid != null ? p.paid : (p.status==='paid' ? window.toTRY(p.amount,p.currency||'TRY') : 0);
+  const paidOf = p => p.paid != null ? p.paid : (p.status==='paid' ? toTRY(p.amount,p.currency||'TRY',window.rates) : 0);
   const totAll = items.reduce((s,p)=>s+paidOf(p),0);
   const now=new Date(); const curMk=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const grouped={}; items.forEach(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');(grouped[mk]=grouped[mk]||[]).push(p);});
@@ -170,7 +172,7 @@ function _renderLogLedgerPaid(el) {
     const mTot=grouped[mk].reduce((s,p)=>s+paidOf(p),0);
     html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;padding:10px 0 6px;border-top:1px solid var(--bdr);display:flex;justify-content:space-between"><span>'+lbl+'</span><span style="color:#4ade80;font-family:&#39;IBM Plex Mono&#39;,monospace">'+window.fmt(mTot)+'</span></div>';
     grouped[mk].forEach(p=>{
-      const tryAmt=window.toTRY(p.amount,p.currency||'TRY'); const pd=paidOf(p); const isPartial=p.status==='partial'; const pid=window.esc(p.paidId||'');
+      const tryAmt=toTRY(p.amount,p.currency||'TRY',window.rates); const pd=paidOf(p); const isPartial=p.status==='partial'; const pid=window.esc(p.paidId||'');
       html+='<div style="display:flex;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);align-items:center">'
         + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+window.esc(p.name||'')+'</div><div style="font-size:11px;color:#94a3b8">'+window.fmtD(p.date)+'</div></div>'
         + '<div style="text-align:right;flex-shrink:0"><div style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-weight:600;font-size:13px;color:'+(isPartial?'var(--ora)':'#4ade80')+'">'+window.fmt(pd)+'</div>'+(isPartial?'<div style="font-size:10px;color:#94a3b8">'+window.fmt(tryAmt-pd)+' kaldı</div>':'')+'</div>'
@@ -187,12 +189,12 @@ function _renderLogLedgerHist(el) {
   const _flt = _ledgerFltActive();
   const cntEl = document.getElementById('LOG_CNT'); if (cntEl) cntEl.textContent = (_flt && items.length !== _all.length) ? (items.length + ' / ' + _all.length + ' silinmiş') : (items.length + ' silinmiş');
   if (!items.length) { el.innerHTML = '<div class="empty"><div class="ico">' + (_flt ? '🔍' : '🗑️') + '</div><p>' + (_flt ? 'Bu filtreye uyan silinmiş kayıt yok.' : 'Silinmiş kayıt yok.') + '</p></div>'; return; }
-  const totAll=items.reduce((s,o)=>s+window.toTRY(o.p.amount,o.p.currency||'TRY'),0)
+  const totAll=items.reduce((s,o)=>s+toTRY(o.p.amount,o.p.currency||'TRY',window.rates),0)
   let html='<div style="display:flex;gap:8px;margin-bottom:10px;align-items:stretch">'
     + '<div style="flex:1;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Silinmiş ('+items.length+')</div><div style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-weight:700;color:#94a3b8;font-size:15px">'+window.fmt(totAll)+'</div></div>'
     + '<button onclick="if(window.clrHist){clrHist();}" style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:0 14px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Tümünü temizle</button></div>';
   html+=items.map(({p,oi})=>{
-    const amt=window.fmt(window.toTRY(p.amount,p.currency||'TRY'));
+    const amt=window.fmt(toTRY(p.amount,p.currency||'TRY',window.rates));
     const when=p.delAt?window.fmtLogTime(p.delAt):(p.date||'');
     return '<div style="display:flex;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);align-items:center">'
       + '<div style="width:30px;height:30px;border-radius:50%;background:rgba(248,113,113,.15);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🗑️</div>'

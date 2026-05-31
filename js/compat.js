@@ -9,7 +9,6 @@ import {
   fmtD,
   fmtLogTime,
   isOD,
-  toTRY,
   parseLocalDate
 } from './util.js';
 
@@ -20,5 +19,4 @@ window.fmtAmt      = fmtAmt;
 window.fmtD        = fmtD;
 window.fmtLogTime  = fmtLogTime;
 window.isOD        = isOD;
-window.toTRY       = (a, c) => toTRY(a, c, window.rates);
 window.parseLocalDate  = parseLocalDate;
