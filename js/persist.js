@@ -5,6 +5,7 @@
 
 import { Session } from './session.js';
 import { recordWrite } from './audit.js';
+import { validateBeforeSave } from './validate.js';
 
 // ── saveSecure / loadSecure ───────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ async function _doSave() {
   // bir kez calisir (WO-01 karantina + WO-02 bypass-kapali sayesinde save'de bozuk kayit
   // olusmaz; onarim artik load-time + idempotent). Validate (KARANTINA, WO-01) save'de
   // guvenlik agi olarak KALIR.
-  const _quarantined = window.validateBeforeSave ? window.validateBeforeSave() : 0;
+  const _quarantined = validateBeforeSave();
   const data = {
     pays: window.pays, creds: window.creds, hist: window.hist,
     persons: window.persons, notes: window.notes, paidItems: window.paidItems,

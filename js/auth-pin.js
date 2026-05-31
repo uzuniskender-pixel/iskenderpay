@@ -12,6 +12,7 @@
 
 import { Session } from './session.js';
 import { shouldMintNewKey } from './keyguard.js';   // WO-15 invaryant (saf, test edilir)
+import { wrapDataKey, unwrapDataKey } from './crypto.js';
 
 // ── doLogin ───────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ async function doLogin() {
     const hash = await window.hashPin(val, pinSalt);
     if (window._fbSavePinHash) { try { await window._fbSavePinHash(hash); } catch(e) {} }
     const dataKeyRaw = crypto.getRandomValues(new Uint8Array(32));
-    const wrappedB64 = await window.wrapDataKey(dataKeyRaw, val, pinSalt);
+    const wrappedB64 = await wrapDataKey(dataKeyRaw, val, pinSalt);
     window._saveWrappedKeyLocal(wrappedB64);
     await window._saveWrappedKeyFirebase(wrappedB64);
     // importDataKey -> NON-EXTRACTABLE CryptoKey; dataKeyRaw fonksiyon scope'unda
@@ -83,7 +84,7 @@ async function doLogin() {
   if (!wrappedB64) { window.showPinErr && window.showPinErr('Şifreleme anahtarı bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.'); return; }
 
   let unwrapped;
-  try { unwrapped = await window.unwrapDataKey(wrappedB64, val, pinSalt); }
+  try { unwrapped = await unwrapDataKey(wrappedB64, val, pinSalt); }
   catch(e) { window.showPinErr && window.showPinErr('Veri çözülemedi — şifre eşleşmiyor.'); return; }
 
   // unwrapDataKey extractable key + rawBytes verir; resident anahtari
@@ -139,9 +140,9 @@ async function chPass() {
   const curWrappedB64 = await window._loadWrappedKeyFirebase() || window._getWrappedKey();
   if (!curWrappedB64) { msg.style.color='var(--danger)'; msg.textContent='❌ Şifreleme anahtarı bulunamadı'; return; }
   let unwrapped;
-  try { unwrapped = await window.unwrapDataKey(curWrappedB64, cur, pinSalt); }
+  try { unwrapped = await unwrapDataKey(curWrappedB64, cur, pinSalt); }
   catch(e) { msg.style.color='var(--danger)'; msg.textContent='❌ Mevcut anahtar çözülemedi'; return; }
-  const newWrappedB64 = await window.wrapDataKey(unwrapped.rawBytes, nw, pinSalt);
+  const newWrappedB64 = await wrapDataKey(unwrapped.rawBytes, nw, pinSalt);
 
   const newHash = await window.hashPin(nw, pinSalt);
   if (window._fbSavePinHash) {

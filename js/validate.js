@@ -31,7 +31,7 @@ function _isValidPerson(pr) {
   return !!pr && !!pr.id && typeof pr.name === 'string';
 }
 
-function validateBeforeSave() {
+export function validateBeforeSave() {
   let quarantined = 0;
   try {
     const checks = [
@@ -64,5 +64,3 @@ function validateBeforeSave() {
   }
   return quarantined;
 }
-
-window.validateBeforeSave = validateBeforeSave;

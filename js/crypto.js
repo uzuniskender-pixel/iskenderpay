@@ -132,8 +132,6 @@ export async function _loadWrappedKeyFirebase() {
 
 // ── Global compat ────────────────────────────────────────────────────────────
 window.importDataKey         = importDataKey;
-window.wrapDataKey           = wrapDataKey;
-window.unwrapDataKey         = unwrapDataKey;
 window.encryptData           = encryptData;
 window.decryptData           = decryptData;
 window.hashPin               = hashPin;
