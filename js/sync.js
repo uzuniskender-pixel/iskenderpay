@@ -39,12 +39,12 @@ let _focusHooksAttached = false;
 function _attachFocusHooks() {
   if (_focusHooksAttached) return;
   _focusHooksAttached = true;
-  // v8.199: pencereye donunce / online olunca ANINDA pull -> "bayat cihaz"
-  // penceresini daraltir (30sn poll'u beklemeden en guncel veriyi ceker).
-  // _fbPoll zaten dirty/saveTimer/_pollRunning guard'larini uygular -> guvenli.
+  // v8.206 (WO-06): okuma artik GERCEK-ZAMANLI onSnapshot ile gelir (SDK otomatik
+  // reconnect eder) -> focus/online'da poll'a gerek yok; yalniz bekleyen OFFLINE
+  // yazimi gonder (_fbFlush). "Bayat cihaz" penceresi onSnapshot ile zaten kapali.
   const pull = () => {
-    if (window.setSyncDot) window.setSyncDot('connecting');  // WO-05: app.js'ten tasindi
-    if (window._fbPoll) window._fbPoll();
+    if (window.setSyncDot) window.setSyncDot('connecting');
+    if (window._fbFlush) window._fbFlush();
   };
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') pull();
