@@ -10,7 +10,6 @@ import {
   fmtLogTime,
   todayMidnight,
   isOD,
-  toLocalISO,
   toTRY,
   parseLocalDate
 } from './util.js';
@@ -23,6 +22,5 @@ window.fmtD        = fmtD;
 window.fmtLogTime  = fmtLogTime;
 window.todayMidnight = todayMidnight;
 window.isOD        = isOD;
-window.toLocalISO  = toLocalISO;
 window.toTRY       = (a, c) => toTRY(a, c, window.rates);
 window.parseLocalDate  = parseLocalDate;

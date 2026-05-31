@@ -1,10 +1,12 @@
 // js/ui-pay.js — iskenderpay
 // Ödeme ve kredi CRUD
 
+import { toLocalISO } from './util.js';
+
 function openPay() {
   document.getElementById('EID').value='';
   document.getElementById('PMT').innerHTML='Yeni Ödeme <span>Ekle</span>';
-  const _nd=new Date();document.getElementById('PD').value=window.toLocalISO(_nd.getFullYear(),_nd.getMonth(),_nd.getDate());
+  const _nd=new Date();document.getElementById('PD').value=toLocalISO(_nd.getFullYear(),_nd.getMonth(),_nd.getDate());
   ['PN','PA'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('PC').value='TRY';
   document.getElementById('COPYMO').value=0;
@@ -83,7 +85,7 @@ function savePay() {
       const totalMo=(pm-1)+i;
       const yr=py+Math.floor(totalMo/12),mo=totalMo%12;
       const lastDay=new Date(yr,mo+1,0).getDate();
-      const rec={id:Date.now()+Math.random(),groupId,name,amount,currency,date:window.toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0};
+      const rec={id:Date.now()+Math.random(),groupId,name,amount,currency,date:toLocalISO(yr,mo,Math.min(pd,lastDay)),category,status:'pending',paid:0};
       if(personId) rec.personId=personId;
       window.Store.push('pays', rec);
     }
@@ -127,7 +129,7 @@ function saveCred() {
   if(!monthly){alert('Aylık taksit tutarını girin');return;}
   const[startYr,startMo0,startDay]=start.split('-').map(Number);
   const startMo=startMo0-1;
-  const pArr=Array.from({length:inst},(_,i)=>{const totalMo=startMo+i;const yr=startYr+Math.floor(totalMo/12),mo=totalMo%12;const lastDay=new Date(yr,mo+1,0).getDate();return{idx:i+1,date:window.toLocalISO(yr,mo,Math.min(startDay,lastDay)),amount:monthly,status:'pending',paid:0};});
+  const pArr=Array.from({length:inst},(_,i)=>{const totalMo=startMo+i;const yr=startYr+Math.floor(totalMo/12),mo=totalMo%12;const lastDay=new Date(yr,mo+1,0).getDate();return{idx:i+1,date:toLocalISO(yr,mo,Math.min(startDay,lastDay)),amount:monthly,status:'pending',paid:0};});
   const eid=document.getElementById('CEID').value;
   if(eid){
     const cr=window.findCredById(eid);

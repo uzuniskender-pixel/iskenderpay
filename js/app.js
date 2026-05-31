@@ -4,6 +4,7 @@
 // v8.187: oturum sirlari Store.session -> Session closure (js/session.js).
 
 import { Session } from './session.js';
+import { toLocalISO } from './util.js';
 
 // ── PLAN ADI ─────────────────────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ async function migrateCredDates() {
       const totalMo = startMo + i;
       const yr = startYr + Math.floor(totalMo/12), mo = totalMo%12;
       const lastDay = new Date(yr, mo+1, 0).getDate();
-      const correct = window.toLocalISO(yr, mo, Math.min(startDay, lastDay));
+      const correct = toLocalISO(yr, mo, Math.min(startDay, lastDay));
       if (p.date !== correct) p.date = correct;
     });
   });
