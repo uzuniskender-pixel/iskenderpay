@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.206: ./shared/date.js eklendi — Faz C @ozler/shared)
 
-const CACHE = 'ip-static-9ac3e7d';
+const CACHE = 'ip-static-c60996b';
 const STATIC = [
   './',
   './index.html',
