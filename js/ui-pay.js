@@ -197,6 +197,92 @@ function updLP() {
 }
 
 
+// ── KREDİ YAPILANDIRMA (v8.208) ──────────────────────────────────────────────
+// "Yapılandır" -> mevcut krediyi seç, başlangıç + taksit + miktar gir, kredinin
+// pays dizisi SIFIRDAN yeni plana dönüşür (hepsi pending). Geçmiş ödenmiş
+// taksitler pays'e taşınmaz: hist'e arşivlenir + paidItems donar (trend korunur)
+// + actLog'a yapılandırma kaydı düşer. Saf çekirdek: Hesap.yapilandirPlan /
+// Hesap.dondurKrediPaidItems.
+function openRestructure(credId) {
+  const c = window.findCredById(credId);
+  if (!c) { alert('Kredi bulunamadı.'); return; }
+  document.getElementById('YPC').value = credId;
+  const paidN = (c.pays || []).filter(p => (p.status || 'pending') === 'paid').length;
+  const pendN = (c.pays || []).length - paidN;
+  document.getElementById('YPN').textContent =
+    c.name + ' — mevcut: ' + (c.pays || []).length + ' taksit (' + paidN + ' ödendi, ' + pendN + ' bekliyor)';
+  // Varsayılanlar: ilk ödenmemiş taksit tarihi / kalan taksit sayısı / mevcut aylık
+  const nextPay = (c.pays || []).find(p => (p.status || 'pending') !== 'paid');
+  const _nd = new Date();
+  document.getElementById('YPS').value = nextPay ? nextPay.date : toLocalISO(_nd.getFullYear(), _nd.getMonth(), _nd.getDate());
+  document.getElementById('YPI').value = pendN || (c.pays || []).length || '';
+  document.getElementById('YPA').value = Math.round(c.monthly || 0) || '';
+  updYP();
+  ModalManager.open('YPM');
+}
+
+function updYP() {
+  const i = parseInt(document.getElementById('YPI').value) || 0;
+  const m = parseFloat(document.getElementById('YPA').value) || 0;
+  const s = document.getElementById('YPS').value;
+  const lp = document.getElementById('YPL');
+  if (i && m && s) {
+    lp.classList.add('show');
+    const [sy, sm0] = s.split('-').map(Number);
+    const totalEndMo = (sm0 - 1) + (i - 1);
+    const endYr = sy + Math.floor(totalEndMo / 12), endMo = ((totalEndMo % 12) + 12) % 12;
+    document.getElementById('YPLT').textContent = window.fmt(m * i);
+    document.getElementById('YPLM').textContent = window.fmt(m);
+    document.getElementById('YPLC').textContent = i + ' taksit';
+    document.getElementById('YPLE').textContent = new Date(endYr, endMo, 1).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  } else lp.classList.remove('show');
+}
+
+function saveRestructure() {
+  const credId = document.getElementById('YPC').value;
+  const c = window.findCredById(credId);
+  if (!c) { alert('Kredi bulunamadı.'); return; }
+  const start = document.getElementById('YPS').value;
+  const inst = parseInt(document.getElementById('YPI').value) || 0;
+  const monthly = parseFloat(document.getElementById('YPA').value) || 0;
+  if (!start || !inst || !monthly) { alert('Başlangıç, taksit sayısı ve aylık tutar zorunlu'); return; }
+
+  const prevInst = (c.pays || []).length;
+  const prevPaid = (c.pays || []).filter(p => (p.status || 'pending') === 'paid').length;
+  if (!confirm(c.name + ' yapılandırılacak.\n\nMevcut ' + prevInst + ' taksitlik plan kaldırılıp ' +
+      inst + ' taksitlik (₺' + Math.round(monthly).toLocaleString('tr-TR') + ') yeni plan kurulacak.\n' +
+      'Geçmiş ödemeler kayıtlarda (loglar + trend) kalır.\n\nEmin misin?')) return;
+
+  const iso = new Date().toISOString();
+
+  // 1) Eski planı hist'e arşivle (tam geri-alınabilirlik)
+  (c.pays || []).forEach(p =>
+    window.Store.unshift('hist', { ...p, name: c.name, currency: 'TRY', restructAt: iso, _restructuredFrom: c.id }));
+
+  // 2) Eski krediye bağlı paidItems'ı dondur (yeni idx çakışması önlenir; trend korunur)
+  const { result } = window.Hesap.dondurKrediPaidItems(window.paidItems, c.id, iso);
+  window.Store.replace('paidItems', result);
+
+  // 3) Yeni planı kur (hepsi pending) + kredi alanlarını güncelle
+  c.pays = window.Hesap.yapilandirPlan(start, inst, monthly);
+  c.start = start;
+  c.inst = inst;
+  c.monthly = monthly;
+  c.total = monthly * inst;
+  c.restructuredAt = iso;
+  c.restructCount = (c.restructCount || 0) + 1;
+
+  // 4) Log (geçmiş loglarda kalır)
+  const personId = _resolvePersonId(c.name);
+  window.addLog('cred_restructure', 'Kredi yapılandırıldı',
+    c.name + ' · ' + prevInst + '→' + inst + ' taksit · ' + window.fmtAmt(monthly, 'TRY') +
+    (prevPaid ? (' · ' + prevPaid + ' ödenmiş taksit geçmişte kaldı') : ''),
+    0, { personId, credId: c.id });
+
+  window.Store.touch();
+  window.closeMov('YPM');
+}
+
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.openPay            = openPay;
 window.editPay            = editPay;
@@ -204,6 +290,9 @@ window.savePay            = savePay;
 window.editCred           = editCred;
 window.saveCred           = saveCred;
 window.updLP              = updLP;
+window.openRestructure    = openRestructure;
+window.updYP              = updYP;
+window.saveRestructure    = saveRestructure;
 
 // ── KREDİ ÖZET PANELİ ────────────────────────────────────────────────────────
 function renderCredSummary() {

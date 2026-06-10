@@ -13,7 +13,7 @@
 //   Hesap._baseOf(name)               -> sondaki sayiyi soyer ("QNB 1" -> "QNB")
 //   Hesap._displayNames(mx, keys?)    -> { rawKey: displayName } haritasi
 
-import { todayMidnight, toTRY } from './util.js';
+import { todayMidnight, toTRY, toLocalISO } from './util.js';
 
 function _all() {
   if (typeof window.getAllItems === 'function') return window.getAllItems();
@@ -119,6 +119,44 @@ function kalan(amount, paid, currency) {
   return Math.max(0, t - (paid || 0));
 }
 
+// ── KREDİ YAPILANDIRMA — saf çekirdek (v8.208) ─────────────────────────────
+// Gerçek yapılandırma: kredinin kalan planı yerine SIFIRDAN yeni taksit planı
+// kurulur. editCred'in "index ile paid koru" mantığından BİLİNÇLİ farklı — yeni
+// plan ileriye dönük ve temiz (hepsi pending); geçmiş ödenmiş taksitler pays'e
+// taşınmaz, loglar + paidItems (trend) tarafında korunur.
+//
+// saveCred'deki pArr tarih mantığının AYNISI (ay/yıl taşması + ay-sonu clamp);
+// tek kaynak burada -> saveCred ile yapılandırma sapmaz.
+function yapilandirPlan(start, inst, monthly) {
+  const [sy, sm0, sd] = String(start).split('-').map(Number);
+  const sm = sm0 - 1;
+  return Array.from({ length: inst }, (_, i) => {
+    const totalMo = sm + i;
+    const yr = sy + Math.floor(totalMo / 12);
+    const mo = ((totalMo % 12) + 12) % 12;
+    const lastDay = new Date(yr, mo + 1, 0).getDate();
+    return { idx: i + 1, date: toLocalISO(yr, mo, Math.min(sd, lastDay)), amount: monthly, status: 'pending', paid: 0 };
+  });
+}
+
+// Eski krediye bağlı paidItems'ı DONDURUR: _cid/_ii bağını koparır.
+// GEREKÇE: kredi taksiti ödenince paidItems'a (_cid + _ii=idx) düşer; yeni plan
+// idx'i 1'den başlattığı için eski paidItems (aynı _cid, _ii=1) ile ÇAKIŞIR ->
+// _findPaidIdx (ui-plan-actions) yanlış kaydı bulur, geri-al bozulur. Bağı
+// koparınca çakışma biter; trend() date+paid kullandığından geçmiş bozulmaz.
+// Saf: girdiyi MUTATE ETMEZ, yeni dizi döner (caller Store.replace ile yazar).
+function dondurKrediPaidItems(paidItems, credId, iso) {
+  let frozen = 0;
+  const result = (paidItems || []).map(pi => {
+    if (pi && pi._cid != null && String(pi._cid) === String(credId)) {
+      frozen++;
+      return { ...pi, _cid: null, _ii: null, _restructuredFrom: credId, _restructAt: iso };
+    }
+    return pi;
+  });
+  return { frozen, result };
+}
+
 export const Hesap = {
   // ── Bu ay ozeti ──────────────────────────────────────────────────────────
   // opts.all  — caller'in zaten hesapladigi all items (perf)
@@ -221,7 +259,9 @@ export const Hesap = {
   // ── Paylasilan yardimcilar ────────────────────────────────────────────────
   kalan,
   _baseOf,
-  _displayNames
+  _displayNames,
+  yapilandirPlan,
+  dondurKrediPaidItems
 };
 
 window.Hesap = Hesap;

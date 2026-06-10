@@ -436,6 +436,30 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   </div>
 </div>
 
+<!-- KREDİ YAPILANDIRMA MODAL -->
+<div class="mov" id="YPM">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Kredi <span>Yapılandır</span></h2>
+    <input type="hidden" id="YPC">
+    <div id="YPN" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Yeni Taksit Sayısı</label><input class="fi mono-inp" id="YPI" type="number" placeholder="12" inputmode="numeric" oninput="updYP()"></div>
+      <div class="fg"><label class="fl">Aylık Taksit (₺)</label><input class="fi mono-inp" id="YPA" type="number" placeholder="0" inputmode="decimal" oninput="updYP()"></div>
+    </div>
+    <div class="fg"><label class="fl">Yeni İlk Taksit Tarihi</label><input class="fi" id="YPS" type="date" oninput="updYP()"></div>
+    <div class="loan-prev" id="YPL">
+      <div class="lp-title">Yeni Plan Özeti</div>
+      <div class="lp-row"><span>Toplam</span><span id="YPLT">-</span></div>
+      <div class="lp-row"><span>Aylık</span><span id="YPLM">-</span></div>
+      <div class="lp-row"><span>Taksit</span><span id="YPLC">-</span></div>
+      <div class="lp-row"><span>Bitiş</span><span id="YPLE" style="font-size:11px;font-family:'Inter',sans-serif;font-weight:600">-</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:6px 2px 0;line-height:1.4">Mevcut plan kaldırılır, geçmiş ödemeler kayıtlarda (loglar + trend) kalır.</div>
+    <div class="brow"><button class="btn bc" data-modal-close="YPM">İptal</button><button class="btn bsc" onclick="saveRestructure()">Yapılandır</button></div>
+  </div>
+</div>
+
 <!-- KISMİ MODAL -->
 <div class="mov" id="KM">
   <div class="modal" style="padding-bottom:28px">
@@ -477,8 +501,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.207';
-var APP_BUILD   = '20260531-02';
+var APP_VERSION = 'v8.208';
+var APP_BUILD   = '20260610-01';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

@@ -15,6 +15,7 @@ const LOG_ICONS = {
   hist_del:{icon:'🗑️',bg:'rgba(248,113,113,.15)'},
   restore:{icon:'↩️',bg:'rgba(74,222,128,.15)'},
   cred_add:{icon:'💳',bg:'rgba(251,191,36,.15)'},
+  cred_restructure:{icon:'🔁',bg:'rgba(251,146,60,.15)'},
   default:{icon:'📋',bg:'rgba(255,255,255,.07)'},
 };
 let _logDelMode = 'range';
@@ -114,7 +115,7 @@ const LOG_TYPE_CAT = {
   plan_add:'eklenen', cred_add:'eklenen',
   plan_del:'silinen', hist_del:'silinen', rhb_del:'silinen',
   restore:'geri', plan_undo:'geri',
-  plan_edit:'duzenleme', rhb_edit:'duzenleme',
+  plan_edit:'duzenleme', rhb_edit:'duzenleme', cred_restructure:'duzenleme',
   rhb_add:'rehber', rhb_import:'rehber',
 };
 const LOG_CAT_LABELS = { odeme:'Ödemeler', eklenen:'Eklenenler', silinen:'Silinenler', geri:'Geri alma', duzenleme:'Düzenleme', rehber:'Rehber' };
