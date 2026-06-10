@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.209: rates-core.js + altin-onizleme.js eklendi — PIN ekranı gram altın)
 
-const CACHE = 'ip-static-e0f4e58';
+const CACHE = 'ip-static-9128b4f';
 const STATIC = [
   './',
   './index.html',
