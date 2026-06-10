@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.209: rates-core.js + altin-onizleme.js eklendi — PIN ekranı gram altın)
+// sw.js — iskenderpay PWA cache (v8.210: brifing.js eklendi — Bugün/Brifing sekmesi)
 
-const CACHE = 'ip-static-9128b4f';
+const CACHE = 'ip-static-2485f39';
 const STATIC = [
   './',
   './index.html',
@@ -43,6 +43,7 @@ const STATIC = [
   './js/ui-notes.js',
   './js/rehber.js',
   './js/log.js',
+  './js/brifing.js',
   './js/search.js',
   './js/rates-core.js',
   './js/altin-onizleme.js',

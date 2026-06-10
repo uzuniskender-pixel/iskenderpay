@@ -70,6 +70,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     import './js/ui-notes.js';
     import './js/rehber.js';
     import './js/log.js';
+    import './js/brifing.js';
     import './js/altin-onizleme.js';
     import './js/search.js';
   </script>
@@ -145,6 +146,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <button class="stab" id="s5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="stab" id="s6" onclick="go(6)">📒 Rehber</button>
       <button class="stab" id="s7" onclick="go(7)">📋 Log</button>
+      <button class="stab" id="s8" onclick="go(8)">📰 Bugün</button>
       <button class="stab" onclick="switchPlan()" style="margin-top:auto;color:var(--acc2)" id="PLANBTN">🔄 Plan Değiştir</button>
       <button class="stab" onclick="doGoogleSignOut()" style="color:var(--danger)">🚪 Çıkış</button>
     </nav>
@@ -157,6 +159,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <button class="mtab" id="m5" onclick="go(5)">⚙️ Ayarlar</button>
       <button class="mtab" id="m6" onclick="go(6)">📒 Rehber</button>
       <button class="mtab" id="m7" onclick="go(7)">📋 Log</button>
+      <button class="mtab" id="m8" onclick="go(8)">📰 Bugün</button>
     </div>
     <div class="kurbar" id="KB"><span style="font-size:11px;color:var(--muted)">Kurlar yükleniyor...</span></div>
     <div id="RESTORE_UNDO" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:10px 14px;margin:10px 16px;display:none;align-items:center;gap:12px;font-size:12px"></div>
@@ -382,6 +385,15 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <div id="ACT_LOG_LIST" style="padding:0 16px 80px"></div>
     </div>
 
+    <!-- BUGÜN / BRİFİNG -->
+    <div id="T8" style="display:none">
+      <div class="ph">
+        <div><h1>📰 <span>Bugün</span></h1><div style="font-size:11px;color:var(--muted);margin-top:2px" id="BRIF_META">Günlük brifing</div></div>
+        <button onclick="copyBrifing()" class="add-btn" id="BRIF_COPY" style="flex-shrink:0">📋 Kopyala</button>
+      </div>
+      <div style="padding:0 16px 80px" id="BRIF_BODY"><div class="brif-load">Brifing yükleniyor…</div></div>
+    </div>
+
 <!-- DETAY PANELİ -->
 <div class="dov" id="DV">
   <div class="dpanel"><div class="dhdl"></div><div id="DC"></div></div>
@@ -503,8 +515,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.209';
-var APP_BUILD   = '20260610-02';
+var APP_VERSION = 'v8.210';
+var APP_BUILD   = '20260610-03';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

@@ -129,7 +129,7 @@ function go(n) {
   window.curTab = n;
   // T1 (Ödemeler) + T4 (Geçmiş) v8.181'de gizlendi, v8.188'de tamamen kaldirildi —
   // islevleri Log ledger'inda (v8.177). go(1)/go(4) artik no-op.
-  [0,2,3,5,6,7].forEach(i => {
+  [0,2,3,5,6,7,8].forEach(i => {
     const t = document.getElementById('T'+i); if (t) t.style.display = i===n ? '' : 'none';
     const m = document.getElementById('m'+i); if (m) m.classList.toggle('on', i===n);
     const s = document.getElementById('s'+i); if (s) s.classList.toggle('on', i===n);
@@ -140,6 +140,7 @@ function go(n) {
   if (n===5) window.renderAI();
   if (n===6) window.renderRhb();
   if (n===7) window.renderActLog();
+  if (n===8) window.renderBrifing && window.renderBrifing();
 }
 
 function chSort(v) { window.sortMode = v; render(); }
