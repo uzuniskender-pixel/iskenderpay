@@ -70,6 +70,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     import './js/ui-notes.js';
     import './js/rehber.js';
     import './js/log.js';
+    import './js/altin-onizleme.js';
     import './js/search.js';
   </script>
 </head>
@@ -124,6 +125,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div class="pin-logo">🔐</div>
   <div class="pin-title">Ödeme <span>Takvimi</span></div>
   <div class="pin-sub">Şifrenizi girin</div>
+  <div class="gold-pre" id="GOLD_PRE" title="Yenile"><span class="gp-load">Gram altın yükleniyor…</span></div>
   <div class="pin-wrap">
     <input class="pin-inp" id="PI" type="password" placeholder="••••••" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()" onkeypress="if(event.key==='Enter')doLogin()">
     <button class="pin-eye" onclick="toggleEye('PI',this)">👁</button>
@@ -501,8 +503,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.208';
-var APP_BUILD   = '20260610-01';
+var APP_VERSION = 'v8.209';
+var APP_BUILD   = '20260610-02';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

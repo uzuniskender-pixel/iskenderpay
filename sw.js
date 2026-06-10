@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.206: ./shared/date.js eklendi — Faz C @ozler/shared)
+// sw.js — iskenderpay PWA cache (v8.209: rates-core.js + altin-onizleme.js eklendi — PIN ekranı gram altın)
 
-const CACHE = 'ip-static-31abd41';
+const CACHE = 'ip-static-e0f4e58';
 const STATIC = [
   './',
   './index.html',
@@ -44,6 +44,8 @@ const STATIC = [
   './js/rehber.js',
   './js/log.js',
   './js/search.js',
+  './js/rates-core.js',
+  './js/altin-onizleme.js',
 ];
 
 self.addEventListener('install', e => {

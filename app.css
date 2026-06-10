@@ -294,3 +294,17 @@ select.fi{appearance:none}
 /* v8.160: Ayarlar sekmesi 2-kolon kart grid — auto-fit ile native responsive */
 .acard-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; align-items:start; }
 .acard-grid .acard { margin-bottom:0; }
+
+/* v8.209: PIN ekranı (pre-auth) gram altın önizleme pill'i — yalnız public veri */
+.gold-pre{ display:inline-flex; align-items:center; gap:8px; margin:2px 0 18px; padding:7px 14px;
+  background:var(--surf2, rgba(255,255,255,.04)); border:1px solid var(--bdr); border-radius:999px;
+  font-size:13px; line-height:1.2; cursor:pointer; user-select:none; max-width:92vw; }
+.gold-pre:hover{ border-color:rgba(251,191,36,.4); }
+.gold-pre .gp-ico{ font-size:13px; line-height:1; }
+.gold-pre .gp-lbl{ color:var(--muted); font-weight:600; }
+.gold-pre .gp-val{ color:var(--gold); font-weight:700; font-family:'IBM Plex Mono',monospace; }
+.gold-pre .gp-time{ color:var(--muted); font-size:11px; margin-left:2px; }
+.gold-pre .gp-time.stale{ color:var(--danger); }
+.gold-pre .gp-rf{ font-size:12px; opacity:.55; margin-left:2px; }
+.gold-pre:hover .gp-rf{ opacity:.9; }
+.gold-pre .gp-load{ color:var(--muted); font-size:12px; }

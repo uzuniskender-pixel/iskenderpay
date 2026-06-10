@@ -2,6 +2,7 @@
 // Kur çekme, kur bar render, sıradaki ödeme
 
 import { todayMidnight, toTRY } from './util.js';
+import { gramGoldTRY, fxFromExchangeApi, RATE_API, rateAgeLabel } from './rates-core.js';
 
 async function fetchRates(force=false) {
   if (!window.rates) window.rates = {EUR:null, USD:null, GOLD:null};
@@ -15,13 +16,13 @@ async function fetchRates(force=false) {
   }
   let anySuccess = false;
   try {
-    const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-    if (r.ok) { const d=await r.json(); window.rates.USD=d.rates.TRY; window.rates.EUR=d.rates.TRY/d.rates.EUR; anySuccess=true; }
+    const r = await fetch(RATE_API.fx);
+    if (r.ok) { const fx=fxFromExchangeApi(await r.json()); if(fx.USD) window.rates.USD=fx.USD; if(fx.EUR) window.rates.EUR=fx.EUR; anySuccess=true; }
     else console.warn('exchangerate-api HTTP hatası:', r.status);
   } catch(e) { console.warn('exchangerate-api erişim hatası:', e.message); }
   try {
-    const r2 = await fetch('https://api.gold-api.com/price/XAU');
-    if (r2.ok) { const d=await r2.json(); if(window.rates.USD) window.rates.GOLD=(d.price/31.1035)*window.rates.USD; anySuccess=true; }
+    const r2 = await fetch(RATE_API.gold);
+    if (r2.ok) { const d=await r2.json(); const g=gramGoldTRY(d && d.price, window.rates.USD); if(g!=null) window.rates.GOLD=g; anySuccess=true; }
     else console.warn('gold-api HTTP hatası:', r2.status);
   } catch(e) { console.warn('gold-api erişim hatası:', e.message); }
   if (anySuccess) {
@@ -35,14 +36,11 @@ async function fetchRates(force=false) {
 function renderKur() {
   let timeLabel = '';
   if (window.rates._fetchedAt) {
-    const d = new Date(window.rates._fetchedAt);
-    const ageMin = Math.round((Date.now()-d.getTime())/60000);
-    const timeStr = d.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-    if (ageMin > 60) {
-      const ageH = Math.floor(ageMin/60);
-      timeLabel = `<span class="ktime" style="color:var(--danger)" title="${timeStr} tarihli kur — güncel olmayabilir">⚠ ${ageH}s önce</span>`;
+    const lbl = rateAgeLabel(window.rates._fetchedAt);
+    if (lbl.stale) {
+      timeLabel = `<span class="ktime" style="color:var(--danger)" title="${lbl.timeStr} tarihli kur — güncel olmayabilir">⚠ ${lbl.text}</span>`;
     } else {
-      timeLabel = `<span class="ktime">${timeStr}</span>`;
+      timeLabel = `<span class="ktime">${lbl.text}</span>`;
     }
   } else if (window.rates.USD || window.rates.EUR || window.rates.GOLD) {
     timeLabel = `<span class="ktime" style="color:var(--danger)" title="Kurun ne zaman çekildiği bilinmiyor">⚠ önbellek</span>`;

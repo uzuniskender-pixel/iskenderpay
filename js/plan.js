@@ -56,6 +56,7 @@ function selectPlan(planId) {
   if (subEl) subEl.textContent = planName + ' şifresini girin';
   const pi = document.getElementById('PI');
   if (pi) pi.value = '';
+  if (window.refreshGoldPreview) window.refreshGoldPreview();
 }
 
 function switchPlan() {
