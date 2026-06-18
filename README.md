@@ -19,7 +19,7 @@ Bu `main` branch'inde kalan eski kopya (PIN min-4, WO-15 güvenlik kilidi YOK,
 ama güncel "8.203" etiketli) **karışıklık ve veri-kaybı footgun'ı** yaratıyordu:
 biri bunu kaynak sanabilir veya Pages kaynağı yanlışlıkla `main`'e çevrilirse
 eski/kırılgan kod canlıya iner. Bu yüzden uygulama kodu kaldırıldı
-(geçmiş `git log` / etiketlerde erişilebilir).
+(geçmiş `git log` / etiketlerde erişilebilir)..
 
 ## Kurallar
 
