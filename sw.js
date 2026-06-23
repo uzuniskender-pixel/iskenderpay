@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.210: brifing.js eklendi — Bugün/Brifing sekmesi)
 
-const CACHE = 'ip-static-bdb6976';
+const CACHE = 'ip-static-44c409f';
 const STATIC = [
   './',
   './index.html',
