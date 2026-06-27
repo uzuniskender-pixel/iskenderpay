@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.213: shared/text.js eklendi — araNormalize ortak kaynak)
 
-const CACHE = 'ip-static-784a062';
+const CACHE = 'ip-static-6d1baf8';
 const STATIC = [
   './',
   './index.html',
