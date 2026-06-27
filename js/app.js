@@ -204,7 +204,11 @@ function addLog(type, title, detail, navTab, ctx) {
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 function initApp() {
-  const ah = localStorage.getItem('v5-ahead') || '6';
+  // Acilis varsayilani: 'Tumu' = ileri pencere en uzak odemeye kadar (maxAheadMonths).
+  // Her acilis full-gorunume doner; oturum ici daraltma (chAhead -> '6' vb.) korunur,
+  // bir sonraki acilista yine 'Tumu'ye doner.
+  localStorage.setItem('v5-ahead', 'all');
+  const ah = 'all';
   document.getElementById('AH').value = ah;
   const sortEl = document.getElementById('SORT');
   if (sortEl) sortEl.value = window.sortMode;

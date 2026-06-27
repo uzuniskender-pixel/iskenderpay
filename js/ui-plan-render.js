@@ -2,7 +2,7 @@
 // Veri toplama (getAllItems, buildMx), ana matris render'ı, hafta widget'ı,
 // store:change event listener. ui-plan.js'ten v8.150'de ayrıştırıldı.
 
-import { todayMidnight, toTRY } from './util.js';
+import { todayMidnight, toTRY, maxAheadMonths } from './util.js';
 
 // ── DATA / HESAPLAMA ─────────────────────────
 function getAllItems() {
@@ -93,7 +93,12 @@ function render() {
 
   _renderSummaryCards(ozet, yaklaşanN, now);
   const mx = buildMx(all);
-  const aheadVal = parseInt(localStorage.getItem('v5-ahead')||'6');
+  // v5-ahead === 'all' -> ileri pencere = en uzak odemeye kadar (maxAheadMonths).
+  // Sayisal deger -> o kadar ay. Eski/bozuk deger -> 6 guvenli geri-cekilme.
+  const aheadRaw = localStorage.getItem('v5-ahead') || 'all';
+  const aheadVal = aheadRaw === 'all'
+    ? maxAheadMonths(all, now)
+    : (parseInt(aheadRaw) || 6);
   const monthSet = new Set();
   const nowY=now.getFullYear(), nowM=now.getMonth();
   for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}

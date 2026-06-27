@@ -67,6 +67,23 @@ export function todayMidnight() {
   return t;
 }
 
+// 'Tumu' ay filtresi: mevcut aydan EN UZAK odemeye kadarki ileri ay sayisi
+// (mevcut ay dahil). Ornek: en uzak odeme bugunden 17 ay sonra -> 18 doner
+// (render dongusu i=0..17 -> 18 ay gosterir, son taksit dahil). Bos/gecmis-only
+// veri -> 1 (mevcut ay). parseLocalDate ile TZ-guvenli ay farki.
+export function maxAheadMonths(all, now) {
+  const ref  = now || new Date();
+  const nowY = ref.getFullYear(), nowM = ref.getMonth();
+  let maxDiff = 0;
+  (all || []).forEach(p => {
+    if (!p || !p.date) return;
+    const d = parseLocalDate(p.date);
+    const diff = (d.getFullYear() - nowY) * 12 + (d.getMonth() - nowM);
+    if (diff > maxDiff) maxDiff = diff;
+  });
+  return maxDiff + 1;
+}
+
 // ── Ödeme durum yardımcıları ─────────────────────────────────────────────────
 export function isOD(p) {
   return (p.status || 'pending') !== 'paid' && parseLocalDate(p.date) < todayMidnight();
