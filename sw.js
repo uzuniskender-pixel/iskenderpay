@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.210: brifing.js eklendi — Bugün/Brifing sekmesi)
+// sw.js — iskenderpay PWA cache (v8.213: shared/text.js eklendi — araNormalize ortak kaynak)
 
-const CACHE = 'ip-static-d9d21ff';
+const CACHE = 'ip-static-784a062';
 const STATIC = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const STATIC = [
   './manifest.json',
   './version.json',
   './shared/date.js',
+  './shared/text.js',
   './js/firebase.js',
   './js/store.js',
   './js/state.js',

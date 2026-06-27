@@ -30,13 +30,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-he
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 10%,rgba(192,132,252,.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(232,192,125,.05) 0%,transparent 60%);pointer-events:none;z-index:0}
 </style>
 <link rel="stylesheet" href="./app.css">
-  <!-- Faz C / Yol B: @ozler/shared (TR tarih cekirdegi) build'siz cozumu.
-       CI deploy packages/shared/date.js -> ./shared/date.js kopyalar; sw.js precache eder.
-       Import-map MODUL script'inden ONCE gelmeli. -->
+  <!-- Faz C / Yol B: @ozler/shared (TR tarih cekirdegi date.js + TR arama normalize text.js)
+       build'siz cozumu. CI deploy packages/shared/{date,text}.js -> ./shared/'a kopyalar;
+       sw.js precache eder. Import-map MODUL script'inden ONCE gelmeli. -->
   <script type="importmap">
   {
     "imports": {
-      "@ozler/shared": "./shared/date.js"
+      "@ozler/shared": "./shared/date.js",
+      "@ozler/shared/text": "./shared/text.js"
     }
   }
   </script>
@@ -516,8 +517,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.212';
-var APP_BUILD   = '20260627-02';
+var APP_VERSION = 'v8.213';
+var APP_BUILD   = '20260627-03';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

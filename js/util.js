@@ -1,9 +1,11 @@
 // js/util.js — iskenderpay
-// Saf yardimci fonksiyonlar; side-effect yok. Tek dis bagimlilik: @ozler/shared
-// (TR tarih cekirdegi, Faz C / Yol B). parseLocalDate + fmtD shared'e koprulendi;
-// tarayicida @ozler/shared, index.html import-map ile ./shared/date.js'e cozulur.
+// Saf yardimci fonksiyonlar; side-effect yok. Dis bagimlilik: @ozler/shared
+// (TR tarih cekirdegi date.js + TR arama normalize text.js, Faz C / Yol B).
+// parseLocalDate + fmtD + araNormalize shared'e koprulendi; tarayicida
+// @ozler/shared / @ozler/shared/text, index.html import-map ile ./shared/'a cozulur.
 
 import { parseLocalDateTR, formatDateTR } from '@ozler/shared';
+import { araNormalize as _araNormalizeShared } from '@ozler/shared/text';
 
 // ── HTML kaçış ───────────────────────────────────────────────────────────────
 export function esc(s) {
@@ -62,18 +64,11 @@ export function fmtLogTime(iso) {
 }
 
 // ── Turkce-duyarli arama normalizasyonu ──────────────────────────────────────
-// UYS ile ayni kanonik eslem (utils.ts#araNormalize). Arama/filtrede
-// I/I/i/i, s/s, c/c, g/g, u/u, o/o, a ayrimini ASCII'ye katlar -> aksana
-// DUYARSIZ eslesme. Iki tarafa da uygulanmali: araNormalize(metin).includes(araNormalize(sorgu)).
-// JS .toLocaleLowerCase('tr') tek-tarafli kullanimi "cay"->"Cay" eslesmesini KACIRIYORDU.
-// "DIKME"/"DIKME"/"Dikme"/"dikme" -> "dikme"; "Capraz" -> "capraz".
-const _TR_KATLA = {
-  'İ':'i','I':'i','ı':'i','Ş':'s','ş':'s','Ç':'c','ç':'c',
-  'Ğ':'g','ğ':'g','Ü':'u','ü':'u','Ö':'o','ö':'o',
-  'Â':'a','â':'a','Î':'i','î':'i','Û':'u','û':'u',
-};
+// Faz C / Yol B: @ozler/shared/text#araNormalize'e koprulendi (TEK kanonik kaynak;
+// UYS de ayni kaynagi kullanir). Onceki yerel kopya text.js'e tasindi.
+// Iki tarafa da uygulanmali: araNormalize(metin).includes(araNormalize(sorgu)).
 export function araNormalize(s) {
-  return String(s ?? '').replace(/[İIıŞşÇçĞğÜüÖöÂâÎîÛû]/g, c => _TR_KATLA[c] || c).toLowerCase().trim();
+  return _araNormalizeShared(s); // @ozler/shared/text — aksana duyarsiz
 }
 
 export function todayMidnight() {
