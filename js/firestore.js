@@ -143,3 +143,19 @@ window._fbLoadWrappedKey = async function() {
     return snap.exists() ? (snap.data().wrappedKey || null) : null;
   } catch(e) { return null; }
 };
+
+// B0 (Faz B): dondurulmus AUTH-BAGIMSIZ PIN salt'i _meta'da sakla/oku (wrappedKey ile ayni
+// desen, ayni dokuman). Salt sir degildir (guvenlik PIN + 600k iterasyondan gelir) -> acikta
+// saklanabilir. Cihaz degisiminde freeze salt'i buradan tasinir.
+window._fbSavePinSalt = async function(b64) {
+  if (!window.Store.fbUid) return;
+  await setDoc(_metaDoc(), { pinSaltB64: b64 }, { merge: true });
+};
+
+window._fbLoadPinSalt = async function() {
+  if (!window.Store.fbUid) return null;
+  try {
+    const snap = await getDoc(_metaDoc());
+    return snap.exists() ? (snap.data().pinSaltB64 || null) : null;
+  } catch(e) { return null; }
+};

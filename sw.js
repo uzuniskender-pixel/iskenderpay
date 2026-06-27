@@ -1,6 +1,6 @@
-// sw.js — iskenderpay PWA cache (v8.213: shared/text.js eklendi — araNormalize ortak kaynak)
+// sw.js — iskenderpay PWA cache (v8.214: salt-freeze.js — B0 auth-bagimsiz PIN salt)
 
-const CACHE = 'ip-static-0bc1fad';
+const CACHE = 'ip-static-aeaecd2';
 const STATIC = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const STATIC = [
   './js/util.js',
   './js/compat.js',
   './js/crypto.js',
+  './js/salt-freeze.js',
   './js/session.js',
   './js/modal.js',
   './js/data.js',

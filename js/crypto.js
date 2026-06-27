@@ -3,6 +3,8 @@
 // Session state (cryptoKey/plainPin) v8.187'de js/session.js MODUL-PRIVATE
 // CLOSURE'ina tasindi — bu modul yalniz saf kripto primitifleri saglar (key tutmaz).
 
+import { resolvePinSaltCore } from './salt-freeze.js';
+
 export async function importDataKey(rawBytes) {
   return crypto.subtle.importKey('raw', rawBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 }
@@ -89,7 +91,10 @@ export async function hashPin(pin, salt) {
   return btoa(String.fromCharCode(...new Uint8Array(bits)));
 }
 
-export async function getSaltAsync(key) {
+// B0 (Faz B hazirlik): salt'in ESKI uretimi (Store.fbUid'den). Freeze KAYNAGI = burasi.
+// Davranis BIREBIR ESKISIYLE AYNI; sadece ayri fonksiyona alindi ki getPinSalt freeze
+// ederken bugunku bayti uretelim.
+async function _legacyDeriveSalt(key) {
   const uid = window.Store.fbUid || '';
   if (uid) {
     const enc = new TextEncoder();
@@ -101,6 +106,32 @@ export async function getSaltAsync(key) {
     return new Uint8Array(bits);
   }
   return getSalt(key);
+}
+
+const PIN_SALT_KEY = 'v5-pin-salt';
+
+// B0: AUTH-BAGIMSIZ PIN salt. Bir kez (eski uretimle BIREBIR ayni bayt) "dondurulur",
+// kalici saklanir (localStorage 'v8-pin-salt-frozen' + Firebase _meta.pinSaltB64); sonra
+// HEP saklanandan okunur -> auth uid degisse de (Firebase->Supabase) salt KIPIRDAMAZ ->
+// wrappedKey acilir + pinHash tutar -> KILITLENME YOK. Mevcut kullanici: ilk cagri eski
+// bayti uretip dondurur (gecis seffaf). GERI DONUS: 'v8-pin-salt-frozen' + _meta.pinSaltB64
+// silinirse sistem otomatik eski (uid-tureli) yola doner.
+export async function getPinSalt() {
+  return resolvePinSaltCore({
+    legacyDerive: () => _legacyDeriveSalt(PIN_SALT_KEY),
+    store: { get: k => localStorage.getItem(k), set: (k, v) => localStorage.setItem(k, v) },
+    backend: {
+      load: () => (window._fbLoadPinSalt ? window._fbLoadPinSalt() : Promise.resolve(null)),
+      save: (b64) => (window._fbSavePinSalt ? window._fbSavePinSalt(b64) : Promise.resolve()),
+    },
+  });
+}
+
+// 'v5-pin-salt' -> freeze-aware (auth-bagimsiz). Diger anahtarlar: ESKI davranis aynen.
+// Cagiranlar (auth-pin.js x3, backup.js) DEGISMEDEN freeze kazanir.
+export async function getSaltAsync(key) {
+  if (key === PIN_SALT_KEY) return getPinSalt();
+  return _legacyDeriveSalt(key);
 }
 
 export function getSalt(key) {
@@ -137,6 +168,7 @@ window.encryptData           = encryptData;
 window.decryptData           = decryptData;
 window.hashPin               = hashPin;
 window.getSaltAsync          = getSaltAsync;
+window.getPinSalt            = getPinSalt;
 window.getSalt               = getSalt;
 window._getWrappedKey        = _getWrappedKey;
 window._saveWrappedKeyLocal  = _saveWrappedKeyLocal;
