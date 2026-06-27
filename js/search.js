@@ -2,15 +2,15 @@
 // Global arama, ayarlar sekmesi
 
 import { getKnownBuild } from './version.js';
-import { toTRY } from './util.js';
+import { toTRY, araNormalize } from './util.js';
 
 function execGlobalSearch() {
-  const query = document.getElementById('SRCHINP').value.trim().toLocaleLowerCase('tr');
+  const query = araNormalize(document.getElementById('SRCHINP').value);
   const resDiv = document.getElementById('SRCHRES');
   if (!query) { resDiv.innerHTML = '<div style="text-align:center;color:var(--tc);opacity:.5;padding:20px 0">Yazmaya başlayın...</div>'; return; }
   let html = '', count = 0;
   (window.pays||[]).forEach(p => {
-    if (!((p.name||'').toLocaleLowerCase('tr').includes(query)||(String(p.amount||'')).includes(query))) return;
+    if (!(araNormalize(p.name).includes(query)||String(p.amount||'').includes(query))) return;
     count++;
     // v8.193: Plan matrisi paritesi — TRY karsiligi ana deger + orijinal doviz kucuk rozet.
     // Eskiden ham p.amount'a duz ₺ yapistiriliyordu (38 gr altin -> "₺38", 5820 EUR -> "₺5.820").
@@ -23,7 +23,7 @@ function execGlobalSearch() {
       </div></div>`;
   });
   (window.paidItems||[]).forEach(pi => {
-    if (!((pi.name||'').toLocaleLowerCase('tr').includes(query)||(String(pi.amount||'')).includes(query))) return;
+    if (!(araNormalize(pi.name).includes(query)||String(pi.amount||'').includes(query))) return;
     count++;
     // v8.192: log.js/hesap.js paidOf paritesi — duzenleme p.paid'e yazilir (savePaidItem),
     // markOk her zaman paid=toTRY(amount) yazar. Eskiden ham pi.amount gosteriliyordu.
@@ -38,7 +38,7 @@ function execGlobalSearch() {
       </div></div>`;
   });
   (window.creds||[]).forEach(c => {
-    if (!((c.name||'').toLocaleLowerCase('tr').includes(query))) return;
+    if (!araNormalize(c.name).includes(query)) return;
     count++;
     const total = (c.pays||[]).reduce((s,p)=>s+p.amount,0);
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ff5e62">
@@ -48,7 +48,7 @@ function execGlobalSearch() {
       </div></div>`;
   });
   (window.notes||[]).forEach(n => {
-    if (!((n.title||'').toLocaleLowerCase('tr').includes(query)||(n.content||n.text||'').toLocaleLowerCase('tr').includes(query))) return;
+    if (!(araNormalize(n.title).includes(query)||araNormalize(n.content||n.text).includes(query))) return;
     count++;
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #ff8e3c">
       <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(n.title||'Başlıksız Not')}</div>
@@ -56,9 +56,9 @@ function execGlobalSearch() {
     </div>`;
   });
   (window.rehber||[]).forEach(r => {
-    const name = (r.name||'').toLocaleLowerCase('tr');
+    const name = araNormalize(r.name);
     const phone = (r.phones||[]).map(p=>p.num).join(' ');
-    if (!(name.includes(query)||phone.includes(query)||(r.company||'').toLocaleLowerCase('tr').includes(query))) return;
+    if (!(name.includes(query)||phone.includes(query)||araNormalize(r.company).includes(query))) return;
     count++;
     html += `<div style="background:rgba(255,255,255,.02);padding:10px;border-radius:var(--rs);border-left:3px solid #38ef7d">
       <div style="font-weight:500;font-size:.9rem;color:var(--tc)">${window.esc(r.name||'')}</div>

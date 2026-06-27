@@ -2,7 +2,7 @@
 // Veri toplama (getAllItems, buildMx), ana matris render'ı, hafta widget'ı,
 // store:change event listener. ui-plan.js'ten v8.150'de ayrıştırıldı.
 
-import { todayMidnight, toTRY, maxAheadMonths } from './util.js';
+import { todayMidnight, toTRY, maxAheadMonths, araNormalize } from './util.js';
 
 // ── DATA / HESAPLAMA ─────────────────────────
 function getAllItems() {
@@ -104,7 +104,7 @@ function render() {
   for(let i=0;i<aheadVal;i++){const d=new Date(nowY,nowM+i,1);monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
   all.forEach(p=>{const d=window.parseLocalDate(p.date);const mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const pY=d.getFullYear(),pM=d.getMonth();if(pY<nowY||(pY===nowY&&pM<nowM))monthSet.add(mk);});
   const fltEl = document.getElementById('FLT');
-  const fltVal = fltEl ? fltEl.value.trim().toLocaleLowerCase('tr') : '';
+  const fltVal = fltEl ? araNormalize(fltEl.value) : '';
   let rowKeys = Object.keys(mx).filter(k=>mx[k]._name!==undefined);
   if(window.sortMode==='name'){
     rowKeys.sort((a,b)=>(mx[a]._name||'').localeCompare(mx[b]._name||'','tr'));
@@ -116,7 +116,7 @@ function render() {
       return (mx[a]._name||'').localeCompare(mx[b]._name||'','tr');
     });
   }
-  if(fltVal) rowKeys=rowKeys.filter(k=>(mx[k]._name||'').toLocaleLowerCase('tr').includes(fltVal));
+  if(fltVal) rowKeys=rowKeys.filter(k=>araNormalize(mx[k]._name).includes(fltVal));
   // Tüm ayları ödenmiş satırları gizle (v8.146 fix — önceki kod yanlışlıkla ay-bazlı filter yapıyordu)
   const showPaid = localStorage.getItem('v8-show-paid') === '1';
   if (!showPaid) {

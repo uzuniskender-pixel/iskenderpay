@@ -9,7 +9,8 @@ import {
   fmtD,
   fmtLogTime,
   isOD,
-  parseLocalDate
+  parseLocalDate,
+  araNormalize
 } from './util.js';
 
 window.esc         = esc;
@@ -20,3 +21,4 @@ window.fmtD        = fmtD;
 window.fmtLogTime  = fmtLogTime;
 window.isOD        = isOD;
 window.parseLocalDate  = parseLocalDate;
+window.araNormalize    = araNormalize;

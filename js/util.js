@@ -61,6 +61,21 @@ export function fmtLogTime(iso) {
   return dd + '.' + mm + ' ' + hh + ':' + mn;
 }
 
+// ── Turkce-duyarli arama normalizasyonu ──────────────────────────────────────
+// UYS ile ayni kanonik eslem (utils.ts#araNormalize). Arama/filtrede
+// I/I/i/i, s/s, c/c, g/g, u/u, o/o, a ayrimini ASCII'ye katlar -> aksana
+// DUYARSIZ eslesme. Iki tarafa da uygulanmali: araNormalize(metin).includes(araNormalize(sorgu)).
+// JS .toLocaleLowerCase('tr') tek-tarafli kullanimi "cay"->"Cay" eslesmesini KACIRIYORDU.
+// "DIKME"/"DIKME"/"Dikme"/"dikme" -> "dikme"; "Capraz" -> "capraz".
+const _TR_KATLA = {
+  'İ':'i','I':'i','ı':'i','Ş':'s','ş':'s','Ç':'c','ç':'c',
+  'Ğ':'g','ğ':'g','Ü':'u','ü':'u','Ö':'o','ö':'o',
+  'Â':'a','â':'a','Î':'i','î':'i','Û':'u','û':'u',
+};
+export function araNormalize(s) {
+  return String(s ?? '').replace(/[İIıŞşÇçĞğÜüÖöÂâÎîÛû]/g, c => _TR_KATLA[c] || c).toLowerCase().trim();
+}
+
 export function todayMidnight() {
   const t = new Date();
   t.setHours(0, 0, 0, 0);

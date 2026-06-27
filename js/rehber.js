@@ -21,9 +21,9 @@ function rhbGetInitials(p) {
 }
 
 function renderRhb() {
-  const q=(document.getElementById('RHB_SRCH')?.value||'').toLocaleLowerCase('tr');
+  const q=window.araNormalize(document.getElementById('RHB_SRCH')?.value||'');
   let list=[...window.rehber];
-  if(q)list=list.filter(p=>rhbGetName(p).toLocaleLowerCase('tr').includes(q)||(p.company||'').toLocaleLowerCase('tr').includes(q)||(p.phones||[]).some(ph=>ph.num.includes(q)));
+  if(q)list=list.filter(p=>window.araNormalize(rhbGetName(p)).includes(q)||window.araNormalize(p.company).includes(q)||(p.phones||[]).some(ph=>ph.num.includes(q)));
   const sort=document.getElementById('RHB_SORT')?.value||'name';
   list.sort((a,b)=>{
     if(sort==='lastname'){const la=rhbGetName(a).trim().split(' ').pop()||'';const lb=rhbGetName(b).trim().split(' ').pop()||'';return la.localeCompare(lb,'tr')||rhbGetName(a).localeCompare(rhbGetName(b),'tr');}
