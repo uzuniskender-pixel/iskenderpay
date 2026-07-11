@@ -476,6 +476,26 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   </div>
 </div>
 
+<!-- KREDİ ERKEN KAPATMA MODAL -->
+<div class="mov" id="KCM">
+  <div class="modal">
+    <div class="mhdl"></div>
+    <h2>Kredi <span>Kapat</span></h2>
+    <input type="hidden" id="KCC">
+    <div id="KCN" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+    <div class="fg"><label class="fl">Kapatma Tutarı (₺)</label><input class="fi mono-inp" id="KCA" type="number" placeholder="0" inputmode="decimal" style="font-size:20px;text-align:center" oninput="updKC()"></div>
+    <div class="fg"><label class="fl">Kapatma Tarihi</label><input class="fi" id="KCD" type="date" oninput="updKC()"></div>
+    <div class="loan-prev" id="KCL">
+      <div class="lp-title">Kapatma Özeti</div>
+      <div class="lp-row"><span>Kalan Borç</span><span id="KCLK">-</span></div>
+      <div class="lp-row"><span>Kapatma</span><span id="KCLP">-</span></div>
+      <div class="lp-row"><span>Tasarruf</span><span id="KCLS" style="color:var(--ok)">-</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:6px 2px 0;line-height:1.4">Kalan taksitler tek kapama ödemesine indirilir; ödenmiş taksitler ve geçmiş kayıtlarda (loglar + trend) korunur.</div>
+    <div class="brow"><button class="btn bc" data-modal-close="KCM">İptal</button><button class="btn bsc" onclick="saveCloseCredit()">Krediyi Kapat</button></div>
+  </div>
+</div>
+
 <!-- KISMİ MODAL -->
 <div class="mov" id="KM">
   <div class="modal" style="padding-bottom:28px">
