@@ -322,3 +322,30 @@ select.fi{appearance:none}
 .brif-badge{ display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:6px; background:var(--surf2,rgba(255,255,255,.06)); color:var(--muted); border:1px solid var(--bdr); vertical-align:middle; }
 .brif-badge.ok{ background:rgba(74,222,128,.15); color:var(--ok); border-color:rgba(74,222,128,.3); }
 .brif-badge.mid{ background:rgba(251,191,36,.15); color:var(--gold); border-color:rgba(251,191,36,.3); }
+
+/* ============================================================================
+   TELEFON YATAY (landscape + kisa yukseklik) — PLAN TAM EKRAN
+   Amac: telefonu yan cevirince (manifest orientation:any) yan bar + gurultu
+   gizlenir, Aylik Plan matrisi (.mtbl) tum ekrani kaplar; ay sutunlari cok
+   daha genis gorunur. Sadece TELEFON yatayini hedefler (max-height:600px) ->
+   tablet/masaustu landscape (yukseklik >600) ETKILENMEZ.
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 600px) {
+  /* 768px+ genislikte acilan yan bar telefon yatayinda cikmasin */
+  .sidebar { display: none !important; }
+  .content { margin-left: 0 !important; }
+  /* Navigasyon: mobil sekme cubugu her zaman gorunur + kompakt */
+  .mnav { display: flex !important; position: sticky; top: 0; }
+  .mtab { padding: 6px 4px; font-size: 10px; }
+  /* Dikey alan kazan: plan disi gurultuyu gizle */
+  .kurbar { display: none !important; }
+  #SIRADAKI, #RESTORE_UNDO { display: none !important; }
+  #T0 .ozet-cards, #CRED_SUM, #HAFTA { display: none !important; }
+  #T0 .ph { padding: 6px 14px 2px; }
+  #T0 .ph h1 { font-size: 15px; }
+  #T0 .sec { padding-top: 4px !important; padding-bottom: 8px !important; }
+  /* Plan matrisi: ekran boyu kadar + kendi ic kaydirmasi (sticky baslik/kalem korunur) */
+  .mwrap { max-height: calc(100vh - 92px); overflow: auto; }
+  .mtbl td, .mtbl th { font-size: 11px; padding: 5px 8px; }
+  .mtbl th.rh, .mtbl td.rh { min-width: 130px; max-width: 150px; }
+}
