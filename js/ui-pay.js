@@ -283,12 +283,104 @@ function saveRestructure() {
   window.closeMov('YPM');
 }
 
+// ── KREDİ ERKEN KAPATMA (v8.208+) ────────────────────────────────────────────
+// "Erken Kapat" -> kalan (ödenmemiş) taksitler TEK kapama ödemesine indirilir.
+// Kalan borç = Σ ödenmemiş taksit (amount - paid). Kullanıcı daha düşük bir
+// kapatma tutarı girer; fark tasarruf olarak loglanır. Ödenmiş taksitler +
+// paidItems/trend KORUNUR. Ödenmemiş taksitler hist'e arşivlenir (geri-alınabilir).
+function _kalanBorc(c) {
+  return (c.pays || []).reduce((s, p) => {
+    if ((p.status || 'pending') === 'paid') return s;
+    return s + Math.max(0, (p.amount || 0) - (p.paid || 0));
+  }, 0);
+}
+
+function openCloseCredit(credId) {
+  const c = window.findCredById(credId);
+  if (!c) { alert('Kredi bulunamadı.'); return; }
+  if (c.closed) { alert('Bu kredi zaten kapatılmış.'); return; }
+  const pend = (c.pays || []).filter(p => (p.status || 'pending') !== 'paid');
+  if (!pend.length) { alert('Bu kredide ödenmemiş taksit yok — kapatılacak bir şey yok.'); return; }
+  const kalan = Math.round(_kalanBorc(c));
+  document.getElementById('KCC').value = credId;
+  document.getElementById('KCN').textContent =
+    c.name + ' — kalan ' + pend.length + ' taksit · ₺' + kalan.toLocaleString('tr-TR') + ' kalan borç';
+  document.getElementById('KCA').value = kalan;
+  const _d = new Date();
+  document.getElementById('KCD').value = toLocalISO(_d.getFullYear(), _d.getMonth(), _d.getDate());
+  updKC();
+  ModalManager.open('KCM');
+}
+
+function updKC() {
+  const c = window.findCredById(document.getElementById('KCC').value);
+  const kalan = c ? Math.round(_kalanBorc(c)) : 0;
+  const pay = parseFloat(document.getElementById('KCA').value) || 0;
+  const save = Math.max(0, kalan - Math.round(pay));
+  document.getElementById('KCL').classList.add('show');
+  document.getElementById('KCLK').textContent = window.fmt(kalan);
+  document.getElementById('KCLP').textContent = window.fmt(Math.round(pay));
+  document.getElementById('KCLS').textContent = window.fmt(save);
+}
+
+function saveCloseCredit() {
+  const credId = document.getElementById('KCC').value;
+  const c = window.findCredById(credId);
+  if (!c) { alert('Kredi bulunamadı.'); return; }
+  const kalan = Math.round(_kalanBorc(c));
+  const pay = Math.round(parseFloat(document.getElementById('KCA').value) || 0);
+  const _d = new Date();
+  const date = document.getElementById('KCD').value || toLocalISO(_d.getFullYear(), _d.getMonth(), _d.getDate());
+  if (pay <= 0) { alert('Kapatma tutarı 0’dan büyük olmalı.'); return; }
+  if (pay > kalan) { alert('Kapatma tutarı kalan borçtan (₺' + kalan.toLocaleString('tr-TR') + ') büyük olamaz.'); return; }
+  const pend = (c.pays || []).filter(p => (p.status || 'pending') !== 'paid');
+  if (!pend.length) { alert('Ödenmemiş taksit yok.'); return; }
+  const save = kalan - pay;
+  if (!confirm(c.name + ' erken kapatılacak.\n\nKalan ' + pend.length + ' taksit (₺' + kalan.toLocaleString('tr-TR') +
+      ') tek ₺' + pay.toLocaleString('tr-TR') + ' kapama ödemesine indirilecek.' +
+      (save > 0 ? ('\n₺' + save.toLocaleString('tr-TR') + ' tasarruf.') : '') +
+      '\nÖdenmiş taksitler ve geçmiş kayıtlarda kalır.\n\nEmin misin?')) return;
+
+  const iso = new Date().toISOString();
+
+  // 1) Ödenmemiş taksitleri hist'e arşivle (tam geri-alınabilirlik)
+  pend.forEach(p =>
+    window.Store.unshift('hist', { ...p, name: c.name, currency: 'TRY', closeAt: iso, _closedFrom: c.id }));
+
+  // 2) Ödenmiş taksitleri koru; ödenmemişleri TEK kapama taksitiyle değiştir
+  const paidKept = (c.pays || []).filter(p => (p.status || 'pending') === 'paid');
+  const maxIdx = (c.pays || []).reduce((m, p) => Math.max(m, p.idx || 0), 0);
+  const closePay = { idx: maxIdx + 1, date, amount: pay, status: 'paid', paid: pay, _close: true };
+  c.pays = [...paidKept, closePay];
+  c.closed = true;
+  c.closedAt = iso;
+  c.closeAmount = pay;
+  c.savedAmount = save;
+  c.monthly = 0;
+  c.inst = c.pays.length;
+  c.total = paidKept.reduce((s, p) => s + (p.amount || 0), 0) + pay;
+
+  // 3) Log (geçmiş loglarda kalır)
+  const personId = _resolvePersonId(c.name);
+  window.addLog('cred_close', 'Kredi kapatıldı',
+    c.name + ' · ₺' + kalan.toLocaleString('tr-TR') + ' → ₺' + pay.toLocaleString('tr-TR') +
+    (save > 0 ? (' · ₺' + save.toLocaleString('tr-TR') + ' tasarruf') : ''),
+    0, { personId, credId: c.id });
+
+  window.Store.touch();
+  window.closeMov('KCM');
+}
+
+
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.openPay            = openPay;
 window.editPay            = editPay;
 window.savePay            = savePay;
 window.editCred           = editCred;
 window.saveCred           = saveCred;
+window.openCloseCredit    = openCloseCredit;
+window.updKC              = updKC;
+window.saveCloseCredit    = saveCloseCredit;
 window.updLP              = updLP;
 window.openRestructure    = openRestructure;
 window.updYP              = updYP;

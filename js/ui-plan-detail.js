@@ -59,6 +59,7 @@ function openRow(keyEnc) {
   h+=`<div class="dacts">
     <button class="dact da-edit" onclick="editByKey('${encodeURIComponent(key)}')">Düzenle</button>
     ${isCredRow?`<button class="dact da-edit" style="background:rgba(251,146,60,.15);border-color:rgba(251,146,60,.4);color:#fdba74" onclick="closeDV();setTimeout(()=>window.openRestructure('${key.replace('cred_','')}'),50)">Yapılandır</button>`:''}
+    ${isCredRow?`<button class="dact da-edit" style="background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4);color:#86efac" onclick="closeDV();setTimeout(()=>window.openCloseCredit('${key.replace('cred_','')}'),50)">Erken Kapat</button>`:''}
     ${!isCredRow?`<button class="dact da-edit" style="background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc" onclick="convertToCredit('${encodeURIComponent(key)}')">Krediye Dönüştür</button>`:''}
     <button class="dact da-del" onclick="delByKey('${encodeURIComponent(key)}')">Sil</button>
     <button class="dact da-close" onclick="closeDV()">Kapat</button>
