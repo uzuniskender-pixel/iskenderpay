@@ -199,9 +199,11 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
             <button id="PAID_TOGGLE" class="add-btn" onclick="togglePaidMonths()" style="background:var(--surf2);border:1px solid var(--bdr);color:var(--muted)">✓ Ödendiler</button>
             <button class="add-btn" onclick="openPay()">+ Ödeme Ekle</button>
             <button class="add-btn" style="background:linear-gradient(135deg,#166534,#15803d);color:#fff" onclick="exportExcel()">📥 Excel</button>
+            <button id="PLANFS_BTN" class="add-btn" onclick="togglePlanFs()" title="Planı tam ekran göster">⛶ Tam Ekran</button>
           </div>
         </div>
-        <div class="mwrap"><div id="MAT"></div></div>
+        <div class="mwrap" id="PLANWRAP"><div id="MAT"></div></div>
+        <button id="PLANFS_CLOSE" onclick="togglePlanFs()" title="Tam ekrandan çık">✕ Kapat</button>
         <div class="legend">
           <span class="cp">● Ödendi</span><span class="ck">● Kısmi</span>
           <span class="cg">● Gecikmiş</span><span class="cy">● Bu hafta</span><span class="cb">● Bekliyor</span><span class="ce">— Yok</span>
@@ -537,8 +539,8 @@ var partialCtx=null;
 
 // visibilitychange → app.js startRealtimeSync içinde
 
-var APP_VERSION = 'v8.223';
-var APP_BUILD   = '20260711-493a8de';
+var APP_VERSION = 'v8.224';
+var APP_BUILD   = '20260711-697140f';
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
