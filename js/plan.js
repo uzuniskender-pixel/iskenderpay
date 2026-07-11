@@ -66,9 +66,56 @@ function switchPlan() {
 }
 
 
+// ── PLAN TAM EKRAN (v8.222+) ────────────────────────────────────────────────
+// Aylik Plan matrisini (#PLANWRAP) tum ekrana yayar: body.plan-fs-on class'i
+// CSS ile mwrap'i fixed inset:0 yapar + cevreyi gizler. Opsiyonel gercek
+// Fullscreen API (tarayici sekmesinde adres cubugunu da gizler; PWA'da zaten
+// tam ekran, zararsiz). Kapatma: ust-sag ✕ butonu, ESC, veya sistem geri tusu.
+function togglePlanFs() {
+  const on = document.body.classList.toggle('plan-fs-on');
+  if (on) {
+    // 1) Tam ekran -> 2) ekrani YATAYA kilitle. orientation.lock() yalniz fullscreen
+    //    icinde calistigi icin once requestFullscreen, sonra lock (sirayla).
+    const el = document.documentElement;
+    const fsReq = (el.requestFullscreen && el.requestFullscreen()) || Promise.resolve();
+    Promise.resolve(fsReq).then(() => {
+      try {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      } catch (e) {}
+    }).catch(() => {});
+    // Mevcut aya kaydir (donme + fullscreen otursun diye biraz gecikme)
+    setTimeout(() => {
+      const wrap = document.getElementById('PLANWRAP');
+      const curTh = wrap && wrap.querySelector('th[style*="var(--acc)"]');
+      if (wrap && curTh) wrap.scrollLeft = Math.max(0, curTh.offsetLeft - 160);
+    }, 300);
+  } else {
+    // Cikis: yatay kilidini birak + fullscreen'den cik
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
+  }
+}
+
+// Sistem geri tusu / ESC ile fullscreen'den cikilirsa class'i senkronla
+function _planFsSync() {
+  if (!document.fullscreenElement && document.body.classList.contains('plan-fs-on')) {
+    document.body.classList.remove('plan-fs-on');
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+  }
+}
+document.addEventListener('fullscreenchange', _planFsSync);
+// ESC (fullscreen API tetiklenmese bile) ile cikis
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('plan-fs-on')) togglePlanFs();
+});
+
+
 // ── GLOBAL COMPAT ──────────────────────────────────────────────────────────
 window.getPlanName        = getPlanName;
 window.editPlanName       = editPlanName;
 window.renderPlanNames    = renderPlanNames;
 window.selectPlan         = selectPlan;
 window.switchPlan         = switchPlan;
+window.togglePlanFs       = togglePlanFs;
