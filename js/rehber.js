@@ -65,11 +65,12 @@ function openRhbDetail(id) {
   const initials=rhbGetInitials(p);
   let h=`<div style="text-align:center;margin-bottom:18px">
     <div class="rhb-avatar" style="width:56px;height:56px;font-size:20px;margin:0 auto 10px">${initials}</div>
-    <div style="font-size:18px;font-weight:700">${window.esc(rhbGetName(p))}</div>
+    <div style="font-size:18px;font-weight:700">${window.esc(rhbGetName(p))} <button class="rhb-copy-btn" data-copy="${window.esc(rhbGetName(p))}" style="vertical-align:middle;font-size:13px">📋</button></div>
     ${p.company?`<div style="font-size:12px;color:var(--muted);margin-top:3px">🏢 ${window.esc(p.company)}</div>`:''}
   </div>`;
   if(p.phones?.length){p.phones.filter(ph=>ph.num).forEach(ph=>{h+=`<div class="rhb-field"><div style="min-width:0;flex:1">${ph.lbl?`<div class="rhb-field-lbl">${window.esc(ph.lbl)}</div>`:'<div class="rhb-field-lbl">Telefon</div>'}<div class="rhb-field-val mono">${window.esc(ph.num)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><a href="tel:${encodeURIComponent(ph.num)}" class="rhb-call-btn">📞</a><button class="rhb-copy-btn" data-copy="${window.esc(ph.num)}">📋</button></div></div>`;});}
   if(p.email){h+=`<div class="rhb-field"><div style="min-width:0;flex:1"><div class="rhb-field-lbl">E-posta</div><div class="rhb-field-val" style="word-break:break-all">${window.esc(p.email)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><a href="mailto:${encodeURIComponent(p.email)}" class="rhb-call-btn">✉️</a><button class="rhb-copy-btn" data-copy="${window.esc(p.email)}">📋</button></div></div>`;}
+  if(p.iban){h+=`<div class="rhb-field"><div style="min-width:0;flex:1"><div class="rhb-field-lbl">IBAN</div><div class="rhb-field-val mono" style="word-break:break-all">${window.esc(p.iban)}</div></div><div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px"><button class="rhb-copy-btn" data-copy="${window.esc(p.iban)}">📋</button></div></div>`;}
   if(p.note){h+=`<div style="background:var(--surf2);border-radius:9px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--bdr)"><div class="rhb-field-lbl" style="margin-bottom:5px">Not</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${window.esc(p.note)}</div></div>`;}
   h+=`<div class="dacts"><button class="dact da-edit" data-edit-id="${p.id}">Düzenle</button><button class="dact da-del" data-del-id="${p.id}">Sil</button><button class="dact da-close" data-close>Kapat</button></div>`;
   document.getElementById('RDET_C').innerHTML=h;
@@ -163,7 +164,7 @@ function rhbCopyFeedback(btn){const orig=btn.innerHTML;btn.innerHTML='✓';btn.s
 function openRhbAdd() {
   document.getElementById('RMOD_ID').value='';
   document.getElementById('RMOD_T').innerHTML='Kişi <span>Ekle</span>';
-  ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_NOTE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['RMOD_NAME','RMOD_COMPANY','RMOD_EMAIL','RMOD_IBAN','RMOD_NOTE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   _rhbPhones.splice(0,_rhbPhones.length,{lbl:'Cep',num:''});renderRhbPhones();
   ModalManager.open('RMOD');
 }
@@ -176,6 +177,7 @@ function openRhbEdit(id) {
   const nameEl=document.getElementById('RMOD_NAME');if(nameEl)nameEl.value=p.name||((p.firstName||'')+' '+(p.lastName||'')).trim();
   const coEl=document.getElementById('RMOD_COMPANY');if(coEl)coEl.value=p.company||'';
   document.getElementById('RMOD_EMAIL').value=p.email||'';
+  const ibanEl=document.getElementById('RMOD_IBAN');if(ibanEl)ibanEl.value=p.iban||'';
   document.getElementById('RMOD_NOTE').value=p.note||'';
   _rhbPhones.splice(0,_rhbPhones.length, ...(p.phones?.length?p.phones.map(x=>({...x})):[{lbl:'',num:''}]));
   renderRhbPhones();
@@ -228,10 +230,11 @@ function rhbSavePerson() {
   if(!name){alert('İsim Soyisim girin');return;}
   const phones=_rhbPhones.filter(ph=>ph.num.trim()).map(ph=>({...ph,num:normPhone(ph.num)}));
   const email=document.getElementById('RMOD_EMAIL').value.trim();
+  const iban=(document.getElementById('RMOD_IBAN')?.value.trim()||'').toLocaleUpperCase('tr').replace(/\s+/g,'');
   const note=document.getElementById('RMOD_NOTE').value.trim();
   const eid=document.getElementById('RMOD_ID').value;
-  if(eid){const p=window.rehber.find(x=>String(x.id)===String(eid));if(p)window.Store.mutateItem(p,{name,company,phones,email,note});window.addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
-  else{window.Store.push('rehber',{id:Date.now(),name,company,phones,email,note});window.addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
+  if(eid){const p=window.rehber.find(x=>String(x.id)===String(eid));if(p)window.Store.mutateItem(p,{name,company,phones,email,iban,note});window.addLog('rhb_edit','Kişi düzenlendi',name+(company?' · '+company:''),6);}
+  else{window.Store.push('rehber',{id:Date.now(),name,company,phones,email,iban,note});window.addLog('rhb_add','Kişi eklendi',name+(company?' · '+company:'')+(phones[0]?' · '+phones[0].num:''),6);}
   window.closeMov('RMOD');renderRhb();
 }
 

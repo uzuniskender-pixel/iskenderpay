@@ -1,6 +1,6 @@
 // sw.js — iskenderpay PWA cache (v8.214: salt-freeze.js — B0 auth-bagimsiz PIN salt)
 
-const CACHE = 'ip-static-fcb88e3';
+const CACHE = 'ip-static-91b4498';
 const STATIC = [
   './',
   './index.html',
