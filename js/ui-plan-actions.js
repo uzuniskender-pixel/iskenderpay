@@ -25,14 +25,28 @@ function addToMonth(keyEnc,month) {
 }
 
 // v8.172: paidItems linkage — kredi taksitlerinin benzersiz id'si yok (sadece _cid+_ii).
-// Eski (id+date) eslesme kredilerde ayni tarihli taksitleri karistiriyordu -> kaynak/defter
-// sapmasi. Kredi ise _cid+_ii (benzersiz), normal pay ise id+date ile esle. -1 = bulunamadi.
+// Kredi ise _cid+_ii (benzersiz). -1 = bulunamadi.
+//
+// v8.229 (20 Agu 2026) — TARIH BAGI TUZAGI KAPATILDI:
+//   Kredi-disi eslesme  id + TARIH  ikilisiyle yapiliyordu. Bir kalemin ODEME ISARETLENDIKTEN
+//   SONRA tarihi duzenlenirse (savePay date'i patch'ler) bag kopuyor ve:
+//     · undoCell / resetPartial  -> paidItems satirini SILEMIYOR (defterde hayalet "odendi" kalir)
+//     · doPartial                -> mevcut satiri guncellemek yerine YENI satir push ediyor (defter sisiyor)
+//   Saha kaniti (Serdar verisi, 20 Agu): EMRAH TASTAN ve AYKUT OKTAY satirlarinda defter tarihi
+//   04-05 / 05-05, kalem tarihi 08-07 -> iki satir da bagsiz kalmisti.
+//   COZUM: id ZATEN TEK KIMLIK — findPayById / markOk / undoCell hepsi p.id ile calisiyor (DRY).
+//   Once TAM eslesme (id+tarih) denenir; bulunamazsa id ile yedek eslesme. Boylece calisan
+//   hicbir durumun davranisi degismez, yalniz kopmus baglar yeniden kurulur.
+//   Gecmis veriye DOKUNULMAZ — eski kayitlar oldugu gibi kalir, bundan sonrasi dogru calisir.
 function _findPaidIdx(p) {
-  return (window.paidItems || []).findIndex(x =>
-    p._cid != null
-      ? (x._cid === p._cid && x._ii === p._ii)
-      : (String(x.id) === String(p.id) && x.date === p.date)
-  );
+  const liste = window.paidItems || [];
+  if (p._cid != null) {
+    return liste.findIndex(x => x._cid === p._cid && x._ii === p._ii);
+  }
+  const tam = liste.findIndex(x =>
+    x._cid == null && String(x.id) === String(p.id) && x.date === p.date);
+  if (tam >= 0) return tam;
+  return liste.findIndex(x => x._cid == null && String(x.id) === String(p.id));
 }
 
 function markOk(keyEnc,month) {

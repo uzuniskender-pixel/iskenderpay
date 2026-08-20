@@ -33,78 +33,72 @@ function _baseOf(name) {
   return n.replace(/ \d+$/, '').trim() || n;
 }
 
-// Disambiguated display name map.
-// personId varsa: ayni personId'nin birden fazla rowKey'i → "name (desc|category)"
-// personId yoksa (legacy): mevcut isim-suffix mantigi ("AHMET" / "AHMET 1")
-// cred rowKey'leri (cred_*): mevcut suffix'in sonuna "(Kredi)" eklenir (v8.125)
-// personId'siz pay satirlari (g_*, pay_*): legacy isim-suffix mantigi (⚠️ gostergesi v8.196'da kaldirildi)
-// keys verilirse sadece bu rowKey'leri dikkate alir (plan matrisi filtreliyse).
+// Disambiguated display name map — v8.229 KOK COZUM (20 Agu 2026).
+//
+// ESKI DAVRANIS ve NEDEN BOZUKTU:
+//   Uc ayri adlandirma kolu (personId / legacy noPid / cred) TEK isim alanina yaziyor
+//   ama birbirinin ciktisini gormuyordu; dnMap uzerinde son bir benzersizlik kapisi yoktu.
+//   Ustune legacy kol _baseOf ile kullanicinin YAZDIGI soneki soyup countMap/idxMap ile
+//   YENIDEN numaraliyordu (idx-1). Saha sonucu (Serdar verisi, 40 satir):
+//     ham "ZELIHA 1" -> ekranda "ZELIHA (Kredi)"
+//     ham "ZELIHA 2" -> ekranda "ZELIHA 1 (Kredi)"   <-- BASKA KALEMIN NUMARASI
+//     ham "ZELIHA 3" -> ekranda "ZELIHA"
+//   ve 3 cift satir birebir ayni etiketi tasiyordu (gercek gecikmis borclar karistirilabilirdi).
+//
+// YENI KURAL — TEK ISIM ALANI, TEK KAPI:
+//   1) TABAN AD = KULLANICININ YAZDIGI AD. Gosterimde _baseOf CAGRILMAZ.
+//      (_baseOf gruplama icin yerinde duruyor: ui-pay#_resolvePersonId, ui-persons, app.js
+//       backfill. Orasi kisi eslestirmesi, gosterim degil — DOKUNULMADI.)
+//   2) cred satiri "(Kredi)" tasir (v8.125 davranisi korunur).
+//   3) Cakisma varsa KADEMELI ayirt et; her kademe yalnizca GEREKTIGINDE devreye girer:
+//        a) ayirt edici etiket (desc / kategori)
+//        b) cred ise taksit sayisi
+//        c) SIRADAKI ODENMEMIS AY  (gecmis degil, "anlik ve sonrasi" — Serdar)
+//        d) son care: satir anahtarinin son 4 hanesi (anahtarlar benzersiz -> KAPANIS GARANTILI)
+//   Ek bilgi yalniz gerektiginde eklenir; ayrimi olmayan satirlar sade kalir.
 function _displayNames(mx, keys) {
   const allKeys = (keys && keys.length)
     ? keys
     : Object.keys(mx).filter(k => mx[k]._name !== undefined);
 
-  // Her rowKey icin meta: personId + ayirt edici tag (desc varsa veya category)
+  // Her rowKey icin meta: kisi, ayirt edici etiket, taksit sayisi, zaman capasi
   const meta = {};
   allKeys.forEach(k => {
-    const monthKeys = Object.keys(mx[k]).filter(x => !x.startsWith('_'));
-    const item = monthKeys.length ? mx[k][monthKeys[0]].items[0] : null;
+    const aylar = Object.keys(mx[k]).filter(x => !x.startsWith('_')).sort();
+    const ilk = aylar.length ? mx[k][aylar[0]].items[0] : null;
+    // CAPA: sıradaki ODENMEMIS ay; hepsi odendiyse son ay. Gecmise degil one bakar.
+    const acik = aylar.find(m => (mx[k][m].status || 'pending') !== 'paid');
     meta[k] = {
-      pid: item && item.personId ? item.personId : null,
-      tag: item ? (item.desc || item.category || null) : null
+      tag:  ilk ? (ilk.desc || ilk.category || null) : null,
+      taksit: aylar.reduce((s, m) => s + (mx[k][m].items || []).length, 0),
+      capa: acik || aylar[aylar.length - 1] || null
     };
   });
 
-  // personId'li keyleri grupla, geri kalan legacy yol
-  const byPid = {};
-  const noPid = [];
-  allKeys.forEach(k => {
-    const pid = meta[k].pid;
-    if (pid) (byPid[pid] = byPid[pid] || []).push(k);
-    else noPid.push(k);
-  });
-
+  // (1) Taban ad = ham ad (kullanicinin yazdigi)
   const dnMap = {};
+  allKeys.forEach(k => { dnMap[k] = mx[k]._name || k; });
 
-  // personId gruplari: tek satirsa ham name; coksa "name (tag)"
-  Object.keys(byPid).forEach(pid => {
-    const ks = byPid[pid];
-    if (ks.length === 1) {
-      dnMap[ks[0]] = _baseOf(mx[ks[0]]._name);
-    } else {
-      ks.forEach(k => {
-        dnMap[k] = _baseOf(mx[k]._name) + ' (' + (meta[k].tag || '?') + ')';
-      });
-    }
-  });
+  // (2) Kredi satirlari "(Kredi)" tasir
+  allKeys.forEach(k => { if (k.startsWith('cred_')) dnMap[k] = dnMap[k] + ' (Kredi)'; });
 
-  // personId'siz keyler: legacy isim-suffix mantigi (geriye uyum)
-  const countMap = {};
-  noPid.forEach(k => { const b = _baseOf(mx[k]._name); countMap[b] = (countMap[b] || 0) + 1; });
-  const sortedNoPid = [...noPid].sort((a, b) =>
-    (mx[a]._name||'').localeCompare(mx[b]._name||'', 'tr'));
-  const idxMap = {};
-  sortedNoPid.forEach(k => {
-    const b = _baseOf(mx[k]._name);
-    if (countMap[b] > 1) {
-      const idx = idxMap[b] = (idxMap[b] || 0) + 1;
-      dnMap[k] = idx === 1 ? b : b + ' ' + (idx - 1);
-    } else {
-      dnMap[k] = b;
-    }
-  });
-
-  // Cred rowKey'leri her zaman "(Kredi)" suffix tasir (v8.125) — append, mevcut suffix korunur
-  allKeys.forEach(k => {
-    if (k.startsWith('cred_')) {
-      dnMap[k] = (dnMap[k] || _baseOf(mx[k]._name)) + ' (Kredi)';
-    }
-  });
-
-  // NOT (v8.196): personId'siz pay satirlarina " ⚠️" ekleyen v8.137 blogu kaldirildi.
-  // Gerekce: Pass 2 backfill her acilista isimle personId atar; geriye ⚠️ alan satirlar
-  // cogunlukla Kisiler'de kaydi olmayan odeme alicilari (kasitli/normal durum, hata degil).
-  // Normal veriyi her matris satirinda uyari isaretiyle "sorunlu" gostermek gurultuydu.
+  // (3) TEK BENZERSIZLIK KAPISI — kademeli, her kademe sonrasi yeniden gruplanir
+  const cakisanlar = () => {
+    const g = {};
+    allKeys.forEach(k => { (g[dnMap[k]] = g[dnMap[k]] || []).push(k); });
+    return Object.keys(g).map(x => g[x]).filter(x => x.length > 1);
+  };
+  const kademe = (secici) => {
+    cakisanlar().forEach(ks => {
+      const d = ks.map(secici);
+      if (new Set(d).size < 2) return;          // bu kademe ayirt etmiyor -> dokunma
+      ks.forEach((k, i) => { if (d[i]) dnMap[k] = dnMap[k] + d[i]; });
+    });
+  };
+  kademe(k => meta[k].tag ? ' (' + meta[k].tag + ')' : '');
+  kademe(k => k.startsWith('cred_') ? ' · ' + meta[k].taksit + ' taksit' : '');
+  kademe(k => meta[k].capa ? ' · ' + meta[k].capa.slice(5) + '/' + meta[k].capa.slice(0, 4) : '');
+  kademe(k => ' #' + k.slice(-4));              // kapanis: anahtar benzersiz
 
   return dnMap;
 }
